@@ -1,15 +1,15 @@
 extends Control
 ## Virtual joystick (left half of the screen) and round buttons (right side) for touch devices.
-## Feeds the same input actions the keyboard uses, so gameplay code does not care which one is active.
+## Feeds the same input actions the keyboard uses. Coordinates are in the 1280x720 UI space.
 ## Shown automatically on touchscreens; on the web add "?touch" to the URL to force it.
 
-const JOY_CENTER := Vector2(46, 134)
-const JOY_RADIUS := 26.0
-const KNOB_RADIUS := 11.0
+const JOY_CENTER := Vector2(184, 540)
+const JOY_RADIUS := 104.0
+const KNOB_RADIUS := 44.0
 const DEAD_ZONE := 0.15
 const BUTTONS := [
-	{"action": "interact", "label": "E", "pos": Vector2(280, 134), "r": 17.0},
-	{"action": "time_faster", "label": "T", "pos": Vector2(244, 152), "r": 12.0},
+	{"action": "interact", "label": "E", "pos": Vector2(1120, 540), "r": 68.0},
+	{"action": "time_faster", "label": "T", "pos": Vector2(976, 612), "r": 48.0},
 ]
 
 var _joy_touch := -1
@@ -26,17 +26,19 @@ func _ready() -> void:
 
 
 func _should_show() -> bool:
-	if DisplayServer.is_touchscreen_available():
-		return true
 	if OS.has_feature("web"):
-		var q = JavaScriptBridge.eval("window.location.search", true)
-		if q is String and q.find("touch") != -1:
-			return true
-	return false
+		var r = JavaScriptBridge.eval("(navigator.maxTouchPoints > 0) || (window.location.search.indexOf('touch') >= 0)", true)
+		return bool(r)
+	if OS.has_feature("mobile"):
+		return true
+	return OS.get_cmdline_user_args().has("--touch")
 
 
 func _input(event: InputEvent) -> void:
-	if not visible:
+	if not visible or Game.modal_open:
+		if _joy_touch != -1:
+			_joy_touch = -1
+			_apply_joy(Vector2.ZERO)
 		return
 	if event is InputEventScreenTouch:
 		if event.pressed:
@@ -102,17 +104,24 @@ func _set_axis(neg: String, pos: String, value: float) -> void:
 
 
 func _draw() -> void:
+	if Game.modal_open:
+		return
 	var base := Color(1, 1, 1, 0.10)
 	var ring := Color(1, 1, 1, 0.35)
 	var knob := Color(0.9, 0.88, 0.95, 0.55 if _joy_touch != -1 else 0.35)
 	draw_circle(JOY_CENTER, JOY_RADIUS, base)
-	draw_arc(JOY_CENTER, JOY_RADIUS, 0.0, TAU, 32, ring, 1.0)
+	draw_arc(JOY_CENTER, JOY_RADIUS, 0.0, TAU, 48, ring, 3.0)
 	draw_circle(JOY_CENTER + _joy_vec * JOY_RADIUS * 0.75, KNOB_RADIUS, knob)
 	for i in BUTTONS.size():
 		var b: Dictionary = BUTTONS[i]
 		var pressed := _button_touch.values().has(i)
 		draw_circle(b["pos"], b["r"], Color(1, 0.75, 0.4, 0.45) if pressed else base)
-		draw_arc(b["pos"], b["r"], 0.0, TAU, 24, ring, 1.0)
+		draw_arc(b["pos"], b["r"], 0.0, TAU, 40, ring, 3.0)
 		var label: String = b["label"]
-		var w := _font.get_string_size(label, HORIZONTAL_ALIGNMENT_CENTER, -1, 8).x
-		draw_string(_font, b["pos"] + Vector2(-w * 0.5, 3), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(1, 1, 1, 0.85))
+		var w := _font.get_string_size(label, HORIZONTAL_ALIGNMENT_CENTER, -1, 34).x
+		draw_string(_font, b["pos"] + Vector2(-w * 0.5, 12), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 34, Color(1, 1, 1, 0.85))
+
+
+func _process(_delta: float) -> void:
+	if visible:
+		queue_redraw()

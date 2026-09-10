@@ -1,11 +1,12 @@
 extends CharacterBody3D
-## The priest. Movement is relative to the fixed camera so "up" on the keyboard walks away from the viewer.
+## The priest. Movement is relative to the fixed camera. A sensor area finds nearby interactables.
 
 @export var speed: float = 4.0
 @export var camera_yaw_degrees: float = 35.0
 
-var energy: float = 100.0
 var _model: Node3D
+var _nearby: Array[Interactable] = []
+var _current: Interactable
 
 
 func _ready() -> void:
@@ -13,16 +14,26 @@ func _ready() -> void:
 	_model.name = "Model"
 	add_child(_model)
 	_build_model()
+	var sensor := $Sensor as Area3D
+	sensor.area_entered.connect(_on_area_entered)
+	sensor.area_exited.connect(_on_area_exited)
+
+
+func clear_targets() -> void:
+	_nearby.clear()
+	_current = null
 
 
 func _physics_process(delta: float) -> void:
-	var input := Input.get_vector("move_left", "move_right", "move_up", "move_down")
+	var input := Vector2.ZERO
+	if not Game.modal_open:
+		input = Input.get_vector("move_left", "move_right", "move_up", "move_down")
 	var dir := Vector3(input.x, 0, input.y).rotated(Vector3.UP, deg_to_rad(camera_yaw_degrees))
 	if dir.length() > 0.0:
 		velocity.x = dir.x * speed
 		velocity.z = dir.z * speed
 		_model.rotation.y = lerp_angle(_model.rotation.y, atan2(dir.x, dir.z), 12.0 * delta)
-		energy = maxf(0.0, energy - 0.8 * delta)
+		Game.energy = maxf(0.0, Game.energy - 0.4 * delta)
 	else:
 		velocity.x = move_toward(velocity.x, 0.0, speed * 10.0 * delta)
 		velocity.z = move_toward(velocity.z, 0.0, speed * 10.0 * delta)
@@ -31,9 +42,39 @@ func _physics_process(delta: float) -> void:
 	else:
 		velocity.y = 0.0
 	move_and_slide()
+	_update_target()
+	if _current and not Game.modal_open and Input.is_action_just_pressed("interact"):
+		_current.activate()
 
 
-# Placeholder priest built from primitives. Origin is at the feet (y = 0 is ground) after the -1.1 offset.
+func _on_area_entered(area: Area3D) -> void:
+	if area is Interactable:
+		_nearby.append(area)
+
+
+func _on_area_exited(area: Area3D) -> void:
+	if area is Interactable:
+		_nearby.erase(area)
+
+
+func _update_target() -> void:
+	var best: Interactable = null
+	var best_d := INF
+	for a in _nearby:
+		if not is_instance_valid(a):
+			continue
+		var d := global_position.distance_to(a.global_position)
+		if d < best_d:
+			best_d = d
+			best = a
+	if best != _current:
+		_current = best
+		Game.set_prompt(best.prompt_text() if best else "")
+	elif best:
+		Game.set_prompt(best.prompt_text())
+
+
+# Placeholder priest built from primitives; origin at the feet after the -1.1 offset.
 func _build_model() -> void:
 	var root := Node3D.new()
 	root.position = Vector3(0, -1.1, 0)

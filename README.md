@@ -329,16 +329,35 @@ godot --path .
 
 **Sterowanie:** WSAD lub strzałki to chodzenie, `E` lub spacja to działanie, `T` przyspiesza czas. Na ekranach dotykowych pojawia się wirtualny joystick po lewej i przyciski `E` oraz `T` po prawej. W przeglądarce na komputerze można je wymusić, dodając `?touch` do adresu.
 
-**Co jest w szkielecie:**
-- `project.godot` – render wewnętrzny 320×180 skalowany bez wygładzania, filtr „nearest”, brak MSAA.
+**Co jest w prototypie:**
+- Trzy lokacje z przejściami przez drzwi: plac przed kościołem z plebanią, parkingiem i cmentarzem, wnętrze kościoła, wnętrze plebanii. Wnętrza w widoku „domku dla lalek”: dwie ściany widoczne, dwie niewidoczne.
+- Czynności zużywające czas i energię: naprawa rynny, zamiatanie placu, odwiedziny chorego, msza, spowiedź, sprzątanie kościoła. Msza daje tacę zależną od reputacji, stanu budynków i nastrojów parafian, w niedzielę ponad dwukrotnie większą.
+- Finanse: konto, wpływy i wydatki tygodnia, stałe koszty rozliczane w poniedziałek rano, pięć inwestycji z odroczonym efektem (remont dachu, ogrzewanie, nagłośnienie, festyn, przelew do kurii).
+- Zasoby niefinansowe: reputacja, stan budynków, tradycjonaliści, młode rodziny, kuria. Zły stan budynków obniża reputację co tydzień, minus na koncie psuje relacje z kurią.
+- Wydarzenia z wyborem i odroczoną konsekwencją: spór o godzinę mszy (dzień 2), pogrzeb sołtysa (dzień 3), telefon z kurii (dzień 5) oraz przeciek w dachu, gdy stan budynków spadnie poniżej 30.
+- Cykl dnia: zegar biegnie w czasie rzeczywistym, czynności przesuwają go skokowo, sen na plebanii zaczyna nowy dzień o 7:00, zaśnięcie o północy kosztuje energię. Poranek pokazuje raport z konsekwencjami i rozliczeniem tygodnia, potem wydarzenia.
+- Interfejs w rozdzielczości 1280×720 nad sceną renderowaną w 320×180: pasek stanu, podpowiedź interakcji, powiadomienia, okna wydarzeń, raportów, finansów i kroniki.
+
+**Pliki:**
+- `project.godot` – okno 1280×720 ze skalowaniem interfejsu, scena 3D w `SubViewport` 320×180 skalowanym bez wygładzania.
+- `scripts/game.gd` – autoload ze stanem gry, zegarem, czynnościami, inwestycjami, rozliczeniem tygodnia i kolejką konsekwencji.
+- `scripts/events.gd` – definicje wydarzeń.
+- `scripts/location_manager.gd` – ładowanie lokacji, trwały gracz i kamera, punkty pojawienia.
+- `scripts/location_base.gd` i `scripts/locations/*.gd` – lokacje budowane z brył, z kolizjami, drzwiami i obiektami interakcji.
+- `scripts/interactable.gd` – obiekt interakcji: drzwi, czynność, biurko, łóżko, kronika.
+- `scripts/ui.gd` – cały interfejs.
 - `shaders/toon.gdshader` i `shaders/outline.gdshader` – cieniowanie toon w trzech stopniach oraz obrys metodą odwróconej bryły (`next_pass`).
 - `scripts/palette.gd` – paleta kierunku „mroczny” w jednym miejscu.
-- `scripts/world_builder.gd` – kościół z wieżą, parking z samochodem, latarnia, ławka, gablota, cmentarz, drzewo. Pozycje i rozmiary są referencją dla docelowych modeli.
-- `scripts/player.gd` – ksiądz z brył, ruch względem stałej kamery, prosty spadek energii przy chodzeniu.
+- `scripts/player.gd` – ksiądz z brył, ruch względem stałej kamery, czujnik obiektów interakcji, spadek energii przy chodzeniu.
 - `scripts/camera_rig.gd` – kamera ortograficzna pod stałym kątem, podąża za graczem, gracz nie może jej obracać.
 - `scripts/day_night.gd` – cykl dnia z pochmurnym, zimnym światłem za dnia i bursztynowymi akcentami nocą; latarnie włączają się o zmierzchu.
-- `scripts/hud.gd` – dzień, zegar, energia.
 - `scripts/touch_controls.gd` – wirtualny joystick i przyciski dotykowe, zasilają te same akcje co klawiatura.
+
+**Argumenty debugowe** (po `--`): `--loc=church|rectory` startuje w lokacji, `--modal=finance|status|event|report` otwiera okno, `--sleep` przechodzi do dnia 2, `--touch` pokazuje sterowanie dotykowe na komputerze. Przykład:
+
+```bash
+godot --path . -- --loc=church
+```
 
 **Sprawdzenie bez okna** (import i 120 klatek w trybie headless):
 
