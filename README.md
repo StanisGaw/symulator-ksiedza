@@ -374,3 +374,37 @@ godot --headless --path . --import && godot --headless --path . --quit-after 120
 ```bash
 godot --path . --quit-after 40 --fixed-fps 30 --write-movie /tmp/frames/f.png
 ```
+
+---
+
+## Plan rozwoju
+
+Kolejność wynika z tego, co najszybciej zamienia prototyp w grę, którą da się przejść i ocenić. Każdy etap kończy się wersją na GitHub Pages.
+
+### Etap 1. Pętla, którą da się przegrać i wygrać (rdzeń)
+- **Zapis i wczytanie gry** – jeden slot, automatyczny zapis przy śnie. Bez tego nie da się testować dłuższych przebiegów.
+- **Koniec gry i cel** – po 4 tygodniach ocena kurii: awans na proboszcza, „zostajesz wikarym” albo przeniesienie karne. Ocena z reputacji, finansów, stanu budynków, relacji z kurią i liczby rozwiązanych kryzysów (AC-3).
+- **Ekran tygodnia** – rozbudowany poniedziałkowy raport z wykresem tacy, listą decyzji i ich skutków.
+- **Więcej wydarzeń** – docelowo 20–25, w tym łańcuchy (decyzja z dnia 2 wraca w dniu 9), wydarzenia zależne od stanu (bunt parafian przy zadowoleniu poniżej 25, kontrola z kurii przy minusie na koncie) i losowe drobne (pogrzeb, ślub, chrzest jako wpływy i energia).
+
+### Etap 2. Parafia jako mikropaństwo (strategia)
+- **Grupy interesów z twarzami** – po jednej postaci na grupę (rada parafialna, organista, kościelny, sołtys, młoda matka). Rozmowy przez telefon lub na placu, prośby z terminem, wdzięczność albo obraza.
+- **Rozbudowa terenu** – siatka na placu, stawianie i ulepszanie: parking, plac zabaw, gablota, ogrzewanie, nagłośnienie, salka parafialna. Każdy obiekt widoczny w świecie i wpływający na zasoby (AC-9.2).
+- **Drzewko rozwoju i specjalizacja** – punkty za czynności, trzy ścieżki: administrator, duszpasterz, budujący wpływy. Odblokowania zmieniają koszty i skuteczność (AC-4).
+- **Kuria jako aktor** – sprawozdania, wezwania, „dary”, biskup obserwujący wyniki. Scena wizyty w kurii w stylu sceny odwiedzin chorej.
+
+### Etap 3. Codzienność i klimat (Graveyard Keeper)
+- **Więcej czynności rzemieślniczych** – warsztat na plebanii: naprawa ławek, odnawianie figur, pisanie kazania (jakość kazania wpływa na tacę), prowadzenie kroniki.
+- **Postacie niezależne z rutyną** – parafianie chodzą po placu, przychodzą na mszę o ustalonej godzinie, kościelny sprząta, sąsiadka przynosi ciasto (AC-9.6).
+- **Więcej scen filmowych** – pogrzeb na cmentarzu, ślub, kolęda po blokach, festyn. Ten sam mechanizm co msza i odwiedziny.
+- **Pogoda i pory roku** – deszcz, śnieg, Adwent i Wielki Post zmieniają wydarzenia, tacę i wygląd placu.
+
+### Etap 4. Ciało i dźwięk
+- **Animacje postaci** – prosty model z kończynami z Blendera, chodzenie, klękanie, praca. Podmiana brył bez zmiany kodu.
+- **Dźwięk** – dzwony, kroki, deszcz, szum telewizora, organy podczas mszy. Darmowe zasoby na licencji CC0.
+- **Interfejs na telefon** – większe przyciski, menu dostępne dotykiem z paska, testy na prawdziwym urządzeniu.
+
+### Etap 5. Warstwa fabularna
+- **Historia przejścia** – kronika generowana z decyzji, do przeczytania na końcu gry i do udostępnienia.
+- **Postać księdza** – wybór imienia, pochodzenia i wady na start (np. długi rodziny, słabość do samochodów), które generują własne wydarzenia.
+- **Drugi rok i wyższe stanowiska** – po awansie większa parafia, dziekanat, inne skale pieniędzy i problemów.
