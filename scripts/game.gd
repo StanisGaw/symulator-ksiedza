@@ -10,6 +10,7 @@ signal location_change_requested(location: String, spawn: String)
 signal cutscene_started(label: String)
 signal cutscene_ended
 signal cutscene_skip
+signal world_changed
 
 const MINUTES_PER_SECOND := 2.0
 const FAST_MULT := 10.0
@@ -63,6 +64,7 @@ var done_today: Dictionary = {}
 var scheduled: Array = []
 var pending_investments: Array = []
 var fired_events: Array = []
+var built: Array = []
 var log_lines: Array = []
 var modal_open := false
 var cutscene := false
@@ -70,6 +72,12 @@ var cutscene_id := ""
 var _cut_start := 0.0
 var _cut_len := 0.0
 var _mass_attendance := 0
+
+
+func _ready() -> void:
+	# debug: godot --path . -- --wipe  (kasuje zapis przed startem)
+	if OS.get_cmdline_user_args().has("--wipe"):
+		SaveGame.wipe()
 
 
 func _process(delta: float) -> void:
@@ -323,12 +331,15 @@ func _start_new_day(new_energy: float, extra_lines: Array[String]) -> void:
 			apply_effects(item.get("effects", {}))
 			if item.has("invest"):
 				pending_investments.erase(item["invest"])
+				built.append(item["invest"])
+				world_changed.emit()
 			lines.append(item["text"])
 			add_log(item["text"])
 		else:
 			remaining.append(item)
 	scheduled = remaining
 	state_changed.emit()
+	save_now()
 	if not lines.is_empty():
 		request_modal("report", {"title": "Dzień %d, %s" % [day, day_name()], "lines": lines})
 	for ev in Events.due_events(self):
@@ -351,6 +362,58 @@ func _weekly_settlement() -> Array[String]:
 	week_income = 0
 	week_expenses = 0
 	return lines
+
+
+# ---------- save ----------
+
+func save_now() -> void:
+	SaveGame.write(self)
+
+
+func saved_day() -> int:
+	return int(SaveGame.read().get("day", 0))
+
+
+## Wczytuje zapis i wraca do poranka zapisanego dnia na plebanii.
+func continue_game() -> bool:
+	var data := SaveGame.read()
+	if data.is_empty():
+		return false
+	SaveGame.apply(self, data)
+	minutes = float(DAY_START)
+	cutscene = false
+	cutscene_id = ""
+	state_changed.emit()
+	world_changed.emit()
+	location_change_requested.emit("rectory", "bed")
+	return true
+
+
+func start_new_game() -> void:
+	SaveGame.wipe()
+	day = 1
+	minutes = float(DAY_START)
+	energy = 100.0
+	money = 12000
+	reputation = 50
+	condition = 55
+	trad = 55
+	young = 50
+	curia = 50
+	week_income = 0
+	week_expenses = 0
+	mass_hour = 0
+	done_today.clear()
+	scheduled.clear()
+	pending_investments.clear()
+	fired_events.clear()
+	built.clear()
+	log_lines.clear()
+	cutscene = false
+	cutscene_id = ""
+	state_changed.emit()
+	world_changed.emit()
+	location_change_requested.emit("outside", "start")
 
 
 # ---------- ui ----------

@@ -30,6 +30,8 @@ func _ready() -> void:
 			Game.call_deferred("sleep")
 		elif arg == "--mass":
 			Game.call_deferred("do_activity", "mass")
+		elif arg == "--continue":
+			call_deferred("_enqueue", "continue", {"day": Game.saved_day()})
 		elif arg == "--visit":
 			Game.call_deferred("do_activity", "visit_sick")
 
@@ -215,6 +217,8 @@ func _show_next() -> void:
 		"report": _show_report(item["data"]["title"], item["data"]["lines"])
 		"finance": _show_finance()
 		"status": _show_status()
+		"continue": _show_continue(item["data"])
+		"confirm_new": _show_confirm_new()
 
 
 func _close_modal() -> void:
@@ -264,6 +268,30 @@ func _button(box: Control, text: String, cb: Callable, enabled: bool = true) -> 
 	b.pressed.connect(cb)
 	box.add_child(b)
 	return b
+
+
+func _show_continue(data: Dictionary) -> void:
+	var box := _window("Symulator Księdza", 640.0)
+	_text(box, "Jest zapis z poranka dnia %d. Gra zapisuje się sama przy każdym przejściu do nowego dnia." % int(data.get("day", 1)))
+	_button(box, "Kontynuuj", func() -> void:
+		if not Game.continue_game():
+			Game.toast.emit("Zapis jest uszkodzony. Zaczynamy od nowa.")
+			Game.start_new_game()
+		_close_modal())
+	_button(box, "Nowa gra", func() -> void:
+		_close_modal()
+		_enqueue("confirm_new", {}))
+
+
+func _show_confirm_new() -> void:
+	var box := _window("Nowa gra", 640.0)
+	_text(box, "Dotychczasowy zapis zostanie skasowany. Na pewno?")
+	_button(box, "Tak, zaczynam od nowa", func() -> void:
+		Game.start_new_game()
+		_close_modal())
+	_button(box, "Wróć", func() -> void:
+		_close_modal()
+		_enqueue("continue", {"day": Game.saved_day()}))
 
 
 func _show_event(ev: Dictionary) -> void:
@@ -332,6 +360,11 @@ func _show_status() -> void:
 		99: hour_text = "7:00 i 11:00"
 	_text(box, "Reputacja %d   Stan budynków %d   Tradycjonaliści %d   Młode rodziny %d   Kuria %d   Godzina sumy: %s" % [
 		Game.reputation, Game.condition, Game.trad, Game.young, Game.curia, hour_text], 18)
+	var saved := Game.saved_day()
+	if saved > 0:
+		_text(box, "Ostatni zapis: poranek dnia %d." % saved, 17)
+	else:
+		_text(box, "Gra zapisze się przy przejściu do nowego dnia.", 17)
 	if not Game.scheduled.is_empty():
 		_text(box, "W toku:", 22)
 		for item in Game.scheduled:

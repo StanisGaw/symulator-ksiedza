@@ -335,12 +335,15 @@ godot --path .
 - Finanse: konto, wpływy i wydatki tygodnia, stałe koszty rozliczane w poniedziałek rano, pięć inwestycji z odroczonym efektem (remont dachu, ogrzewanie, nagłośnienie, festyn, przelew do kurii).
 - Zasoby niefinansowe: reputacja, stan budynków, tradycjonaliści, młode rodziny, kuria. Zły stan budynków obniża reputację co tydzień, minus na koncie psuje relacje z kurią.
 - Wydarzenia z wyborem i odroczoną konsekwencją: spór o godzinę mszy (dzień 2), pogrzeb sołtysa (dzień 3), telefon z kurii (dzień 5) oraz przeciek w dachu, gdy stan budynków spadnie poniżej 30.
+- Zapis gry: jeden slot, zapisywany automatycznie przy każdym przejściu do nowego dnia. Zapisujemy tylko stan poranka, więc po wczytaniu gra zaczyna się o 7:00 na plebanii i nie trzeba odtwarzać pozycji gracza ani trwającej scenki. Przy starcie, gdy zapis istnieje, pojawia się okno „Kontynuuj / Nowa gra”.
+- Świat czyta stan parafii: ukończone inwestycje trafiają na listę `built`, a zmiana stanu przebudowuje bieżącą lokację w miejscu, bez ruszania gracza.
 - Cykl dnia: zegar biegnie w czasie rzeczywistym, czynności przesuwają go skokowo, sen na plebanii zaczyna nowy dzień o 7:00, zaśnięcie o północy kosztuje energię. Poranek pokazuje raport z konsekwencjami i rozliczeniem tygodnia, potem wydarzenia.
 - Interfejs w rozdzielczości 1280×720 nad sceną renderowaną w 320×180: pasek stanu, podpowiedź interakcji, powiadomienia, okna wydarzeń, raportów, finansów i kroniki.
 
 **Pliki:**
 - `project.godot` – okno 1280×720 ze skalowaniem interfejsu, scena 3D w `SubViewport` 320×180 skalowanym bez wygładzania.
 - `scripts/game.gd` – autoload ze stanem gry, zegarem, czynnościami, inwestycjami, rozliczeniem tygodnia i kolejką konsekwencji.
+- `scripts/save_game.gd` – zapis i odczyt jednego slotu (`user://parafia.save`, JSON z numerem wersji). Nieznane pola są pomijane, brakujące zostawiają wartość domyślną, więc dołożenie nowego pola stanu nie unieważnia starych zapisów.
 - `scripts/events.gd` – definicje wydarzeń.
 - `scripts/location_manager.gd` – ładowanie lokacji, trwały gracz i kamera, punkty pojawienia.
 - `scripts/location_base.gd` i `scripts/locations/*.gd` – lokacje budowane z brył, z kolizjami, drzwiami i obiektami interakcji.
@@ -355,7 +358,7 @@ godot --path .
 - `scripts/day_night.gd` – cykl dnia z pochmurnym, zimnym światłem za dnia i bursztynowymi akcentami nocą; latarnie włączają się o zmierzchu.
 - `scripts/touch_controls.gd` – wirtualny joystick i przyciski dotykowe, zasilają te same akcje co klawiatura.
 
-**Argumenty debugowe** (po `--`): `--loc=church|rectory` startuje w lokacji, `--modal=finance|status|event|report` otwiera okno, `--sleep` przechodzi do dnia 2, `--mass` razem z `--loc=church` uruchamia scenę mszy, `--visit` uruchamia scenę odwiedzin chorej (z `--trace` wypisuje momenty faz), `--touch` pokazuje sterowanie dotykowe na komputerze. Przykład:
+**Argumenty debugowe** (po `--`): `--loc=church|rectory` startuje w lokacji, `--modal=finance|status|event|report` otwiera okno, `--sleep` przechodzi do dnia 2, `--mass` razem z `--loc=church` uruchamia scenę mszy, `--visit` uruchamia scenę odwiedzin chorej (z `--trace` wypisuje momenty faz), `--touch` pokazuje sterowanie dotykowe na komputerze, `--wipe` kasuje zapis przed startem, `--continue` otwiera okno wczytania. Przykład:
 
 ```bash
 godot --path . -- --loc=church
@@ -381,30 +384,37 @@ godot --path . --quit-after 40 --fixed-fps 30 --write-movie /tmp/frames/f.png
 
 Kolejność wynika z tego, co najszybciej zamienia prototyp w grę, którą da się przejść i ocenić. Każdy etap kończy się wersją na GitHub Pages.
 
+Rama kampanii: gra zaczyna się 1 grudnia i trwa cztery tygodnie Adwentu. Finał to Pasterka i ocena kurii, a kolęda jest epilogiem. Pełny rok liturgiczny z Wielkim Postem, Niedzielą Palmową i odpustem to Etap 3.
+
 ### Etap 1. Pętla, którą da się przegrać i wygrać (rdzeń)
-- **Zapis i wczytanie gry** – jeden slot, automatyczny zapis przy śnie. Bez tego nie da się testować dłuższych przebiegów.
-- **Koniec gry i cel** – po 4 tygodniach ocena kurii: awans na proboszcza, „zostajesz wikarym” albo przeniesienie karne. Ocena z reputacji, finansów, stanu budynków, relacji z kurią i liczby rozwiązanych kryzysów (AC-3).
-- **Ekran tygodnia** – rozbudowany poniedziałkowy raport z wykresem tacy, listą decyzji i ich skutków.
-- **Więcej wydarzeń** – docelowo 20–25, w tym łańcuchy (decyzja z dnia 2 wraca w dniu 9), wydarzenia zależne od stanu (bunt parafian przy zadowoleniu poniżej 25, kontrola z kurii przy minusie na koncie) i losowe drobne (pogrzeb, ślub, chrzest jako wpływy i energia).
+- **Zapis i wczytanie gry** ✅ – jeden slot, zapis przy przejściu do nowego dnia, okno „Kontynuuj / Nowa gra”. Razem z tym pamięć o ukończonych inwestycjach i przebudowa lokacji w miejscu.
+- **Widoczne efekty działań** – kościół, plac i plebania wyglądają inaczej zależnie od stanu budynków i tego, co zbudowano: łatany albo nowy dach, wiadro w nawie, chwasty, głośniki, grzejniki, kwiaty. Po zakończeniu prac krótka scenka pokazująca zmianę.
+- **Koniec gry i cel** – po czterech tygodniach ocena kurii: awans na proboszcza, „zostajesz wikarym” albo przeniesienie karne. Ocena z reputacji, finansów, stanu budynków, relacji z kurią i liczby rozwiązanych kryzysów. Razem z tym kalendarz: prawdziwe daty, okresy liturgiczne, Adwent.
+- **Koszty utrzymania jako funkcja** – stała tygodniowa zamienia się w sumę rachunków i pensji, zanim dojdą etaty.
+- **Ekran tygodnia** – rozbudowany poniedziałkowy raport z wykresem tacy, zmianami wskaźników, listą decyzji i prognozą oceny kurii.
+- **Więcej wydarzeń** – docelowo 20–25, w tym łańcuchy (decyzja z dnia 2 wraca w dniu 9), wydarzenia zależne od stanu (bunt parafian przy niskiej reputacji, kontrola z kurii przy minusie na koncie) i losowe drobne (pogrzeb, ślub, chrzest).
+- **Epilog: kolęda** – seria krótkich scen w mieszkaniach parafian, domykająca kampanię.
 
 ### Etap 2. Parafia jako mikropaństwo (strategia)
-- **Grupy interesów z twarzami** – po jednej postaci na grupę (rada parafialna, organista, kościelny, sołtys, młoda matka). Rozmowy przez telefon lub na placu, prośby z terminem, wdzięczność albo obraza.
-- **Rozbudowa terenu** – siatka na placu, stawianie i ulepszanie: parking, plac zabaw, gablota, ogrzewanie, nagłośnienie, salka parafialna. Każdy obiekt widoczny w świecie i wpływający na zasoby (AC-9.2).
-- **Drzewko rozwoju i specjalizacja** – punkty za czynności, trzy ścieżki: administrator, duszpasterz, budujący wpływy. Odblokowania zmieniają koszty i skuteczność (AC-4).
-- **Kuria jako aktor** – sprawozdania, wezwania, „dary”, biskup obserwujący wyniki. Scena wizyty w kurii w stylu sceny odwiedzin chorej.
+- **Pracownicy** – kościelny, gosposia, organista, wikary, katechetka. Zatrudnianie z puli kandydatów z cechami, delegowanie zadań na dzień, pensje w kosztach tygodnia, morale, odejścia, trzy poziomy rozwoju ze ścieżkami.
+- **Różnorodność postaci** – jeden generator postaci dla całej gry: archetypy (babcia w chuście, dziecko, ministrant, siostra zakonna), wzrost, tusza, dodatki, stały wygląd danej osoby między niedzielami.
+- **Rozbudowa terenu i budynków** – wyznaczone sloty zamiast dowolnej siatki: parking, plac zabaw, gablota, dzwonnica; ogród plebanii z warzywnikiem i pasieką; zakrystia, kaplica boczna, chór; pokoje na plebanii. Pokój dla wikarego i kuchnia są warunkiem zatrudnienia.
+- **Grupy interesów z twarzami** – po jednej postaci na grupę, prośby z terminem, wdzięczność albo obraza.
+- **Drzewko rozwoju gracza i kuria jako aktor** – trzy ścieżki (administrator, duszpasterz, budujący wpływy), sprawozdania, wezwania, scena wizyty w kurii.
 
-### Etap 3. Codzienność i klimat (Graveyard Keeper)
-- **Więcej czynności rzemieślniczych** – warsztat na plebanii: naprawa ławek, odnawianie figur, pisanie kazania (jakość kazania wpływa na tacę), prowadzenie kroniki.
-- **Postacie niezależne z rutyną** – parafianie chodzą po placu, przychodzą na mszę o ustalonej godzinie, kościelny sprząta, sąsiadka przynosi ciasto (AC-9.6).
-- **Więcej scen filmowych** – pogrzeb na cmentarzu, ślub, kolęda po blokach, festyn. Ten sam mechanizm co msza i odwiedziny.
-- **Pogoda i pory roku** – deszcz, śnieg, Adwent i Wielki Post zmieniają wydarzenia, tacę i wygląd placu.
+### Etap 3. Pełny rok i klimat
+- **Rok liturgiczny** – święta ruchome liczone z Wielkanocy, Wielki Post, Niedziela Palmowa, Wielkanoc, Boże Ciało, odpust parafialny, festyn.
+- **Pogoda i pory roku** – deszcz, śnieg, długość dnia, wygląd placu.
+- **Postacie niezależne z rutyną** – parafianie chodzą po placu, przychodzą na mszę o ustalonej godzinie, kościelny sprząta.
+- **Więcej czynności rzemieślniczych** – warsztat: naprawa ławek, odnawianie figur, pisanie kazania wpływające na tacę.
+- **Więcej scen filmowych** – pogrzeb na cmentarzu, ślub, festyn.
 
 ### Etap 4. Ciało i dźwięk
-- **Animacje postaci** – prosty model z kończynami z Blendera, chodzenie, klękanie, praca. Podmiana brył bez zmiany kodu.
-- **Dźwięk** – dzwony, kroki, deszcz, szum telewizora, organy podczas mszy. Darmowe zasoby na licencji CC0.
+- **Animacje postaci** – prosty model z kończynami z Blendera pod tym samym interfejsem co generator brył.
+- **Dźwięk** – dzwony, kroki, deszcz, szum telewizora, organy. Zasoby na licencji CC0.
 - **Interfejs na telefon** – większe przyciski, menu dostępne dotykiem z paska, testy na prawdziwym urządzeniu.
 
 ### Etap 5. Warstwa fabularna
 - **Historia przejścia** – kronika generowana z decyzji, do przeczytania na końcu gry i do udostępnienia.
-- **Postać księdza** – wybór imienia, pochodzenia i wady na start (np. długi rodziny, słabość do samochodów), które generują własne wydarzenia.
+- **Postać księdza** – wybór imienia, pochodzenia i wady na start, które generują własne wydarzenia.
 - **Drugi rok i wyższe stanowiska** – po awansie większa parafia, dziekanat, inne skale pieniędzy i problemów.
