@@ -20,9 +20,9 @@ const DAY_NAMES := ["Poniedziałek", "Wtorek", "Środa", "Czwartek", "Piątek", 
 
 const ACTIVITIES := {
 	"repair_gutter": {"label": "Napraw rynnę", "minutes": 60, "energy": 20, "once": true,
-		"effects": {"condition": 6}, "toast": "Rynna naprawiona. Stan budynków +6."},
+		"effects": {"condition": 6}, "toast": "Rynna naprawiona. Stan budynków +6.", "builds": "gutter"},
 	"sweep": {"label": "Zamieć plac", "minutes": 30, "energy": 10, "once": true,
-		"effects": {"reputation": 1}, "toast": "Plac zamieciony. Reputacja +1."},
+		"effects": {"reputation": 1}, "toast": "Plac zamieciony. Reputacja +1.", "world": true},
 	"visit_sick": {"label": "Odwiedź chorą (samochód)", "minutes": 90, "energy": 20, "once": true,
 		"effects": {"reputation": 2, "young": 1}, "toast": "Modlitwa u chorej pani Haliny. Reputacja +2, młode rodziny +1.",
 		"cutscene": "Odwiedziny u chorej pani Haliny. W telewizorze leci Telewizja Trwam", "cut_location": "visit", "return_location": "outside", "return_spawn": "car"},
@@ -31,7 +31,7 @@ const ACTIVITIES := {
 	"confession": {"label": "Spowiadaj", "minutes": 45, "energy": 10, "once": true,
 		"effects": {"trad": 2, "reputation": 1}, "toast": "Trzy spowiedzi. Tradycjonaliści +2."},
 	"clean_church": {"label": "Posprzątaj kościół", "minutes": 45, "energy": 15, "once": true,
-		"effects": {"condition": 3, "trad": 1}, "toast": "Kościół posprzątany. Stan budynków +3."},
+		"effects": {"condition": 3, "trad": 1}, "toast": "Kościół posprzątany. Stan budynków +3.", "world": true},
 }
 
 const INVESTMENTS := {
@@ -65,6 +65,7 @@ var scheduled: Array = []
 var pending_investments: Array = []
 var fired_events: Array = []
 var built: Array = []
+var seen: Array = []
 var log_lines: Array = []
 var modal_open := false
 var cutscene := false
@@ -75,9 +76,25 @@ var _mass_attendance := 0
 
 
 func _ready() -> void:
-	# debug: godot --path . -- --wipe  (kasuje zapis przed startem)
-	if OS.get_cmdline_user_args().has("--wipe"):
+	# debug: --wipe kasuje zapis, --condition/--rep ustawiają wskaźniki,
+	# --built=roof,heating stawia inwestycje (z --unseen kamera je pokaże)
+	var args := OS.get_cmdline_user_args()
+	if args.has("--wipe"):
 		SaveGame.wipe()
+	for arg in args:
+		if arg.begins_with("--condition="):
+			condition = clampi(int(arg.trim_prefix("--condition=")), 0, 100)
+		elif arg.begins_with("--hour="):
+			minutes = clampf(float(arg.trim_prefix("--hour=")) * 60.0, 0.0, 24.0 * 60.0 - 1.0)
+		elif arg.begins_with("--rep="):
+			reputation = clampi(int(arg.trim_prefix("--rep=")), 0, 100)
+			trad = reputation
+			young = reputation
+		elif arg.begins_with("--built="):
+			for id in arg.trim_prefix("--built=").split(",", false):
+				built.append(id)
+				if not args.has("--unseen"):
+					mark_seen(id)
 
 
 func _process(delta: float) -> void:
@@ -111,6 +128,8 @@ func is_sunday() -> bool:
 # ---------- effects ----------
 
 func apply_effects(effects: Dictionary) -> void:
+	var before_condition := WorldState.condition()
+	var before_life := WorldState.life()
 	for key in effects:
 		var v: int = int(effects[key])
 		match key:
@@ -127,6 +146,9 @@ func apply_effects(effects: Dictionary) -> void:
 			"curia": curia = clampi(curia + v, 0, 100)
 			"energy": energy = clampf(energy + v, 0.0, 100.0)
 	state_changed.emit()
+	# świat pokazuje stan parafii progami, więc przebudowa tylko przy zmianie progu
+	if WorldState.condition() != before_condition or WorldState.life() != before_life:
+		world_changed.emit()
 
 
 func effects_text(effects: Dictionary) -> String:
@@ -169,10 +191,20 @@ func do_activity(id: String) -> void:
 	if def.has("cutscene"):
 		_begin_cutscene(id, def)
 	else:
-		apply_effects(def["effects"])
-		toast.emit(def["toast"])
-		add_log(def["toast"])
+		_finish_activity(def)
 	state_changed.emit()
+
+
+## Skutki czynności: liczby, komunikat i ślad w świecie.
+func _finish_activity(def: Dictionary) -> void:
+	apply_effects(def["effects"])
+	toast.emit(def["toast"])
+	add_log(def["toast"])
+	if def.has("builds") and not built.has(def["builds"]):
+		built.append(def["builds"])
+		mark_seen(def["builds"])
+	if def.has("builds") or def.get("world", false):
+		world_changed.emit()
 
 
 func _attendance() -> int:
@@ -224,9 +256,7 @@ func finish_cutscene() -> void:
 	if def.get("mass", false):
 		_hold_mass(_mass_attendance)
 	else:
-		apply_effects(def["effects"])
-		toast.emit(def["toast"])
-		add_log(def["toast"])
+		_finish_activity(def)
 	if def.has("return_location"):
 		location_change_requested.emit(def["return_location"], def["return_spawn"])
 	state_changed.emit()
@@ -366,6 +396,19 @@ func _weekly_settlement() -> Array[String]:
 
 # ---------- save ----------
 
+## Zmiany, które gracz już zobaczył na własne oczy. Nowa rzecz w lokacji dostaje najazd kamery.
+func mark_seen(id: String) -> void:
+	if not seen.has(id):
+		seen.append(id)
+
+
+func unseen(ids: Array) -> String:
+	for id in ids:
+		if built.has(id) and not seen.has(id):
+			return id
+	return ""
+
+
 func save_now() -> void:
 	SaveGame.write(self)
 
@@ -408,6 +451,7 @@ func start_new_game() -> void:
 	pending_investments.clear()
 	fired_events.clear()
 	built.clear()
+	seen.clear()
 	log_lines.clear()
 	cutscene = false
 	cutscene_id = ""

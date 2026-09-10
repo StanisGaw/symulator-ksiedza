@@ -336,13 +336,15 @@ godot --path .
 - Zasoby niefinansowe: reputacja, stan budynków, tradycjonaliści, młode rodziny, kuria. Zły stan budynków obniża reputację co tydzień, minus na koncie psuje relacje z kurią.
 - Wydarzenia z wyborem i odroczoną konsekwencją: spór o godzinę mszy (dzień 2), pogrzeb sołtysa (dzień 3), telefon z kurii (dzień 5) oraz przeciek w dachu, gdy stan budynków spadnie poniżej 30.
 - Zapis gry: jeden slot, zapisywany automatycznie przy każdym przejściu do nowego dnia. Zapisujemy tylko stan poranka, więc po wczytaniu gra zaczyna się o 7:00 na plebanii i nie trzeba odtwarzać pozycji gracza ani trwającej scenki. Przy starcie, gdy zapis istnieje, pojawia się okno „Kontynuuj / Nowa gra”.
-- Świat czyta stan parafii: ukończone inwestycje trafiają na listę `built`, a zmiana stanu przebudowuje bieżącą lokację w miejscu, bez ruszania gracza.
+- Świat czyta stan parafii. Zaniedbane budynki mają łaty na dachu, odpadający tynk, zabite deskami okno, chwasty przy ścianach, zaciek i wiadro w nawie oraz jedną zapaloną świecę zamiast dwóch; zadbane dostają czysty kolor, kwiaty przy wejściu i pełne oświetlenie. Remont dachu zmienia kolor połaci, ogrzewanie stawia grzejniki i komin z dymem, nagłośnienie wiesza kolumny na wieży i przy prezbiterium, naprawiona rynna przestaje wisieć krzywo, a kałuża pod ścianą znika. Zamiecenie placu i sprzątanie kościoła widać od razu i do końca dnia, papiery na biurku plebanii rosną z liczbą spraw w toku, a przy żywej parafii na parkingu stoi drugie auto i stojak na rowery.
+- Nowa rzecz w lokacji jest pokazywana raz: kamera najeżdża na nią z podpisem, gdy gracz pierwszy raz po zmianie tam wejdzie. Zmiana stanu przebudowuje lokację w miejscu, bez ruszania gracza.
 - Cykl dnia: zegar biegnie w czasie rzeczywistym, czynności przesuwają go skokowo, sen na plebanii zaczyna nowy dzień o 7:00, zaśnięcie o północy kosztuje energię. Poranek pokazuje raport z konsekwencjami i rozliczeniem tygodnia, potem wydarzenia.
 - Interfejs w rozdzielczości 1280×720 nad sceną renderowaną w 320×180: pasek stanu, podpowiedź interakcji, powiadomienia, okna wydarzeń, raportów, finansów i kroniki.
 
 **Pliki:**
 - `project.godot` – okno 1280×720 ze skalowaniem interfejsu, scena 3D w `SubViewport` 320×180 skalowanym bez wygładzania.
 - `scripts/game.gd` – autoload ze stanem gry, zegarem, czynnościami, inwestycjami, rozliczeniem tygodnia i kolejką konsekwencji.
+- `scripts/world_state.gd` – progi stanu parafii i to, jak przekładają się na wygląd świata: kolory, warianty brył, podpisy najazdów kamery.
 - `scripts/save_game.gd` – zapis i odczyt jednego slotu (`user://parafia.save`, JSON z numerem wersji). Nieznane pola są pomijane, brakujące zostawiają wartość domyślną, więc dołożenie nowego pola stanu nie unieważnia starych zapisów.
 - `scripts/events.gd` – definicje wydarzeń.
 - `scripts/location_manager.gd` – ładowanie lokacji, trwały gracz i kamera, punkty pojawienia.
@@ -358,7 +360,7 @@ godot --path .
 - `scripts/day_night.gd` – cykl dnia z pochmurnym, zimnym światłem za dnia i bursztynowymi akcentami nocą; latarnie włączają się o zmierzchu.
 - `scripts/touch_controls.gd` – wirtualny joystick i przyciski dotykowe, zasilają te same akcje co klawiatura.
 
-**Argumenty debugowe** (po `--`): `--loc=church|rectory` startuje w lokacji, `--modal=finance|status|event|report` otwiera okno, `--sleep` przechodzi do dnia 2, `--mass` razem z `--loc=church` uruchamia scenę mszy, `--visit` uruchamia scenę odwiedzin chorej (z `--trace` wypisuje momenty faz), `--touch` pokazuje sterowanie dotykowe na komputerze, `--wipe` kasuje zapis przed startem, `--continue` otwiera okno wczytania. Przykład:
+**Argumenty debugowe** (po `--`): `--loc=church|rectory` startuje w lokacji, `--modal=finance|status|event|report` otwiera okno, `--sleep` przechodzi do dnia 2, `--mass` razem z `--loc=church` uruchamia scenę mszy, `--visit` uruchamia scenę odwiedzin chorej (z `--trace` wypisuje momenty faz), `--touch` pokazuje sterowanie dotykowe na komputerze, `--wipe` kasuje zapis przed startem, `--continue` otwiera okno wczytania. Do oglądania wariantów świata: `--condition=15` i `--rep=80` ustawiają wskaźniki, `--built=roof,heating,sound,gutter` stawia inwestycje (z `--unseen` kamera je pokaże jak przy ukończeniu prac), `--hour=12` ustawia porę dnia, `--zoom=24` oddala kamerę. Przykład:
 
 ```bash
 godot --path . -- --loc=church
@@ -388,7 +390,7 @@ Rama kampanii: gra zaczyna się 1 grudnia i trwa cztery tygodnie Adwentu. Finał
 
 ### Etap 1. Pętla, którą da się przegrać i wygrać (rdzeń)
 - **Zapis i wczytanie gry** ✅ – jeden slot, zapis przy przejściu do nowego dnia, okno „Kontynuuj / Nowa gra”. Razem z tym pamięć o ukończonych inwestycjach i przebudowa lokacji w miejscu.
-- **Widoczne efekty działań** – kościół, plac i plebania wyglądają inaczej zależnie od stanu budynków i tego, co zbudowano: łatany albo nowy dach, wiadro w nawie, chwasty, głośniki, grzejniki, kwiaty. Po zakończeniu prac krótka scenka pokazująca zmianę.
+- **Widoczne efekty działań** ✅ – kościół, plac i plebania wyglądają inaczej zależnie od stanu budynków i tego, co zbudowano: łatany albo nowy dach, wiadro w nawie, chwasty, głośniki, grzejniki, kwiaty. Nowa rzecz dostaje najazd kamery z podpisem, gdy gracz zobaczy ją pierwszy raz.
 - **Koniec gry i cel** – po czterech tygodniach ocena kurii: awans na proboszcza, „zostajesz wikarym” albo przeniesienie karne. Ocena z reputacji, finansów, stanu budynków, relacji z kurią i liczby rozwiązanych kryzysów. Razem z tym kalendarz: prawdziwe daty, okresy liturgiczne, Adwent.
 - **Koszty utrzymania jako funkcja** – stała tygodniowa zamienia się w sumę rachunków i pensji, zanim dojdą etaty.
 - **Ekran tygodnia** – rozbudowany poniedziałkowy raport z wykresem tacy, zmianami wskaźników, listą decyzji i prognozą oceny kurii.

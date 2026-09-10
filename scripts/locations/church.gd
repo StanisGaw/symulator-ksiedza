@@ -13,8 +13,9 @@ func _ready() -> void:
 	_mesh(floor_mesh, ToonMaterial.make(Palette.FLOOR_STONE, Color.BLACK, 0.0, false), Vector3.ZERO)
 	_collider(Vector3(W, 1, D), Vector3(0, -0.5, 0))
 	# visible walls (north, west) and invisible ones (south, east)
-	_box(Vector3(W + 0.4, 6, 0.4), Palette.WALL_INT, Vector3(0, 3, -D / 2 - 0.2))
-	_box(Vector3(0.4, 6, D), Palette.WALL_INT_DARK, Vector3(-W / 2 - 0.2, 3, 0))
+	var wall := WorldState.wall_color(Palette.WALL_INT)
+	_box(Vector3(W + 0.4, 6, 0.4), wall, Vector3(0, 3, -D / 2 - 0.2))
+	_box(Vector3(0.4, 6, D), WorldState.wall_color(Palette.WALL_INT_DARK), Vector3(-W / 2 - 0.2, 3, 0))
 	_collider(Vector3(W + 0.4, 6, 0.4), Vector3(0, 3, -D / 2 - 0.2))
 	_collider(Vector3(0.4, 6, D), Vector3(-W / 2 - 0.2, 3, 0))
 	_collider(Vector3(W, 6, 0.4), Vector3(0, 3, D / 2 + 0.2))
@@ -23,17 +24,41 @@ func _ready() -> void:
 	# windows on the west wall glow warm
 	for z in [-5.0, -2.0, 1.0, 4.0]:
 		_glow_box(Vector3(0.2, 1.6, 0.7), Palette.WINDOW, 0.7, Vector3(-W / 2 + 0.05, 3.2, z))
+	if WorldState.condition() == WorldState.BAD and not WorldState.has("roof"):
+		# przeciek nad prezbiterium: zaciek na ścianie i wiadro na środku nawy
+		_box(Vector3(1.6, 1.8, 0.05), Palette.STAIN, Vector3(-1.6, 4.2, -D / 2 + 0.05), Vector3.ZERO, false)
+		_cyl(0.28, 0.22, 0.4, Palette.BUCKET, Vector3(-1.4, 0.2, -4.6), Vector3.ZERO, 8)
+		_box(Vector3(0.9, 0.02, 0.9), Palette.STAIN, Vector3(-1.4, 0.02, -4.6), Vector3.ZERO, false)
+	if WorldState.has("heating"):
+		# grzejniki pod ścianami i cieplejsze światło
+		for z in [-4.0, -0.5, 3.0]:
+			_box(Vector3(0.22, 0.6, 1.6), Palette.RADIATOR, Vector3(-W / 2 + 0.3, 0.6, z))
+		_landmark("heating", Vector3(-W / 2 + 0.3, 0.6, -0.5))
+	if WorldState.has("sound"):
+		# kolumny przy prezbiterium i mikrofon przy ołtarzu
+		for side in [-1.0, 1.0]:
+			_box(Vector3(0.4, 0.9, 0.35), Palette.SPEAKER, Vector3(side * 3.4, 2.6, -5.6), Vector3(0, side * -12, 0))
+		_cyl(0.03, 0.03, 1.2, Palette.SPEAKER, Vector3(1.6, 0.6, -5.6), Vector3.ZERO, 5)
+		_sphere(0.08, Palette.SPEAKER, Vector3(1.6, 1.24, -5.6), false)
+		_landmark("sound", Vector3(0, 2.6, -5.6))
+	if not WorldState.done_today("clean_church"):
+		# kurz i liście naniesione od drzwi
+		for i in range(7):
+			_box(Vector3(0.4, 0.02, 0.3), Palette.STAIN, Vector3(-3.0 + float((i * 17) % 7), 0.02, 4.0 + float((i * 23) % 4)), Vector3(0, i * 24, 0), false)
 	# altar
 	_box(Vector3(2.6, 1.0, 1.1), Palette.ALTAR_CLOTH, Vector3(0, 0.5, -6.3))
 	_box(Vector3(3.6, 0.3, 2.4), Palette.FLOOR_WOOD, Vector3(0, 0.15, -6.0))
 	_collider(Vector3(2.8, 1.2, 1.3), Vector3(0, 0.6, -6.3))
 	for x in [-0.9, 0.9]:
 		_cyl(0.05, 0.05, 0.5, Palette.CANDLE, Vector3(x, 1.25, -6.3), Vector3.ZERO, 6)
+		# w zaniedbanej parafii pali się tylko jedna świeca
+		if WorldState.condition() == WorldState.BAD and x < 0.0:
+			continue
 		_glow_box(Vector3(0.12, 0.12, 0.12), Palette.CANDLE, 2.5, Vector3(x, 1.55, -6.3))
 	_box(Vector3(0.14, 1.6, 0.14), Palette.CROSS, Vector3(0, 3.4, -D / 2 + 0.25))
 	_box(Vector3(0.9, 0.14, 0.14), Palette.CROSS, Vector3(0, 3.9, -D / 2 + 0.25))
 	_omni(Vector3(0, 2.5, -5.5), Color("ffb060"), 2.2, 9.0)
-	_omni(Vector3(0, 3.0, 2.0), Color("d8c8a0"), 1.2, 10.0)
+	_omni(Vector3(0, 3.0, 2.0), Color("d8c8a0"), 1.6 if WorldState.has("heating") else 1.2, 10.0)
 	_activity(Vector3(0, 1, -5.0), Vector3(3.2, 2, 1.4), "mass")
 	# pews
 	for row in range(6):
