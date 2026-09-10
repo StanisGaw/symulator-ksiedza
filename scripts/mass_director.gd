@@ -112,13 +112,13 @@ func _phase_enter(delta: float) -> void:
 				p["state"] = "seated"
 		if p["state"] == "seated":
 			seated += 1
-	Game.mass_progress(0.35 * float(seated) / float(people.size()))
+	Game.cutscene_progress(0.35 * float(seated) / float(people.size()))
 	if seated == people.size():
 		_next_phase()
 
 
 func _phase_liturgy() -> void:
-	Game.mass_progress(0.35 + 0.15 * clampf(phase_time / 2.5, 0.0, 1.0))
+	Game.cutscene_progress(0.35 + 0.15 * clampf(phase_time / 2.5, 0.0, 1.0))
 	if phase_time >= 2.5:
 		_next_phase()
 
@@ -153,7 +153,7 @@ func _phase_communion(delta: float) -> void:
 					p["communed"] = true
 		if p["communed"] and p["state"] == "seated":
 			done += 1
-	Game.mass_progress(0.5 + 0.35 * float(done) / float(people.size()))
+	Game.cutscene_progress(0.5 + 0.35 * float(done) / float(people.size()))
 	if done == people.size():
 		for i in people.size():
 			people[i]["delay"] = i * 0.12
@@ -178,7 +178,7 @@ func _phase_leave(delta: float) -> void:
 					p["node"].visible = false
 		if p["state"] == "gone":
 			gone += 1
-	Game.mass_progress(0.85 + 0.15 * float(gone) / float(people.size()))
+	Game.cutscene_progress(0.85 + 0.15 * float(gone) / float(people.size()))
 	if gone == people.size():
 		_finish()
 
@@ -224,4 +224,4 @@ func _finish() -> void:
 	for p in people:
 		p["node"].queue_free()
 	people.clear()
-	Game.finish_mass()
+	Game.finish_cutscene()

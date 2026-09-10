@@ -331,7 +331,7 @@ godot --path .
 
 **Co jest w prototypie:**
 - Trzy lokacje z przejściami przez drzwi: plac przed kościołem z plebanią, parkingiem i cmentarzem, wnętrze kościoła, wnętrze plebanii. Wnętrza w widoku „domku dla lalek”: dwie ściany widoczne, dwie niewidoczne.
-- Czynności zużywające czas i energię: naprawa rynny, zamiatanie placu, odwiedziny chorego, msza, spowiedź, sprzątanie kościoła. Msza jest krótką sceną w przyspieszeniu: parafianie wchodzą i siadają w ławkach, podchodzą do komunii i wychodzą, zegar biegnie razem ze sceną, a przycisk „Pomiń” kończy ją od razu. Taca zależy od reputacji, stanu budynków i nastrojów parafian, w niedzielę jest ponad dwukrotnie większa.
+- Czynności zużywające czas i energię: naprawa rynny, zamiatanie placu, odwiedziny chorej, msza, spowiedź, sprzątanie kościoła. Odwiedziny chorej to scena filmowa w dwóch kadrach: dojazd pod starą kamienicę pod światło, gdzie na przeszklonej klatce schodowej widać tylko sylwetkę wchodzącą płynnie zygzakiem aż na piętro chorej, a w oknie chorej stojak na kroplówkę i butelki na parapecie; potem zaniedbany pokój chorej w chłodnym świetle dziennym, ze śmieciami na podłodze, kroplówką, listkami po tabletkach, skotłowaną pościelą, obrazem Jana Pawła II, krzyżem i kineskopowym telewizorem z Telewizją Trwam. Za matową szybą drzwi przesuwa się cień wchodzącej postaci, drzwi się otwierają i ksiądz klęka przy łóżku. Msza jest krótką sceną w przyspieszeniu: parafianie wchodzą i siadają w ławkach, podchodzą do komunii i wychodzą, zegar biegnie razem ze sceną, a przycisk „Pomiń” kończy ją od razu. Taca zależy od reputacji, stanu budynków i nastrojów parafian, w niedzielę jest ponad dwukrotnie większa.
 - Finanse: konto, wpływy i wydatki tygodnia, stałe koszty rozliczane w poniedziałek rano, pięć inwestycji z odroczonym efektem (remont dachu, ogrzewanie, nagłośnienie, festyn, przelew do kurii).
 - Zasoby niefinansowe: reputacja, stan budynków, tradycjonaliści, młode rodziny, kuria. Zły stan budynków obniża reputację co tydzień, minus na koncie psuje relacje z kurią.
 - Wydarzenia z wyborem i odroczoną konsekwencją: spór o godzinę mszy (dzień 2), pogrzeb sołtysa (dzień 3), telefon z kurii (dzień 5) oraz przeciek w dachu, gdy stan budynków spadnie poniżej 30.
@@ -346,6 +346,7 @@ godot --path .
 - `scripts/location_base.gd` i `scripts/locations/*.gd` – lokacje budowane z brył, z kolizjami, drzwiami i obiektami interakcji.
 - `scripts/interactable.gd` – obiekt interakcji: drzwi, czynność, biurko, łóżko, kronika.
 - `scripts/mass_director.gd` – reżyser sceny mszy: wejście, komunia, wyjście parafian, raportowanie postępu do zegara.
+- `scripts/locations/visit.gd` – lokacja i zarazem reżyser sceny odwiedzin chorej: kamienica, sylwetka w oknach, pokój chorej, najazd kamery.
 - `scripts/ui.gd` – cały interfejs.
 - `shaders/toon.gdshader` i `shaders/outline.gdshader` – cieniowanie toon w trzech stopniach oraz obrys metodą odwróconej bryły (`next_pass`).
 - `scripts/palette.gd` – paleta kierunku „mroczny” w jednym miejscu.
@@ -354,7 +355,7 @@ godot --path .
 - `scripts/day_night.gd` – cykl dnia z pochmurnym, zimnym światłem za dnia i bursztynowymi akcentami nocą; latarnie włączają się o zmierzchu.
 - `scripts/touch_controls.gd` – wirtualny joystick i przyciski dotykowe, zasilają te same akcje co klawiatura.
 
-**Argumenty debugowe** (po `--`): `--loc=church|rectory` startuje w lokacji, `--modal=finance|status|event|report` otwiera okno, `--sleep` przechodzi do dnia 2, `--mass` razem z `--loc=church` uruchamia scenę mszy, `--touch` pokazuje sterowanie dotykowe na komputerze. Przykład:
+**Argumenty debugowe** (po `--`): `--loc=church|rectory` startuje w lokacji, `--modal=finance|status|event|report` otwiera okno, `--sleep` przechodzi do dnia 2, `--mass` razem z `--loc=church` uruchamia scenę mszy, `--visit` uruchamia scenę odwiedzin chorej (z `--trace` wypisuje momenty faz), `--touch` pokazuje sterowanie dotykowe na komputerze. Przykład:
 
 ```bash
 godot --path . -- --loc=church

@@ -30,6 +30,8 @@ func _ready() -> void:
 			Game.call_deferred("sleep")
 		elif arg == "--mass":
 			Game.call_deferred("do_activity", "mass")
+		elif arg == "--visit":
+			Game.call_deferred("do_activity", "visit_sick")
 
 
 func _debug_modal(kind: String) -> void:

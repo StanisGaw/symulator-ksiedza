@@ -16,6 +16,7 @@ func _ready() -> void:
 	add_child(player)
 	rig = Node3D.new()
 	rig.name = "CameraRig"
+	rig.add_to_group("camera_rig")
 	rig.set_script(load("res://scripts/camera_rig.gd"))
 	var cam := Camera3D.new()
 	cam.projection = Camera3D.PROJECTION_ORTHOGONAL
@@ -48,6 +49,8 @@ func go_to(location_id: String, spawn: String) -> void:
 	player.global_position = pos + Vector3(0, 1.1, 0)
 	player.velocity = Vector3.ZERO
 	player.clear_targets()
+	rig.set_zoom(14.0, true)
+	rig.set_offset(Vector3.ZERO, true)
 	rig.snap()
 	Game.location = location_id
 	Game.set_prompt("")

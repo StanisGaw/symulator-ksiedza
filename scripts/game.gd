@@ -22,9 +22,11 @@ const ACTIVITIES := {
 		"effects": {"condition": 6}, "toast": "Rynna naprawiona. Stan budynków +6."},
 	"sweep": {"label": "Zamieć plac", "minutes": 30, "energy": 10, "once": true,
 		"effects": {"reputation": 1}, "toast": "Plac zamieciony. Reputacja +1."},
-	"visit_sick": {"label": "Odwiedź chorego (samochód)", "minutes": 90, "energy": 20, "once": true,
-		"effects": {"reputation": 2, "young": 1}, "toast": "Odwiedziny u chorej pani Haliny. Reputacja +2."},
-	"mass": {"label": "Odpraw mszę", "minutes": 60, "energy": 25, "once": true, "mass": true},
+	"visit_sick": {"label": "Odwiedź chorą (samochód)", "minutes": 90, "energy": 20, "once": true,
+		"effects": {"reputation": 2, "young": 1}, "toast": "Modlitwa u chorej pani Haliny. Reputacja +2, młode rodziny +1.",
+		"cutscene": "Odwiedziny u chorej pani Haliny. W telewizorze leci Telewizja Trwam", "cut_location": "visit", "return_location": "outside", "return_spawn": "car"},
+	"mass": {"label": "Odpraw mszę", "minutes": 60, "energy": 25, "once": true, "mass": true,
+		"cutscene": "Msza święta", "director_group": "mass_director"},
 	"confession": {"label": "Spowiadaj", "minutes": 45, "energy": 10, "once": true,
 		"effects": {"trad": 2, "reputation": 1}, "toast": "Trzy spowiedzi. Tradycjonaliści +2."},
 	"clean_church": {"label": "Posprzątaj kościół", "minutes": 45, "energy": 15, "once": true,
@@ -64,7 +66,9 @@ var fired_events: Array = []
 var log_lines: Array = []
 var modal_open := false
 var cutscene := false
-var _mass_start := 0.0
+var cutscene_id := ""
+var _cut_start := 0.0
+var _cut_len := 0.0
 var _mass_attendance := 0
 
 
@@ -154,8 +158,8 @@ func do_activity(id: String) -> void:
 	minutes += def["minutes"]
 	energy = maxf(0.0, energy - def["energy"])
 	done_today[id] = true
-	if def.get("mass", false):
-		_begin_mass()
+	if def.has("cutscene"):
+		_begin_cutscene(id, def)
 	else:
 		apply_effects(def["effects"])
 		toast.emit(def["toast"])
@@ -172,31 +176,52 @@ func _attendance() -> int:
 	return attendance
 
 
-func _begin_mass() -> void:
-	_mass_attendance = _attendance()
-	_mass_start = minutes - ACTIVITIES["mass"]["minutes"]
+func _begin_cutscene(id: String, def: Dictionary) -> void:
+	cutscene_id = id
+	_cut_len = float(def["minutes"])
+	_cut_start = minutes - _cut_len
 	cutscene = true
-	cutscene_started.emit("Msza święta")
-	var director := get_tree().get_first_node_in_group("mass_director")
-	if director:
-		director.start(_mass_attendance)
+	if def.get("mass", false):
+		_mass_attendance = _attendance()
+	cutscene_started.emit(def["cutscene"])
+	if def.has("cut_location"):
+		location_change_requested.emit(def["cut_location"], "start")
+	elif def.has("director_group"):
+		var director := get_tree().get_first_node_in_group(def["director_group"])
+		if director:
+			director.start(_mass_attendance)
+		else:
+			finish_cutscene()
 	else:
-		finish_mass()
+		finish_cutscene()
 
 
-func mass_progress(p: float) -> void:
-	minutes = _mass_start + ACTIVITIES["mass"]["minutes"] * clampf(p, 0.0, 1.0)
+func cutscene_progress(p: float) -> void:
+	minutes = _cut_start + _cut_len * clampf(p, 0.0, 1.0)
 
 
 func skip_cutscene() -> void:
 	cutscene_skip.emit()
 
 
-func finish_mass() -> void:
-	minutes = _mass_start + ACTIVITIES["mass"]["minutes"]
+func finish_cutscene() -> void:
+	if not cutscene:
+		return
+	minutes = _cut_start + _cut_len
 	cutscene = false
+	var id := cutscene_id
+	cutscene_id = ""
+	var def: Dictionary = ACTIVITIES[id]
 	cutscene_ended.emit()
-	_hold_mass(_mass_attendance)
+	if def.get("mass", false):
+		_hold_mass(_mass_attendance)
+	else:
+		apply_effects(def["effects"])
+		toast.emit(def["toast"])
+		add_log(def["toast"])
+	if def.has("return_location"):
+		location_change_requested.emit(def["return_location"], def["return_spawn"])
+	state_changed.emit()
 
 
 func _hold_mass(attendance: int) -> void:

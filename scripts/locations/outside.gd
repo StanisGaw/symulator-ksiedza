@@ -21,6 +21,7 @@ func _ready() -> void:
 	_spawn("start", Vector3(2.6, 0, 5))
 	_spawn("church_door", Vector3(1, 0, 1.9))
 	_spawn("rectory_door", Vector3(11, 0, -2.6))
+	_spawn("car", Vector3(7.2, 0, 5.8))
 
 
 func _build_ground() -> void:

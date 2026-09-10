@@ -24,14 +24,33 @@ func face(dir: Vector3) -> void:
 	_model.rotation.y = atan2(dir.x, dir.z)
 
 
+## "stand" or "kneel"; used by cutscenes.
+func set_pose(pose: String) -> void:
+	match pose:
+		"kneel":
+			_model.scale = Vector3(1, 0.78, 1)
+			_model.rotation.x = deg_to_rad(16)
+		_:
+			_model.scale = Vector3.ONE
+			_model.rotation.x = 0.0
+
+
+## Walking bob for cutscenes (the model has no legs yet).
+func bob(t: float) -> void:
+	_model.position.y = absf(sin(t * 9.0)) * 0.08
+
+
 func clear_targets() -> void:
 	_nearby.clear()
 	_current = null
 
 
 func _physics_process(delta: float) -> void:
+	if Game.cutscene:
+		velocity = Vector3.ZERO
+		return
 	var input := Vector2.ZERO
-	if not Game.modal_open and not Game.cutscene:
+	if not Game.modal_open:
 		input = Input.get_vector("move_left", "move_right", "move_up", "move_down")
 	var dir := Vector3(input.x, 0, input.y).rotated(Vector3.UP, deg_to_rad(camera_yaw_degrees))
 	if dir.length() > 0.0:
