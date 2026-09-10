@@ -35,7 +35,7 @@ func _should_show() -> bool:
 
 
 func _input(event: InputEvent) -> void:
-	if not visible or Game.modal_open:
+	if not visible or Game.modal_open or Game.cutscene:
 		if _joy_touch != -1:
 			_joy_touch = -1
 			_apply_joy(Vector2.ZERO)
@@ -104,7 +104,7 @@ func _set_axis(neg: String, pos: String, value: float) -> void:
 
 
 func _draw() -> void:
-	if Game.modal_open:
+	if Game.modal_open or Game.cutscene:
 		return
 	var base := Color(1, 1, 1, 0.10)
 	var ring := Color(1, 1, 1, 0.35)

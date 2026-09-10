@@ -7,6 +7,8 @@ var _hud: Label
 var _prompt: Label
 var _toasts: VBoxContainer
 var _modal_layer: Control
+var _cutscene_panel: PanelContainer
+var _cutscene_label: Label
 var _queue: Array = []
 var _theme: Theme
 
@@ -18,12 +20,16 @@ func _ready() -> void:
 	Game.prompt_changed.connect(_on_prompt)
 	Game.toast.connect(_on_toast)
 	Game.modal_requested.connect(_enqueue)
+	Game.cutscene_started.connect(_on_cutscene_started)
+	Game.cutscene_ended.connect(_on_cutscene_ended)
 	# debug: godot --path . -- --modal=finance|status|event|report
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--modal="):
 			call_deferred("_debug_modal", arg.trim_prefix("--modal="))
 		elif arg == "--sleep":
 			Game.call_deferred("sleep")
+		elif arg == "--mass":
+			Game.call_deferred("do_activity", "mass")
 
 
 func _debug_modal(kind: String) -> void:
@@ -121,6 +127,27 @@ func _build() -> void:
 	_modal_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(_modal_layer)
 
+	_cutscene_panel = PanelContainer.new()
+	_cutscene_panel.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	_cutscene_panel.offset_left = -420
+	_cutscene_panel.offset_top = -120
+	_cutscene_panel.offset_right = -24
+	_cutscene_panel.offset_bottom = -24
+	var cut_box := HBoxContainer.new()
+	cut_box.add_theme_constant_override("separation", 16)
+	_cutscene_label = Label.new()
+	_cutscene_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_cutscene_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	cut_box.add_child(_cutscene_label)
+	var skip := Button.new()
+	skip.text = "Pomiń"
+	skip.custom_minimum_size = Vector2(140, 52)
+	skip.pressed.connect(Game.skip_cutscene)
+	cut_box.add_child(skip)
+	_cutscene_panel.add_child(cut_box)
+	_cutscene_panel.visible = false
+	_root.add_child(_cutscene_panel)
+
 
 func _money(v: int) -> String:
 	var s := str(absi(v))
@@ -132,6 +159,17 @@ func _money(v: int) -> String:
 		if count % 3 == 0 and i > 0:
 			out = " " + out
 	return ("-" if v < 0 else "") + out
+
+
+func _on_cutscene_started(label: String) -> void:
+	_cutscene_label.text = label + " trwa…"
+	_cutscene_panel.visible = true
+	_prompt.visible = false
+
+
+func _on_cutscene_ended() -> void:
+	_cutscene_panel.visible = false
+	_prompt.visible = true
 
 
 func _on_prompt(text: String) -> void:

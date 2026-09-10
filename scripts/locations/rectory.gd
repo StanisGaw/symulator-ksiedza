@@ -12,6 +12,8 @@ func _ready() -> void:
 	_collider(Vector3(S, 1, S), Vector3(0, -0.5, 0))
 	_box(Vector3(S + 0.4, 3.2, 0.4), Palette.WALL_INT, Vector3(0, 1.6, -S / 2 - 0.2))
 	_box(Vector3(0.4, 3.2, S), Palette.WALL_INT_DARK, Vector3(-S / 2 - 0.2, 1.6, 0))
+	_collider(Vector3(S + 0.4, 3.2, 0.4), Vector3(0, 1.6, -S / 2 - 0.2))
+	_collider(Vector3(0.4, 3.2, S), Vector3(-S / 2 - 0.2, 1.6, 0))
 	_collider(Vector3(S, 3.2, 0.4), Vector3(0, 1.6, S / 2 + 0.2))
 	_collider(Vector3(0.4, 3.2, S), Vector3(S / 2 + 0.2, 1.6, 0))
 	_glow_box(Vector3(1.2, 1.0, 0.2), Palette.WINDOW, 0.5, Vector3(-1.5, 1.8, -S / 2 + 0.05))

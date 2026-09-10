@@ -10,6 +10,7 @@ var _current: Interactable
 
 
 func _ready() -> void:
+	add_to_group("player")
 	_model = Node3D.new()
 	_model.name = "Model"
 	add_child(_model)
@@ -19,6 +20,10 @@ func _ready() -> void:
 	sensor.area_exited.connect(_on_area_exited)
 
 
+func face(dir: Vector3) -> void:
+	_model.rotation.y = atan2(dir.x, dir.z)
+
+
 func clear_targets() -> void:
 	_nearby.clear()
 	_current = null
@@ -26,7 +31,7 @@ func clear_targets() -> void:
 
 func _physics_process(delta: float) -> void:
 	var input := Vector2.ZERO
-	if not Game.modal_open:
+	if not Game.modal_open and not Game.cutscene:
 		input = Input.get_vector("move_left", "move_right", "move_up", "move_down")
 	var dir := Vector3(input.x, 0, input.y).rotated(Vector3.UP, deg_to_rad(camera_yaw_degrees))
 	if dir.length() > 0.0:
@@ -43,7 +48,7 @@ func _physics_process(delta: float) -> void:
 		velocity.y = 0.0
 	move_and_slide()
 	_update_target()
-	if _current and not Game.modal_open and Input.is_action_just_pressed("interact"):
+	if _current and not Game.modal_open and not Game.cutscene and Input.is_action_just_pressed("interact"):
 		_current.activate()
 
 

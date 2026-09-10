@@ -7,6 +7,9 @@ signal prompt_changed(text: String)
 signal toast(text: String)
 signal modal_requested(kind: String, data: Dictionary)
 signal location_change_requested(location: String, spawn: String)
+signal cutscene_started(label: String)
+signal cutscene_ended
+signal cutscene_skip
 
 const MINUTES_PER_SECOND := 2.0
 const FAST_MULT := 10.0
@@ -60,10 +63,13 @@ var pending_investments: Array = []
 var fired_events: Array = []
 var log_lines: Array = []
 var modal_open := false
+var cutscene := false
+var _mass_start := 0.0
+var _mass_attendance := 0
 
 
 func _process(delta: float) -> void:
-	if modal_open:
+	if modal_open or cutscene:
 		return
 	var mult := FAST_MULT if Input.is_action_pressed("time_faster") else 1.0
 	minutes += delta * MINUTES_PER_SECOND * mult
@@ -149,7 +155,7 @@ func do_activity(id: String) -> void:
 	energy = maxf(0.0, energy - def["energy"])
 	done_today[id] = true
 	if def.get("mass", false):
-		_hold_mass()
+		_begin_mass()
 	else:
 		apply_effects(def["effects"])
 		toast.emit(def["toast"])
@@ -157,12 +163,43 @@ func do_activity(id: String) -> void:
 	state_changed.emit()
 
 
-func _hold_mass() -> void:
+func _attendance() -> int:
 	var attendance := int(clampf(40.0 + reputation * 1.2 + (trad + young) * 0.5 + (condition - 50) * 0.4, 15.0, 300.0))
 	if is_sunday():
 		attendance = int(attendance * 2.2)
 	if mass_hour == 99:
 		attendance = int(attendance * 1.25)
+	return attendance
+
+
+func _begin_mass() -> void:
+	_mass_attendance = _attendance()
+	_mass_start = minutes - ACTIVITIES["mass"]["minutes"]
+	cutscene = true
+	cutscene_started.emit("Msza święta")
+	var director := get_tree().get_first_node_in_group("mass_director")
+	if director:
+		director.start(_mass_attendance)
+	else:
+		finish_mass()
+
+
+func mass_progress(p: float) -> void:
+	minutes = _mass_start + ACTIVITIES["mass"]["minutes"] * clampf(p, 0.0, 1.0)
+
+
+func skip_cutscene() -> void:
+	cutscene_skip.emit()
+
+
+func finish_mass() -> void:
+	minutes = _mass_start + ACTIVITIES["mass"]["minutes"]
+	cutscene = false
+	cutscene_ended.emit()
+	_hold_mass(_mass_attendance)
+
+
+func _hold_mass(attendance: int) -> void:
 	var taca := int(attendance * randf_range(3.2, 5.0))
 	apply_effects({"money": taca, "reputation": 1})
 	if mass_hour == 7:

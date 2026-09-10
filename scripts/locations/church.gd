@@ -1,6 +1,7 @@
 extends LocationBase
 ## Church interior. Dollhouse view: only the north and west walls are visible, the other two are invisible colliders.
 
+const MASS_DIRECTOR := preload("res://scripts/mass_director.gd")
 const W := 10.0
 const D := 16.0
 
@@ -14,8 +15,11 @@ func _ready() -> void:
 	# visible walls (north, west) and invisible ones (south, east)
 	_box(Vector3(W + 0.4, 6, 0.4), Palette.WALL_INT, Vector3(0, 3, -D / 2 - 0.2))
 	_box(Vector3(0.4, 6, D), Palette.WALL_INT_DARK, Vector3(-W / 2 - 0.2, 3, 0))
+	_collider(Vector3(W + 0.4, 6, 0.4), Vector3(0, 3, -D / 2 - 0.2))
+	_collider(Vector3(0.4, 6, D), Vector3(-W / 2 - 0.2, 3, 0))
 	_collider(Vector3(W, 6, 0.4), Vector3(0, 3, D / 2 + 0.2))
 	_collider(Vector3(0.4, 6, D), Vector3(W / 2 + 0.2, 3, 0))
+	add_child(MASS_DIRECTOR.new())
 	# windows on the west wall glow warm
 	for z in [-5.0, -2.0, 1.0, 4.0]:
 		_glow_box(Vector3(0.2, 1.6, 0.7), Palette.WINDOW, 0.7, Vector3(-W / 2 + 0.05, 3.2, z))
