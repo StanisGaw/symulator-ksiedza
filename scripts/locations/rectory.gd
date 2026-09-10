@@ -28,7 +28,9 @@ func _ready() -> void:
 	_box(Vector3(1.8, 0.08, 0.9), Palette.DESK, Vector3(2.3, 0.78, -3.2))
 	for x in [1.5, 3.1]:
 		_box(Vector3(0.08, 0.76, 0.8), Palette.DESK, Vector3(x, 0.38, -3.2))
-	_box(Vector3(0.5, 0.03, 0.7), Palette.PAPER, Vector3(2.0, 0.83, -3.15), Vector3(0, 8, 0), false)
+	# papiery na biurku rosną z liczbą spraw w toku
+	for k in range(1 + mini(Game.scheduled.size(), 4)):
+		_box(Vector3(0.5, 0.03, 0.7), Palette.PAPER, Vector3(2.0 + k * 0.04, 0.83 + k * 0.03, -3.15 - k * 0.03), Vector3(0, 8 - k * 7, 0), false)
 	_box(Vector3(0.14, 0.26, 0.05), Palette.PHONE, Vector3(2.9, 0.84, -3.0), Vector3(0, -20, 0), false)
 	_cyl(0.05, 0.08, 0.5, Palette.LAMP_POST, Vector3(3.0, 1.05, -3.5), Vector3.ZERO, 6)
 	_glow_box(Vector3(0.36, 0.18, 0.36), Palette.LAMP_LIGHT, 1.2, Vector3(3.0, 1.35, -3.5))

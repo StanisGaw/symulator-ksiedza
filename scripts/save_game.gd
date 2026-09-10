@@ -10,7 +10,7 @@ const INTS := ["day", "money", "reputation", "condition", "trad", "young", "curi
 	"week_income", "week_expenses", "mass_hour"]
 const FLOATS := ["energy"]
 const DICTS := ["done_today"]
-const ARRAYS := ["scheduled", "pending_investments", "fired_events", "log_lines", "built"]
+const ARRAYS := ["scheduled", "pending_investments", "fired_events", "log_lines", "built", "seen"]
 
 
 static func has_save() -> bool:

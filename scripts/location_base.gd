@@ -4,6 +4,14 @@ extends Node3D
 ## spawn markers and interactables. Concrete locations extend this and build in _ready().
 
 
+var landmarks: Dictionary = {}
+
+
+## Miejsce, które kamera pokaże, gdy pojawi się tu coś nowego.
+func _landmark(id: String, pos: Vector3) -> void:
+	landmarks[id] = pos
+
+
 func _mesh(mesh: Mesh, mat: Material, pos: Vector3, rot_deg: Vector3 = Vector3.ZERO) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	mi.mesh = mesh
