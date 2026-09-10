@@ -50,3 +50,4 @@ func _ready() -> void:
 	_box(Vector3(1.2, 2.2, 0.2), Palette.DOOR, Vector3(0, 1.1, S / 2 + 0.1))
 	_door(Vector3(0, 1, S / 2 - 0.8), Vector3(2.0, 2, 1.2), "Wyjdź na zewnątrz", "outside", "rectory_door")
 	_spawn("door", Vector3(0, 0, S / 2 - 2.0))
+	_spawn("bed", Vector3(-1.6, 0, -2.4))
