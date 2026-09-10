@@ -327,7 +327,7 @@ Projekt w tym katalogu to szkielet gry w Godot 4.7. Wszystkie modele są zastęp
 godot --path .
 ```
 
-**Sterowanie:** WSAD lub strzałki to chodzenie, `T` przyspiesza czas.
+**Sterowanie:** WSAD lub strzałki to chodzenie, `E` lub spacja to działanie, `T` przyspiesza czas. Na ekranach dotykowych pojawia się wirtualny joystick po lewej i przyciski `E` oraz `T` po prawej. W przeglądarce na komputerze można je wymusić, dodając `?touch` do adresu.
 
 **Co jest w szkielecie:**
 - `project.godot` – render wewnętrzny 320×180 skalowany bez wygładzania, filtr „nearest”, brak MSAA.
@@ -338,6 +338,7 @@ godot --path .
 - `scripts/camera_rig.gd` – kamera ortograficzna pod stałym kątem, podąża za graczem, gracz nie może jej obracać.
 - `scripts/day_night.gd` – cykl dnia z pochmurnym, zimnym światłem za dnia i bursztynowymi akcentami nocą; latarnie włączają się o zmierzchu.
 - `scripts/hud.gd` – dzień, zegar, energia.
+- `scripts/touch_controls.gd` – wirtualny joystick i przyciski dotykowe, zasilają te same akcje co klawiatura.
 
 **Sprawdzenie bez okna** (import i 120 klatek w trybie headless):
 

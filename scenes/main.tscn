@@ -1,10 +1,11 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://scripts/world_builder.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/player.gd" id="2"]
 [ext_resource type="Script" path="res://scripts/camera_rig.gd" id="3"]
 [ext_resource type="Script" path="res://scripts/day_night.gd" id="4"]
 [ext_resource type="Script" path="res://scripts/hud.gd" id="5"]
+[ext_resource type="Script" path="res://scripts/touch_controls.gd" id="6"]
 
 [sub_resource type="CapsuleShape3D" id="cap"]
 radius = 0.45
@@ -60,7 +61,15 @@ player_path = NodePath("../Player")
 
 [node name="Label" type="Label" parent="HUD"]
 offset_left = 4.0
-offset_top = 168.0
+offset_top = 3.0
 offset_right = 316.0
-offset_bottom = 178.0
+offset_bottom = 13.0
 text = "Dzien 1"
+
+[node name="TouchControls" type="Control" parent="HUD"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("6")
