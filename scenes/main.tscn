@@ -1,0 +1,66 @@
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://scripts/world_builder.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/player.gd" id="2"]
+[ext_resource type="Script" path="res://scripts/camera_rig.gd" id="3"]
+[ext_resource type="Script" path="res://scripts/day_night.gd" id="4"]
+[ext_resource type="Script" path="res://scripts/hud.gd" id="5"]
+
+[sub_resource type="CapsuleShape3D" id="cap"]
+radius = 0.45
+height = 2.2
+
+[sub_resource type="Environment" id="env"]
+background_mode = 1
+background_color = Color(0.227, 0.267, 0.322, 1)
+ambient_light_source = 1
+ambient_light_color = Color(0.353, 0.4, 0.47, 1)
+ambient_light_energy = 0.9
+fog_enabled = true
+fog_light_color = Color(0.227, 0.267, 0.322, 1)
+fog_density = 0.012
+
+[node name="Main" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("env")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+shadow_enabled = true
+directional_shadow_max_distance = 60.0
+script = ExtResource("4")
+environment_path = NodePath("../WorldEnvironment")
+lamp_paths = Array[NodePath]([NodePath("../World/LampLight")])
+
+[node name="World" type="Node3D" parent="."]
+script = ExtResource("1")
+
+[node name="Player" type="CharacterBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.6, 1.1, 5)
+script = ExtResource("2")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Player"]
+shape = SubResource("cap")
+
+[node name="CameraRig" type="Node3D" parent="."]
+script = ExtResource("3")
+target_path = NodePath("../Player")
+
+[node name="Camera3D" type="Camera3D" parent="CameraRig"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 30)
+projection = 1
+size = 14.0
+near = 0.1
+far = 120.0
+
+[node name="HUD" type="CanvasLayer" parent="."]
+script = ExtResource("5")
+sun_path = NodePath("../Sun")
+player_path = NodePath("../Player")
+
+[node name="Label" type="Label" parent="HUD"]
+offset_left = 4.0
+offset_top = 168.0
+offset_right = 316.0
+offset_bottom = 178.0
+text = "Dzien 1"
