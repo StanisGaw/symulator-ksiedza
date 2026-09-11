@@ -60,6 +60,9 @@ var broom_length := 1.861
 var broom_anchor := Vector3(0.24, 1.456, 0.402)
 var _broom_node: Node3D
 ## Punkt styku szczotki z ziemią w spoczynku i kierunek, w którym ksiądz pcha miotłę.
+## Kolejka do spowiedzi: o ile każdy kolejny stoi dalej od klęcznika i czy jest zajęty.
+const QUEUE_STEP := Vector3(0.35, 0, 0.85)
+var _confession_busy := false
 var _brush_base := Vector3.ZERO
 var _push_dir := Vector3.FORWARD
 var _zoom_before := 14.0
@@ -233,12 +236,15 @@ func _start_funeral() -> void:
 func _start_confession() -> void:
 	_start_seated("confession_seat", Vector3(1, 0, 0))
 	var entry := _spot("scene_door")
+	var kneel := _spot("confession_kneel")
+	_confession_busy = false
 	for i in 3:
 		var node := Person.make(Game.day * 100 + i)
-		node.position = entry + Vector3(randf_range(-0.5, 0.5), 0, i * 0.9)
+		node.position = entry + Vector3(randf_range(-0.4, 0.4), 0, i * 0.7)
 		add_child(node)
-		people.append({"node": node, "goal": _spot("confession_kneel") + Vector3(0, 0, i * 0.05),
-			"state": "wait", "delay": i * 1.1, "timer": 0.0})
+		# każdy ma swoje miejsce w kolejce; do klęcznika podchodzi dopiero, gdy jest wolny
+		people.append({"node": node, "queue": kneel + QUEUE_STEP * float(i + 1),
+			"state": "wait", "delay": i * 0.8, "timer": 0.0})
 
 
 # ---------- przebieg ----------
@@ -299,23 +305,35 @@ func _run_funeral() -> void:
 			p["node"].position.y = sin(elapsed * 1.3 + float(p["phase"])) * 0.02
 
 
+## Spowiedź: parafianie ustawiają się w kolejce za klęcznikiem i podchodzą pojedynczo.
+## Wcześniej wszyscy szli w to samo miejsce i wchodzili w siebie, a klęczenie było
+## ściśnięciem całej bryły w pionie, więc kurczyła się też głowa.
 func _run_confession(delta: float) -> void:
 	for p in people:
 		match p["state"]:
 			"wait":
 				p["delay"] -= delta
 				if p["delay"] <= 0.0:
-					p["state"] = "walk"
-			"walk":
-				if _step(p["node"], p["goal"], delta):
+					p["state"] = "queue"
+			"queue":
+				var at_place: bool = _step(p["node"], p["queue"], delta)
+				if at_place and not _confession_busy:
+					_confession_busy = true
+					p["state"] = "approach"
+			"approach":
+				if _step(p["node"], _spot("confession_kneel"), delta):
 					p["state"] = "kneel"
-					p["node"].scale = Vector3(1, 0.78, 1)
-					p["timer"] = 1.2
+					# twarzą do konfesjonału; Person to zwykły Node3D, więc obracamy wprost
+					var to_priest: Vector3 = _spot("confession_seat") - p["node"].position
+					p["node"].rotation.y = atan2(to_priest.x, to_priest.z)
+					Person.kneel(p["node"], true)
+					p["timer"] = 1.4
 			"kneel":
 				p["timer"] -= delta
 				if p["timer"] <= 0.0:
 					p["state"] = "leave"
-					p["node"].scale = Vector3.ONE
+					Person.kneel(p["node"], false)
+					_confession_busy = false
 			"leave":
 				_step(p["node"], _spot("scene_door"), delta)
 
@@ -325,12 +343,15 @@ func _step(node: Node3D, goal: Vector3, delta: float) -> bool:
 	var flat_goal := Vector3(goal.x, pos.y, goal.z)
 	var to_goal := flat_goal - pos
 	if to_goal.length() < 0.15:
+		Person.stand(node)
 		return true
 	var step := to_goal.normalized() * WALK_SPEED * delta
 	if step.length() >= to_goal.length():
 		node.global_position = flat_goal
+		Person.stand(node)
 		return true
 	node.global_position = pos + step
+	Person.advance(node, step.length())
 	if node.has_method("face"):
 		node.face(to_goal)
 	return false

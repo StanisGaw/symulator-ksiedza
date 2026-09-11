@@ -25,6 +25,19 @@ const CHEST_Y := 1.5
 const SHOULDER := Vector3(0.42, 0.45, -0.02)
 const UPPER_ARM := 0.58
 const FOREARM := 0.54
+## Chód: długość kroku butem, uniesienie buta, podskok sylwetki, kołysanie na boki
+## (radiany) i wymach rąk w przeciwfazie. Podskok i kołysanie są celowo małe - przy
+## większych wartościach ksiądz podskakiwał na każdym kroku zamiast iść. Ksiądz nie ma nóg, więc krok pokazujemy
+## butami, kołysaniem sutanny i rękami naraz - bez tego postać sunie jak duch.
+const WALK_STRIDE := 0.17
+const WALK_LIFT := 0.035
+const WALK_BOB := 0.012
+const WALK_ROLL := 0.022
+const WALK_SWING := 0.16
+## Odchylenie rąbka sutanny w przeciwną stronę niż tułów (radiany).
+const WALK_HEM := 0.03
+## Ile cykli kroku na metr przebytej drogi; stąd bierze się tempo chodu.
+const WALK_CADENCE := 1.9
 
 var _model: Node3D
 ## Bryły księdza wiszą na osobnym węźle, którego początek jest na wysokości stóp.
@@ -45,7 +58,12 @@ var _props: Node3D
 ## z ręką zamiast wisieć obok niej w powietrzu; lewa łapie kij miotły niżej.
 var _hand_right: Node3D
 var _hand_left: Node3D
+var _cassock: MeshInstance3D
+var _shoe_left: MeshInstance3D
+var _shoe_right: MeshInstance3D
 var _phone: MeshInstance3D
+var _walk_phase := 0.0
+var _stroll := OS.get_cmdline_user_args().has("--stroll")
 var _nearby: Array[Interactable] = []
 var _current: Interactable
 
@@ -175,6 +193,31 @@ func set_pose(pose: String) -> void:
 			_model.rotation = Vector3(deg_to_rad(-90), 0, 0)
 
 
+## Cykl chodu: buty idą na zmianę w przód i w tył, sylwetka lekko podskakuje i kołysze
+## się na boki, a ręce wymachują w przeciwfazie do butów. Fazę podaje ten, kto rusza
+## postacią, więc tempo zależy od przebytej drogi, a nie od czasu.
+func walk(phase: float) -> void:
+	var step := sin(phase)
+	_shoe_right.position = Vector3(0.16, 0.05 + maxf(0.0, step) * WALK_LIFT, 0.05 + step * WALK_STRIDE)
+	_shoe_left.position = Vector3(-0.16, 0.05 + maxf(0.0, -step) * WALK_LIFT, 0.05 - step * WALK_STRIDE)
+	_model.position.y = absf(sin(phase * 2.0)) * WALK_BOB
+	_body.rotation.z = step * WALK_ROLL
+	# sutanna odchyla się w przeciwną stronę niż tułów, jak ciężki materiał w ruchu
+	_cassock.rotation.z = -step * WALK_HEM
+	var hang := SHOULDER.y - UPPER_ARM - FOREARM * 0.92
+	_reach(_arm_right, _elbow_right, 1, Vector3(SHOULDER.x, hang, SHOULDER.z - step * WALK_SWING))
+	_reach(_arm_left, _elbow_left, -1, Vector3(-SHOULDER.x, hang, SHOULDER.z + step * WALK_SWING))
+
+
+## Ustawia postać w spoczynku po zatrzymaniu: buty równo, bez kołysania.
+func stand_still() -> void:
+	_shoe_right.position = Vector3(0.16, 0.05, 0.05)
+	_shoe_left.position = Vector3(-0.16, 0.05, 0.05)
+	_model.position.y = 0.0
+	_body.rotation.z = 0.0
+	_cassock.rotation.z = 0.0
+
+
 ## Walking bob for cutscenes (the model has no legs yet).
 func bob(t: float) -> void:
 	_model.position.y = absf(sin(t * 9.0)) * 0.08
@@ -192,15 +235,25 @@ func _physics_process(delta: float) -> void:
 	var input := Vector2.ZERO
 	if not Game.modal_open:
 		input = Input.get_vector("move_left", "move_right", "move_up", "move_down")
+	# debug: --stroll prowadzi księdza przed siebie, żeby dało się nagrać chód bez rąk
+	if _stroll:
+		input = Vector2(0, -1)
 	var dir := Vector3(input.x, 0, input.y).rotated(Vector3.UP, deg_to_rad(camera_yaw_degrees))
 	if dir.length() > 0.0:
 		velocity.x = dir.x * speed
 		velocity.z = dir.z * speed
 		_model.rotation.y = lerp_angle(_model.rotation.y, atan2(dir.x, dir.z), 12.0 * delta)
 		Game.energy = maxf(0.0, Game.energy - 0.4 * delta)
+		# faza kroku rośnie z przebytą drogą, więc chód nie ucieka przy zmianie prędkości
+		_walk_phase += Vector2(velocity.x, velocity.z).length() * delta * WALK_CADENCE * PI
+		walk(_walk_phase)
 	else:
 		velocity.x = move_toward(velocity.x, 0.0, speed * 10.0 * delta)
 		velocity.z = move_toward(velocity.z, 0.0, speed * 10.0 * delta)
+		if _walk_phase != 0.0:
+			_walk_phase = 0.0
+			stand_still()
+			set_pose("stand")
 	if not is_on_floor():
 		velocity.y -= 20.0 * delta
 	else:
@@ -247,7 +300,9 @@ func _build_model() -> void:
 	_props = Node3D.new()
 	_props.position = root.position
 	_model.add_child(_props)
-	_part(root, _cyl(0.34, 0.52, 1.5), Palette.CASSOCK, Vector3(0, 0.75, 0))
+	# sutanna kończy się nad kostkami, żeby buty było widać - w wersji do ziemi krok
+	# nie miał jak się pokazać i ksiądz sunął po chodniku
+	_cassock = _part(root, _cyl(0.34, 0.52, 1.38), Palette.CASSOCK, Vector3(0, 0.84, 0))
 	# od pasa w górę: własny węzeł, żeby pochylenie zginało księdza w pasie
 	_chest = Node3D.new()
 	_chest.position = Vector3(0, CHEST_Y, 0)
@@ -273,8 +328,8 @@ func _build_model() -> void:
 	_phone.material_override = ToonMaterial.make(Palette.PHONE, Palette.PHONE, 0.9)
 	var shoe := BoxMesh.new()
 	shoe.size = Vector3(0.22, 0.1, 0.34)
-	_part(root, shoe, Palette.SHOES, Vector3(-0.16, 0.05, 0.05))
-	_part(root, shoe, Palette.SHOES, Vector3(0.16, 0.05, 0.05))
+	_shoe_left = _part(root, shoe, Palette.SHOES, Vector3(-0.16, 0.05, 0.05))
+	_shoe_right = _part(root, shoe, Palette.SHOES, Vector3(0.16, 0.05, 0.05))
 
 
 ## Ręka jako łańcuch trzech węzłów: bark, łokieć, dłoń. W pozie zerowej zwisa prosto w dół,

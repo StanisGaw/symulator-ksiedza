@@ -78,6 +78,12 @@ SHOULDER = Vector(_vector3(_PLAYER, "SHOULDER"))
 UPPER_ARM = _number(_PLAYER, "UPPER_ARM")
 FOREARM = _number(_PLAYER, "FOREARM")
 PHONE_HAND = Vector(_vector3(_PLAYER, "PHONE_HAND"))
+WALK_STRIDE = _number(_PLAYER, "WALK_STRIDE")
+WALK_LIFT = _number(_PLAYER, "WALK_LIFT")
+WALK_BOB = _number(_PLAYER, "WALK_BOB")
+WALK_ROLL = _number(_PLAYER, "WALK_ROLL")
+WALK_SWING = _number(_PLAYER, "WALK_SWING")
+WALK_HEM = _number(_PLAYER, "WALK_HEM")
 ELBOW_POLE_R = Vector(_vector3(_PLAYER, "ELBOW_POLE_RIGHT"))
 ELBOW_POLE_L = Vector(_vector3(_PLAYER, "ELBOW_POLE_LEFT"))
 
@@ -87,7 +93,7 @@ SHOE = (0.22, 0.1, 0.34)
 
 # bryly wiszace na tulowiu (nogi i sutanna) - stoja pionowo, nie pochylaja sie
 PARTS = [
-	("cyl", "Sutanna_dol", (0.34, 0.52, 1.5, 10), (0, 0.75, 0), (0, 0, 0), "CASSOCK"),
+	("cyl", "Sutanna_dol", (0.34, 0.52, 1.38, 10), (0, 0.84, 0), (0, 0, 0), "CASSOCK"),
 	("box", "But_L", (SHOE,), (-0.16, 0.05, 0.05), (0, 0, 0), "SHOES"),
 	("box", "But_P", (SHOE,), (0.16, 0.05, 0.05), (0, 0, 0), "SHOES"),
 ]
@@ -156,6 +162,7 @@ class Rig:
 		self.arm_left = self.elbow_left = self.hand_left = None
 		self.props = None
 		self.chest = None
+		self.shoe_right = self.shoe_left = self.cassock = None
 		self.phone = None
 		self.broom = None
 
@@ -267,7 +274,13 @@ def build():
 	# rekwizyty trzymane oburacz nie pochylaja sie z tulowiem, wiec kat kija liczy sie do ziemi
 	rig.props = rig.empty("Props", rig.model, loc=(0, -1.1, 0))
 	for spec in PARTS:
-		rig.part(spec, rig.body)
+		obj = rig.part(spec, rig.body)
+		if spec[1] == "But_P":
+			rig.shoe_right = obj
+		elif spec[1] == "But_L":
+			rig.shoe_left = obj
+		elif spec[1] == "Sutanna_dol":
+			rig.cassock = obj
 	rig.chest = rig.empty("Piers", rig.body, loc=(0, CHEST_Y, 0))
 	for spec in CHEST_PARTS:
 		rig.part(spec, rig.chest)
@@ -408,6 +421,43 @@ def sweep_frame(rig, elapsed):
 	rig.model.rotation_quaternion = _godot_quat(0, math.degrees(swing * SWEEP_BODY_YAW), 0)
 	return {"faza": round(swing, 3), "powrot": round(back, 3), "tilt": round(tilt, 1),
 		"arm_P": arms[0], "arm_L": arms[1]}
+
+
+def walk_frame(rig, phase):
+	"""Odpowiednik player.gd::walk: kroki widac po butach, sutannie i lekkim kolysaniu.
+
+	Ksiadz nie ma nog, wiec krok pokazujemy trzema rzeczami naraz: buty jada w przod
+	i w tyl na zmiane, cale cialo kolysze sie na boki, a rece odchylaja sie w przeciwfazie
+	do butow. Bez tego postac sunie po ziemi jak duch.
+	"""
+	step = math.sin(phase)
+	rig.shoe_right.location = Vector((0.16, 0.05 + max(0.0, step) * WALK_LIFT, 0.05 + step * WALK_STRIDE))
+	rig.shoe_left.location = Vector((-0.16, 0.05 + max(0.0, -step) * WALK_LIFT, 0.05 - step * WALK_STRIDE))
+	rig.model.location = Vector((0, abs(math.sin(phase * 2.0)) * WALK_BOB, 0))
+	rig.body.rotation_quaternion = _godot_quat(0, 0, math.degrees(step * WALK_ROLL))
+	rig.cassock.rotation_quaternion = _godot_quat(0, 0, math.degrees(-step * WALK_HEM))
+	reach_arm(rig, 1, Vector((SHOULDER.x, SHOULDER.y - UPPER_ARM - FOREARM * 0.92,
+		SHOULDER.z - step * WALK_SWING)))
+	reach_arm(rig, -1, Vector((-SHOULDER.x, SHOULDER.y - UPPER_ARM - FOREARM * 0.92,
+		SHOULDER.z + step * WALK_SWING)))
+	return {"krok": round(step, 3)}
+
+
+def animate_walk(rig, steps=4):
+	"""Piecze cykl chodu na osi czasu: tyle krokow, ile podano."""
+	frames = int(round(steps * FPS * 0.5))
+	rig.scene.frame_start = 1
+	rig.scene.frame_end = frames
+	for f in range(1, frames + 1):
+		walk_frame(rig, (f - 1) / float(frames) * steps * math.pi)
+		for node in (rig.shoe_right, rig.shoe_left):
+			node.keyframe_insert("location", frame=f)
+		rig.model.keyframe_insert("location", frame=f)
+		rig.body.keyframe_insert("rotation_quaternion", frame=f)
+		rig.cassock.keyframe_insert("rotation_quaternion", frame=f)
+		for node in (rig.arm_right, rig.elbow_right, rig.arm_left, rig.elbow_left):
+			node.keyframe_insert("rotation_quaternion", frame=f)
+	return frames
 
 
 # ---------- solver pozy ----------
@@ -603,8 +653,16 @@ def render_sequence(rig, out_dir):
 	return rig.scene.render.filepath
 
 
-def main():
+def main(scene="sweep"):
+	"""scene: "sweep" - zamiatanie, "walk" - cykl chodu."""
 	rig = build()
+	if scene == "walk":
+		set_pose(rig, "stand")
+		rig.phone.hide_viewport = rig.phone.hide_render = True
+		frames = animate_walk(rig)
+		add_cameras(rig)
+		print("scena %s gotowa: %d klatek chodu" % (SCENE, frames))
+		return rig
 	set_pose(rig, "work")
 	add_broom(rig)
 	frames = animate_sweep(rig)
@@ -615,4 +673,4 @@ def main():
 
 
 if __name__ == "__main__":
-	main()
+	main("walk" if "--walk" in sys.argv else "sweep")
