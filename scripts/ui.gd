@@ -428,15 +428,19 @@ func _show_finance() -> void:
 	_button(box, "Zamknij", _close_modal)
 
 
+func _hours_list(hours: Array) -> String:
+	var parts: Array[String] = []
+	for h in hours:
+		parts.append("%02d:00" % int(h))
+	return ", ".join(parts)
+
+
 func _show_status() -> void:
 	var box := _window("Stan parafii i kronika", 880.0)
-	var hour_text := "nie ustalono"
-	match Game.mass_hour:
-		7: hour_text = "7:00"
-		11: hour_text = "11:00"
-		99: hour_text = "7:00 i 11:00"
-	_text(box, "Reputacja %d   Stan budynków %d   Tradycjonaliści %d   Młode rodziny %d   Kuria %d   Godzina sumy: %s" % [
-		Game.reputation, Game.condition, Game.trad, Game.young, Game.curia, hour_text], 18)
+	_text(box, "Reputacja %d   Stan budynków %d   Tradycjonaliści %d   Młode rodziny %d   Kuria %d   Szacunek %d" % [
+		Game.reputation, Game.condition, Game.trad, Game.young, Game.curia, Game.respect], 18)
+	_text(box, "Msze dziś: %s.   W niedziele i święta: %s.   W dni powszednie: %s." % [
+		Game.schedule_text(), _hours_list(Game.sunday_hours), _hours_list(Game.weekday_hours)], 17)
 	var saved := Game.saved_day()
 	if saved > 0:
 		_text(box, "Ostatni zapis: poranek dnia %d." % saved, 17)
