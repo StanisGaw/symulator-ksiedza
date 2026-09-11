@@ -18,6 +18,13 @@ var _player: Node3D
 var _spots: Dictionary = {}
 var _rig: Node3D
 var _return_pos := Vector3.ZERO
+## Ułożenie miotły w rękach: kąt kija (x: ujemny = w przód, y: w bok) i jego długość.
+## Rekwizyt wisi na ciele, które w pozie "work" jest już pochylone o 26 stopni w przód,
+## a dodatni obrót wokół X przechyla to, co wisi w dół, do tyłu. Dlatego kąt musi być
+## ujemny i większy niż samo pochylenie: -76 daje w świecie około 50 stopni w przód.
+## debug: --broom=-76,-22,1.3 nadpisuje kąt X, kąt Y i długość.
+var broom_rotation := Vector3(-76, -22, 0)
+var broom_length := 1.3
 var _zoom_before := 14.0
 
 
@@ -28,6 +35,12 @@ func _ready() -> void:
 
 func start(def: Dictionary) -> void:
 	var scene: Dictionary = def.get("scene", {})
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--broom="):
+			var parts := arg.trim_prefix("--broom=").split(",", false)
+			if parts.size() == 3:
+				broom_rotation = Vector3(float(parts[0]), float(parts[1]), 0)
+				broom_length = float(parts[2])
 	kind = str(scene.get("kind", ""))
 	length = float(scene.get("seconds", 4.0))
 	elapsed = 0.0
@@ -79,17 +92,15 @@ func _start_sweep() -> void:
 ## da się ich rozjechać. Kij wisi z rąk w dół, główka siedzi na jego końcu.
 func _broom() -> Node3D:
 	var root := Node3D.new()
-	# w rękach na wysokości pasa, kij opada w przód i w bok, żeby nie chował się za sutanną
-	# uwaga: poza "work" pochyla cały model o 24 stopnie, a miotła jest jego dzieckiem,
-	# więc kąt kija dodaje się do pochylenia. 27 plus 24 daje około pięćdziesięciu stopni,
-	# czyli tyle, ile trzeba, żeby główka dotykała ziemi.
-	root.position = Vector3(0.26, 1.0, 0.12)
-	root.rotation_degrees = Vector3(27, -22, 0)
-	var length := 1.55
+	# w dłoniach na wysokości pasa, lekko przed ciałem
+	root.position = Vector3(0.1, 1.1, 0.3)
+	root.rotation_degrees = broom_rotation
+	var length := broom_length
 	var stick := MeshInstance3D.new()
 	var cyl := CylinderMesh.new()
-	cyl.top_radius = 0.028
-	cyl.bottom_radius = 0.028
+	# grubszy niż prawdziwy trzonek, żeby przy 320x180 nie znikał między pikselami
+	cyl.top_radius = 0.04
+	cyl.bottom_radius = 0.04
 	cyl.height = length
 	cyl.radial_segments = 5
 	stick.mesh = cyl
@@ -101,9 +112,9 @@ func _broom() -> Node3D:
 	box.size = Vector3(0.38, 0.16, 0.14)
 	head.mesh = box
 	head.material_override = ToonMaterial.make(Color("8a7a4a"))
-	# tuż pod końcem kija, żeby główka trzymała się trzonka, i płasko na ziemi
+	# tuż pod końcem kija, żeby główka trzymała się trzonka; obrót zwrotny kładzie ją płasko
 	head.position = Vector3(0, -length + 0.06, 0.02)
-	head.rotation_degrees = Vector3(-51, 0, 0)
+	head.rotation_degrees = Vector3(-(broom_rotation.x + 26.0), 0, 0)
 	root.add_child(head)
 	return root
 

@@ -9,6 +9,10 @@ var _model: Node3D
 ## Pochylenia obracamy właśnie nim, żeby ksiądz zginał się w pasie, a nie odchylał
 ## całym ciałem wokół punktu na wysokości piersi.
 var _body: Node3D
+## Prawa ręka z telefonem jako jedna grupa zaczepiona w barku: w pozach roboczych
+## opada do trzonka miotły, a telefon znika, zamiast wisieć przy uchu.
+var _arm_right: Node3D
+var _phone: MeshInstance3D
 var _nearby: Array[Interactable] = []
 var _current: Interactable
 
@@ -57,6 +61,9 @@ func set_pose(pose: String) -> void:
 	_model.rotation.x = 0.0
 	_body.rotation.x = 0.0
 	_body.scale = Vector3.ONE
+	# telefon tylko na stojąco; w każdej innej pozie ręka opada, bo trzyma coś innego
+	_phone.visible = pose == "stand" or pose == ""
+	_arm_right.rotation_degrees = Vector3.ZERO if _phone.visible else Vector3(62, 0, 0)
 	match pose:
 		"kneel":
 			_body.scale = Vector3(1, 0.78, 1)
@@ -152,13 +159,18 @@ func _build_model() -> void:
 	var hair := _part(root, _sphere(0.31), Palette.HAIR, Vector3(0, 2.58, 0))
 	hair.scale = Vector3(1, 0.55, 1)
 	_part(root, _cyl(0.09, 0.09, 0.75, 8), Palette.CASSOCK, Vector3(-0.42, 1.65, 0), Vector3(0, 0, 10))
-	_part(root, _cyl(0.09, 0.09, 0.7, 8), Palette.CASSOCK, Vector3(0.4, 1.72, 0.12), Vector3(-52, 0, -29))
 	_part(root, _sphere(0.1), Palette.SKIN, Vector3(-0.49, 1.27, 0))
-	_part(root, _sphere(0.1), Palette.SKIN, Vector3(0.36, 1.9, 0.42))
+	# prawa ręka: grupa zaczepiona w barku, przesunięcia dzieci odtwarzają dotychczasowy wygląd
+	var shoulder := Vector3(0.57, 1.91, -0.12)
+	_arm_right = Node3D.new()
+	_arm_right.position = shoulder
+	root.add_child(_arm_right)
+	_part(_arm_right, _cyl(0.09, 0.09, 0.7, 8), Palette.CASSOCK, Vector3(0.4, 1.72, 0.12) - shoulder, Vector3(-52, 0, -29))
+	_part(_arm_right, _sphere(0.1), Palette.SKIN, Vector3(0.36, 1.9, 0.42) - shoulder)
 	var phone := BoxMesh.new()
 	phone.size = Vector3(0.14, 0.26, 0.03)
-	var p := _part(root, phone, Palette.PHONE, Vector3(0.36, 2.02, 0.5), Vector3(-17, 0, 0))
-	p.material_override = ToonMaterial.make(Palette.PHONE, Palette.PHONE, 0.9)
+	_phone = _part(_arm_right, phone, Palette.PHONE, Vector3(0.36, 2.02, 0.5) - shoulder, Vector3(-17, 0, 0))
+	_phone.material_override = ToonMaterial.make(Palette.PHONE, Palette.PHONE, 0.9)
 	var shoe := BoxMesh.new()
 	shoe.size = Vector3(0.22, 0.1, 0.34)
 	_part(root, shoe, Palette.SHOES, Vector3(-0.16, 0.05, 0.05))
