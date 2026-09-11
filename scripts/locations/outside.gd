@@ -152,8 +152,8 @@ func _build_church() -> void:
 		_box(Vector3(1.2, 0.03, 0.9), Palette.STAIN, Vector3(-2.2, 0.05, 1.0), Vector3.ZERO, false)
 		_activity(Vector3(-1.85, 1, 1.6), Vector3(1.6, 2, 1.6), "repair_gutter")
 	# miotła stoi przy ścieżce, z dala od drzwi, żeby było ją widać
-	_cyl(0.03, 0.03, 1.4, Palette.TRUNK, Vector3(2.3, 0.7, 6.2), Vector3(0, 0, 12), 5)
-	_box(Vector3(0.18, 0.35, 0.18), Color("8a7a4a"), Vector3(2.45, 0.18, 6.2))
+	_prop(_cyl(0.03, 0.03, 1.4, Palette.TRUNK, Vector3(2.3, 0.7, 6.2), Vector3(0, 0, 12), 5), "prop_broom")
+	_prop(_box(Vector3(0.18, 0.35, 0.18), Color("8a7a4a"), Vector3(2.45, 0.18, 6.2)), "prop_broom")
 	_activity(Vector3(2.4, 1, 6.4), Vector3(1.6, 2, 1.6), "sweep")
 
 

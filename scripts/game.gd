@@ -25,6 +25,9 @@ const MASS_WINDOW_AFTER := 10
 
 const RESPECT_PER_MASS := 2
 const RESPECT_PER_MISSED := 3
+## Za każde miejsce, w którym parafianie zobaczą bałagan, schodzi punkt reputacji
+## i punkt szacunku. Liczy się to przy każdej mszy, bo wtedy ludzie to widzą.
+const MESS_PENALTY := 1
 
 const ACTIVITIES := {
 	"repair_gutter": {"label": "Napraw rynnę", "minutes": 60, "energy": 20, "once": true,
@@ -412,8 +415,9 @@ func _pick_apple(def: Dictionary) -> void:
 ## Ławka z brewiarzem: energia rośnie z czasem, który się na niej spędzi.
 ## Sen daje 12 na godzinę, czytanie 10, więc siedzenie nigdy nie bije nocy.
 const READ_ENERGY_PER_HOUR := 10.0
-const READ_MIN_MINUTES := 15
-const READ_MAX_MINUTES := 240
+const READ_MIN_MINUTES := 30
+const READ_MAX_MINUTES := 24 * 60
+const READ_STEP_MINUTES := 30
 const MEALS_PER_DAY := 2
 
 
@@ -563,6 +567,16 @@ func finish_cutscene() -> void:
 	state_changed.emit()
 
 
+## Miejsca, w których dziś nie posprzątano, a ludzie tamtędy przechodzą.
+func _mess_seen() -> Array[String]:
+	var places: Array[String] = []
+	if not done_today.has("sweep"):
+		places.append("plac przed kościołem")
+	if not done_today.has("clean_church"):
+		places.append("wnętrze kościoła")
+	return places
+
+
 func _hold_mass(attendance: int) -> void:
 	var taca := int(attendance * randf_range(3.2, 5.0) * Calendar.taca_multiplier(day, _cut_start))
 	apply_effects({"money": taca, "reputation": 1})
@@ -583,6 +597,12 @@ func _hold_mass(attendance: int) -> void:
 	elif Calendar.feast_name(day) != "" and Calendar.attendance_multiplier(day, _cut_start) > 1.0:
 		label = Calendar.feast_name(day)
 	var text := "%s o %02d:00: %d osób, taca %d zł. Szacunek +%d." % [label, _mass_started_hour, attendance, taca, respect_gain]
+	var mess := _mess_seen()
+	if not mess.is_empty():
+		var penalty := MESS_PENALTY * mess.size()
+		apply_effects({"reputation": -penalty})
+		respect -= penalty
+		text += " Ludzie zobaczyli bałagan (%s): reputacja -%d, szacunek -%d." % [", ".join(mess), penalty, penalty]
 	toast.emit(text)
 	add_log(text)
 

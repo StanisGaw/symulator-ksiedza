@@ -70,27 +70,40 @@ func _start_sweep() -> void:
 	_base_yaw = _player.model_yaw()
 	_player.set_pose("work")
 	_player.hold(_broom())
+	# miotła stojąca w lokacji znika, bo to właśnie ją ksiądz wziął do ręki
+	for node in get_tree().get_nodes_in_group("prop_broom"):
+		node.visible = false
 
 
+## Miotła jako jedna bryła: kij i główka są dziećmi tego samego węzła, więc nie
+## da się ich rozjechać. Kij wisi z rąk w dół, główka siedzi na jego końcu.
 func _broom() -> Node3D:
 	var root := Node3D.new()
+	# w rękach na wysokości pasa, kij opada w przód i w bok, żeby nie chował się za sutanną
+	# uwaga: poza "work" pochyla cały model o 24 stopnie, a miotła jest jego dzieckiem,
+	# więc kąt kija dodaje się do pochylenia. 27 plus 24 daje około pięćdziesięciu stopni,
+	# czyli tyle, ile trzeba, żeby główka dotykała ziemi.
+	root.position = Vector3(0.26, 1.0, 0.12)
+	root.rotation_degrees = Vector3(27, -22, 0)
+	var length := 1.55
 	var stick := MeshInstance3D.new()
 	var cyl := CylinderMesh.new()
-	cyl.top_radius = 0.03
-	cyl.bottom_radius = 0.03
-	cyl.height = 1.7
+	cyl.top_radius = 0.028
+	cyl.bottom_radius = 0.028
+	cyl.height = length
 	cyl.radial_segments = 5
 	stick.mesh = cyl
 	stick.material_override = ToonMaterial.make(Palette.TRUNK)
-	stick.position = Vector3(0.52, 0.9, 0.6)
-	stick.rotation_degrees = Vector3(44, 0, -18)
+	stick.position = Vector3(0, -length / 2.0, 0)
 	root.add_child(stick)
 	var head := MeshInstance3D.new()
 	var box := BoxMesh.new()
-	box.size = Vector3(0.4, 0.12, 0.22)
+	box.size = Vector3(0.38, 0.16, 0.14)
 	head.mesh = box
 	head.material_override = ToonMaterial.make(Color("8a7a4a"))
-	head.position = Vector3(0.68, 0.08, 1.18)
+	# tuż pod końcem kija, żeby główka trzymała się trzonka, i płasko na ziemi
+	head.position = Vector3(0, -length + 0.06, 0.02)
+	head.rotation_degrees = Vector3(-51, 0, 0)
 	root.add_child(head)
 	return root
 
@@ -220,6 +233,8 @@ func _finish() -> void:
 		_player.global_position = _return_pos
 		if _player is CharacterBody3D:
 			(_player as CharacterBody3D).velocity = Vector3.ZERO
+	for node in get_tree().get_nodes_in_group("prop_broom"):
+		node.visible = true
 	if _rig:
 		_rig.set_zoom(_zoom_before)
 	Game.finish_cutscene()

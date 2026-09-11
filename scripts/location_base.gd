@@ -14,6 +14,11 @@ func _landmark(id: String, pos: Vector3) -> void:
 	landmarks[id] = pos
 
 
+## Bryły, które mają zniknąć, gdy ksiądz weźmie je do ręki w scenie.
+func _prop(node: Node, group: String) -> void:
+	node.add_to_group(group)
+
+
 func _spot(spot_name: String, pos: Vector3) -> void:
 	spots[spot_name] = pos
 

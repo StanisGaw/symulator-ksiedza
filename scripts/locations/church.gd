@@ -146,7 +146,7 @@ func _ready() -> void:
 	_activity(Vector3(-2.9, 1, 5.2), Vector3(1.4, 2, 1.6), "confession")
 	# bucket and broom by the door
 	_cyl(0.28, 0.22, 0.4, Palette.BUCKET, Vector3(3.6, 0.2, 6.8), Vector3.ZERO, 8)
-	_cyl(0.03, 0.03, 1.4, Palette.TRUNK, Vector3(4.0, 0.7, 6.6), Vector3(0, 0, -12), 5)
+	_prop(_cyl(0.03, 0.03, 1.4, Palette.TRUNK, Vector3(4.0, 0.7, 6.6), Vector3(0, 0, -12), 5), "prop_broom")
 	_activity(Vector3(3.6, 1, 6.6), Vector3(1.6, 2, 1.4), "clean_church")
 	# door out
 	_box(Vector3(1.6, 2.4, 0.2), Palette.DOOR, Vector3(0, 1.2, D / 2 + 0.1))
