@@ -407,7 +407,7 @@ godot --headless --path . -- --check
 godot --headless --path . -- --simulate=120
 ```
 
-**Wersja w przeglądarce:** każdy push na gałąź `main` uruchamia workflow w `.github/workflows/deploy-pages.yml`, który pobiera Godota i szablony eksportu, buduje wersję webową (preset `Web` z wyłączonymi wątkami, żeby działała na GitHub Pages bez specjalnych nagłówków) i publikuje ją na GitHub Pages. Renderer to Compatibility, bo tylko on działa w przeglądarce.
+**Wersja w przeglądarce:** każdy push na gałąź `main` uruchamia workflow w `.github/workflows/deploy-pages.yml`, który pobiera Godota i szablony eksportu, uruchamia kontrolę definicji (`--check`), buduje wersję webową (preset `Web` z wyłączonymi wątkami, żeby działała na GitHub Pages bez specjalnych nagłówków) i publikuje ją na GitHub Pages. Kontrola idzie przed eksportem, więc literówka w definicji wydarzenia zatrzymuje deploy zamiast wyjechać na Pages jako wydarzenie bez skutku. Renderer to Compatibility, bo tylko on działa w przeglądarce.
 
 **Zrzut klatek do PNG** (wymaga okna, zapisuje do wskazanego katalogu):
 
