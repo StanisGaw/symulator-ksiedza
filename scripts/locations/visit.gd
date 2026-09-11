@@ -25,21 +25,21 @@ const GLASS_DARK := Color("2e3440")
 const GLASS_BACKLIT := Color("d8dce4")
 const GLASS_DUSTY := Color("b8b4a8")
 const LIT_WARM := Color("ffc070")
-const WALLPAPER := Color("b8a890")
-const WALLPAPER_STRIPE := Color("a09078")
+var WALLPAPER := Color("b8a890")
+var WALLPAPER_STRIPE := Color("a09078")
 const WALLPAPER_PEEL := Color("cbbda4")
-const PARQUET := Color("5a4030")
-const PARQUET_LIGHT := Color("6a5040")
+var PARQUET := Color("5a4030")
+var PARQUET_LIGHT := Color("6a5040")
 const WOOD := Color("5a3a22")
 const WOOD_LIGHT := Color("8a6a42")
-const BLANKET := Color("6a4a4a")
-const BLANKET_DARK := Color("4a3236")
+var BLANKET := Color("6a4a4a")
+var BLANKET_DARK := Color("4a3236")
 const LINEN := Color("d8d2c4")
 const LINEN_DIRTY := Color("c4bcaa")
 const LACE := Color("e8e2d4")
 const TV_BODY := Color("2a2622")
 const LIT_TV := Color("8ab0ff")
-const GREY_HAIR := Color("b0aca0")
+var GREY_HAIR := Color("b0aca0")
 const BRASS := Color("c9a227")
 const PLANT := Color("3a4a2c")
 const CLAY := Color("9a5a3a")
@@ -60,9 +60,13 @@ var _t := 0.0
 var _walk_t := 0.0
 var _path: Array = []
 var _running := false
+## Kogo odwiedzamy: kolory pokoju i rekwizyty biorą się stąd.
+var _v: Dictionary = {}
+var _clutter := 1.0
 
 
 func _ready() -> void:
+	_apply_variant()
 	_environment(Color("8a949e"), Color("6a7480"), 0.85, 0.003)
 	var sun := DirectionalLight3D.new()
 	sun.light_color = Color("e8e4dc")
@@ -79,6 +83,19 @@ func _ready() -> void:
 	_spawn("start", SET_A + Vector3(17, 0, 6))
 	Game.cutscene_skip.connect(_skip)
 	call_deferred("_start")
+
+
+## Pokój dostosowany do tego, kto w nim leży.
+func _apply_variant() -> void:
+	_v = Game.next_visit()
+	WALLPAPER = Visits.color(_v, "wallpaper", "b8a890")
+	WALLPAPER_STRIPE = Visits.color(_v, "stripe", "a09078")
+	PARQUET = Visits.color(_v, "parquet", "5a4030")
+	PARQUET_LIGHT = Visits.color(_v, "parquet_light", "6a5040")
+	BLANKET = Visits.color(_v, "blanket", "6a4a4a")
+	BLANKET_DARK = Visits.color(_v, "blanket_dark", "4a3236")
+	GREY_HAIR = Visits.color(_v, "hair", "b0aca0")
+	_clutter = float(_v.get("clutter", 1.0))
 
 
 # ---------- direction ----------
@@ -463,19 +480,32 @@ func _build_set_c() -> void:
 	add_child(shaft)
 	_omni(o + Vector3(0.5, 2.4, 0.5), Color("8a98b0"), 1.6, 9.0)
 	_omni(o + Vector3(-1.6, 2.4, -2.0), Color("c8d4e4"), 2.2, 6.0)
-	# litter: cans, bottles, crumpled paper, a plastic bag, a plate with leftovers
-	_cyl(0.05, 0.05, 0.16, Color("b8bcc0"), o + Vector3(1.9, 0.05, 1.9), Vector3(90, 0, 20), 8)
-	_cyl(0.05, 0.05, 0.16, Color("a83a2a"), o + Vector3(2.3, 0.08, 0.2), Vector3.ZERO, 8)
-	_cyl(0.05, 0.05, 0.16, Color("b8bcc0"), o + Vector3(-1.1, 0.05, 2.4), Vector3(90, 40, 0), 8)
-	_cyl(0.045, 0.045, 0.3, Color("2f5a2c"), o + Vector3(0.2, 0.045, 2.5), Vector3(90, 60, 0), 7)
-	_cyl(0.045, 0.045, 0.3, AMBER, o + Vector3(-2.2, 0.045, 0.4), Vector3(90, -30, 0), 7)
-	for i in range(6):
-		_box(Vector3(0.16, 0.05, 0.12), LACE, o + Vector3(-1.2 + i * 0.7, 0.03, 0.2 + (i % 3) * 0.8), Vector3(0, 30 * i, 0), false)
-	_box(Vector3(0.4, 0.14, 0.3), Color("d8d8d8"), o + Vector3(2.6, 0.07, 1.4), Vector3(0, 25, 0), false)
-	_cyl(0.16, 0.14, 0.03, Color("e0dcd0"), o + Vector3(1.4, 0.015, 2.2), Vector3.ZERO, 10)
-	_box(Vector3(0.12, 0.03, 0.08), Color("8a6a3a"), o + Vector3(1.42, 0.045, 2.2), Vector3(0, 15, 0), false)
-	_box(Vector3(0.3, 0.02, 0.4), Color("c8c0a8"), o + Vector3(-0.4, 0.02, 1.6), Vector3(0, -20, 0), false)
-	_box(Vector3(0.3, 0.02, 0.4), Color("b8b0a0"), o + Vector3(-0.3, 0.04, 1.7), Vector3(0, 10, 0), false)
+	# ile bałaganu na podłodze zależy od tego, kto tu mieszka i czy ma się kto zajmować
+	if _clutter >= 0.6:
+		# litter: cans, bottles, crumpled paper, a plastic bag, a plate with leftovers
+		_cyl(0.05, 0.05, 0.16, Color("b8bcc0"), o + Vector3(1.9, 0.05, 1.9), Vector3(90, 0, 20), 8)
+		_cyl(0.05, 0.05, 0.16, Color("a83a2a"), o + Vector3(2.3, 0.08, 0.2), Vector3.ZERO, 8)
+		_cyl(0.05, 0.05, 0.16, Color("b8bcc0"), o + Vector3(-1.1, 0.05, 2.4), Vector3(90, 40, 0), 8)
+		_cyl(0.045, 0.045, 0.3, Color("2f5a2c"), o + Vector3(0.2, 0.045, 2.5), Vector3(90, 60, 0), 7)
+		_cyl(0.045, 0.045, 0.3, AMBER, o + Vector3(-2.2, 0.045, 0.4), Vector3(90, -30, 0), 7)
+		for i in range(6):
+			_box(Vector3(0.16, 0.05, 0.12), LACE, o + Vector3(-1.2 + i * 0.7, 0.03, 0.2 + (i % 3) * 0.8), Vector3(0, 30 * i, 0), false)
+		_box(Vector3(0.4, 0.14, 0.3), Color("d8d8d8"), o + Vector3(2.6, 0.07, 1.4), Vector3(0, 25, 0), false)
+		_cyl(0.16, 0.14, 0.03, Color("e0dcd0"), o + Vector3(1.4, 0.015, 2.2), Vector3.ZERO, 10)
+		_box(Vector3(0.12, 0.03, 0.08), Color("8a6a3a"), o + Vector3(1.42, 0.045, 2.2), Vector3(0, 15, 0), false)
+		_box(Vector3(0.3, 0.02, 0.4), Color("c8c0a8"), o + Vector3(-0.4, 0.02, 1.6), Vector3(0, -20, 0), false)
+		_box(Vector3(0.3, 0.02, 0.4), Color("b8b0a0"), o + Vector3(-0.3, 0.04, 1.7), Vector3(0, 10, 0), false)
+	else:
+		# u kogoś zadbanego zostaje tylko talerz i szklanka przy łóżku
+		_cyl(0.16, 0.14, 0.03, Color("e0dcd0"), o + Vector3(1.4, 0.015, 2.2), Vector3.ZERO, 10)
+		_cyl(0.06, 0.05, 0.16, Color("a0c0d0"), o + Vector3(1.6, 0.08, 2.0), Vector3.ZERO, 8)
+	if _clutter >= 1.2:
+		# u zaniedbanego jeszcze więcej butelek i kubków
+		for i in range(5):
+			_cyl(0.045, 0.045, 0.3, AMBER, o + Vector3(-2.0 + i * 0.8, 0.045, 1.2 + (i % 2) * 0.9), Vector3(90, 20 * i, 0), 7)
+		for i in range(4):
+			_cyl(0.05, 0.05, 0.16, Color("b8bcc0"), o + Vector3(1.2 - i * 0.6, 0.05, 0.4 + (i % 2) * 0.7), Vector3(90, 30 * i, 0), 8)
+
 	# bed along the north wall: rumpled bedding, the sick woman propped on two pillows, rosary in hand
 	_box(Vector3(2.4, 0.5, 1.3), WOOD, o + Vector3(1.4, 0.25, -2.3))
 	_box(Vector3(2.4, 0.9, 0.08), WOOD, o + Vector3(1.4, 0.45, -2.92))
@@ -494,16 +524,39 @@ func _build_set_c() -> void:
 	_sphere(0.09, Palette.SKIN, o + Vector3(1.08, 1.04, -1.98))
 	for i in range(6):
 		_sphere(0.025, Color("3a2a2a"), o + Vector3(1.12 + i * 0.05, 1.0 - i * 0.03, -1.9 + i * 0.02), false)
-	# IV stand by the bed, tube to the arm
-	_box(Vector3(0.5, 0.04, 0.5), STEEL, o + Vector3(0.0, 0.02, -1.7), Vector3(0, 45, 0), false)
-	_cyl(0.02, 0.02, 1.9, STEEL, o + Vector3(0.0, 0.97, -1.7), Vector3.ZERO, 6)
-	_box(Vector3(0.4, 0.03, 0.03), STEEL, o + Vector3(0.0, 1.92, -1.7), Vector3.ZERO, false)
-	_box(Vector3(0.14, 0.26, 0.06), Color("dde4ea"), o + Vector3(0.18, 1.72, -1.7), Vector3.ZERO, false)
-	_box(Vector3(0.1, 0.16, 0.04), Color("b0d0e8"), o + Vector3(0.18, 1.66, -1.66), Vector3.ZERO, false)
-	_cyl(0.008, 0.008, 1.0, Color("d8e0e8"), o + Vector3(0.6, 1.3, -1.9), Vector3(20, 0, -55), 4)
+	if bool(_v.get("iv", true)):
+		# IV stand by the bed, tube to the arm
+		_box(Vector3(0.5, 0.04, 0.5), STEEL, o + Vector3(0.0, 0.02, -1.7), Vector3(0, 45, 0), false)
+		_cyl(0.02, 0.02, 1.9, STEEL, o + Vector3(0.0, 0.97, -1.7), Vector3.ZERO, 6)
+		_box(Vector3(0.4, 0.03, 0.03), STEEL, o + Vector3(0.0, 1.92, -1.7), Vector3.ZERO, false)
+		_box(Vector3(0.14, 0.26, 0.06), Color("dde4ea"), o + Vector3(0.18, 1.72, -1.7), Vector3.ZERO, false)
+		_box(Vector3(0.1, 0.16, 0.04), Color("b0d0e8"), o + Vector3(0.18, 1.66, -1.66), Vector3.ZERO, false)
+		_cyl(0.008, 0.008, 1.0, Color("d8e0e8"), o + Vector3(0.6, 1.3, -1.9), Vector3(20, 0, -55), 4)
+	elif bool(_v.get("oxygen", false)):
+		# butla tlenowa z wąsem zamiast kroplówki
+		_cyl(0.14, 0.14, 0.8, Color("3a6a8a"), o + Vector3(0.1, 0.4, -1.7), Vector3.ZERO, 10)
+		_cyl(0.05, 0.05, 0.16, STEEL, o + Vector3(0.1, 0.88, -1.7), Vector3.ZERO, 8)
+		_cyl(0.008, 0.008, 1.2, Color("d8e0e8"), o + Vector3(0.5, 1.15, -1.95), Vector3(25, 0, -50), 4)
+	if bool(_v.get("wheelchair", false)):
+		# wózek przy łóżku
+		_box(Vector3(0.5, 0.08, 0.5), Color("2e3440"), o + Vector3(-0.1, 0.5, -1.2))
+		_box(Vector3(0.5, 0.5, 0.08), Color("2e3440"), o + Vector3(-0.1, 0.75, -1.44))
+		for side in [-0.3, 0.3]:
+			_cyl(0.32, 0.32, 0.05, Color("1a1a1e"), o + Vector3(-0.1 + side, 0.32, -1.2), Vector3(90, 0, 0), 12)
+	if bool(_v.get("cat", false)):
+		# kot śpi w nogach łóżka
+		var cat := _sphere(0.18, Color("52483e"), o + Vector3(2.35, 0.95, -2.5))
+		cat.scale = Vector3(1.5, 0.8, 1.0)
+		_sphere(0.11, Color("52483e"), o + Vector3(2.05, 1.0, -2.5), false)
+	if bool(_v.get("books", false)):
+		# stosy książek pod ścianą
+		for i in range(7):
+			_box(Vector3(0.24, 0.06, 0.18), [Palette.BOOK_A, Palette.BOOK_B, Palette.BOOK_C][i % 3],
+				o + Vector3(-2.2 + (i % 2) * 0.3, 0.03 + float(i / 2) * 0.07, 1.6 + (i % 3) * 0.05), Vector3(0, 8 * i, 0), false)
+
 	# nightstand buried in blisters, tissues, bottles; a chair with a coat over the back
 	_box(Vector3(0.5, 0.6, 0.5), WOOD, o + Vector3(-0.7, 0.3, -2.55))
-	for i in range(5):
+	for i in range(maxi(1, int(round(5.0 * _clutter)))):
 		_box(Vector3(0.12, 0.01, 0.07), BLISTER, o + Vector3(-0.82 + i * 0.07, 0.61 + (i % 2) * 0.01, -2.45 - (i % 3) * 0.08), Vector3(0, 15 * i, 0), false)
 	for i in range(3):
 		_sphere(0.05, LACE, o + Vector3(-0.52 + i * 0.08, 0.66, -2.7 + i * 0.06), false)
@@ -522,19 +575,26 @@ func _build_set_c() -> void:
 	_box(Vector3(0.08, 0.7, 0.05), Color("3a2416"), o + Vector3(1.9, 2.3, -2.96))
 	_box(Vector3(0.42, 0.08, 0.05), Color("3a2416"), o + Vector3(1.9, 2.48, -2.96))
 	_box(Vector3(0.05, 0.28, 0.03), BRASS, o + Vector3(1.9, 2.36, -2.93), Vector3.ZERO, false)
-	_box(Vector3(0.78, 0.98, 0.05), BRASS, o + Vector3(0.6, 2.25, -2.97), Vector3(0, 0, -3))
-	var portrait := MeshInstance3D.new()
-	var quad := QuadMesh.new()
-	quad.size = Vector2(0.66, 0.86)
-	portrait.mesh = quad
-	var pm := StandardMaterial3D.new()
-	pm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	pm.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	pm.albedo_texture = _portrait_texture()
-	portrait.material_override = pm
-	portrait.position = o + Vector3(0.6, 2.25, -2.94)
-	portrait.rotation_degrees = Vector3(0, 0, -3)
-	add_child(portrait)
+	if bool(_v.get("portrait", true)):
+		_box(Vector3(0.78, 0.98, 0.05), BRASS, o + Vector3(0.6, 2.25, -2.97), Vector3(0, 0, -3))
+		var portrait := MeshInstance3D.new()
+		var quad := QuadMesh.new()
+		quad.size = Vector2(0.66, 0.86)
+		portrait.mesh = quad
+		var pm := StandardMaterial3D.new()
+		pm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		pm.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+		pm.albedo_texture = _portrait_texture()
+		portrait.material_override = pm
+		portrait.position = o + Vector3(0.6, 2.25, -2.94)
+		portrait.rotation_degrees = Vector3(0, 0, -3)
+		add_child(portrait)
+	else:
+		# zamiast portretu: makatka z haftem
+		_box(Vector3(0.8, 0.6, 0.04), Color("c8bca4"), o + Vector3(0.6, 2.3, -2.95), Vector3(0, 0, -2), false)
+		for i in range(5):
+			_box(Vector3(0.1, 0.1, 0.02), Color("8a5a4a"), o + Vector3(0.3 + i * 0.15, 2.3 + (i % 2) * 0.12, -2.92), Vector3(0, 0, 45), false)
+
 	_cyl(0.16, 0.16, 0.04, Color("e8e2d4"), o + Vector3(3.0, 2.4, -2.95), Vector3(90, 0, 0), 12)
 	_box(Vector3(0.03, 0.12, 0.02), Color("1a1a1a"), o + Vector3(3.0, 2.45, -2.92), Vector3.ZERO, false)
 	_box(Vector3(0.1, 0.03, 0.02), Color("1a1a1a"), o + Vector3(3.04, 2.4, -2.92), Vector3.ZERO, false)
@@ -551,28 +611,37 @@ func _build_set_c() -> void:
 	_cyl(0.16, 0.2, 0.3, CLAY, o + Vector3(-3.0, 0.15, 0.3), Vector3.ZERO, 8)
 	_cyl(0.03, 0.04, 1.2, Color("4a3a2a"), o + Vector3(-3.0, 0.9, 0.3), Vector3.ZERO, 5)
 	_sphere(0.4, PLANT, o + Vector3(-3.0, 1.5, 0.3))
-	_box(Vector3(0.8, 0.5, 0.7), WOOD, o + Vector3(-2.7, 0.25, -2.4))
-	_box(Vector3(0.7, 0.58, 0.72), TV_BODY, o + Vector3(-2.65, 0.79, -2.4))
-	var screen := MeshInstance3D.new()
-	var sq := QuadMesh.new()
-	sq.size = Vector2(0.54, 0.42)
-	screen.mesh = sq
-	var sm := StandardMaterial3D.new()
-	sm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	sm.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	var tv_tex := _tv_texture()
-	sm.albedo_texture = tv_tex
-	sm.emission_enabled = true
-	sm.emission_texture = tv_tex
-	sm.emission_energy_multiplier = 1.2
-	screen.material_override = sm
-	screen.position = o + Vector3(-2.28, 0.8, -2.4)
-	screen.rotation_degrees = Vector3(0, 90, 0)
-	add_child(screen)
-	_box(Vector3(0.5, 0.02, 0.5), LACE, o + Vector3(-2.65, 1.09, -2.4), Vector3.ZERO, false)
-	_cyl(0.015, 0.015, 0.7, Color("aaaaaa"), o + Vector3(-2.75, 1.5, -2.3), Vector3(0, 0, 25), 5)
-	_cyl(0.015, 0.015, 0.7, Color("aaaaaa"), o + Vector3(-2.75, 1.5, -2.5), Vector3(0, 0, -25), 5)
-	_tv_light = _omni(o + Vector3(-1.6, 1.0, -2.3), LIT_TV, 1.0, 3.5)
+	if bool(_v.get("tv", true)):
+		_box(Vector3(0.8, 0.5, 0.7), WOOD, o + Vector3(-2.7, 0.25, -2.4))
+		_box(Vector3(0.7, 0.58, 0.72), TV_BODY, o + Vector3(-2.65, 0.79, -2.4))
+		var screen := MeshInstance3D.new()
+		var sq := QuadMesh.new()
+		sq.size = Vector2(0.54, 0.42)
+		screen.mesh = sq
+		var sm := StandardMaterial3D.new()
+		sm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		sm.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+		var tv_tex := _tv_texture()
+		sm.albedo_texture = tv_tex
+		sm.emission_enabled = true
+		sm.emission_texture = tv_tex
+		sm.emission_energy_multiplier = 1.2
+		screen.material_override = sm
+		screen.position = o + Vector3(-2.28, 0.8, -2.4)
+		screen.rotation_degrees = Vector3(0, 90, 0)
+		add_child(screen)
+		_box(Vector3(0.5, 0.02, 0.5), LACE, o + Vector3(-2.65, 1.09, -2.4), Vector3.ZERO, false)
+		_cyl(0.015, 0.015, 0.7, Color("aaaaaa"), o + Vector3(-2.75, 1.5, -2.3), Vector3(0, 0, 25), 5)
+		_cyl(0.015, 0.015, 0.7, Color("aaaaaa"), o + Vector3(-2.75, 1.5, -2.5), Vector3(0, 0, -25), 5)
+		_tv_light = _omni(o + Vector3(-1.6, 1.0, -2.3), LIT_TV, 1.0, 3.5)
+	else:
+		# bez telewizora: komoda, radio na serwetce i lampka
+		_box(Vector3(0.9, 0.8, 0.5), WOOD, o + Vector3(-2.8, 0.4, -2.4))
+		_box(Vector3(0.5, 0.02, 0.42), LACE, o + Vector3(-2.8, 0.81, -2.4), Vector3.ZERO, false)
+		_box(Vector3(0.42, 0.24, 0.22), Color("6a5236"), o + Vector3(-2.78, 0.94, -2.4))
+		_box(Vector3(0.3, 0.12, 0.02), Color("c8bc98"), o + Vector3(-2.57, 0.96, -2.4), Vector3.ZERO, false)
+		_cyl(0.015, 0.015, 0.5, Color("aaaaaa"), o + Vector3(-2.9, 1.3, -2.5), Vector3(0, 0, 18), 5)
+		_omni(o + Vector3(-2.2, 1.4, -2.2), Color("ffc070"), 1.1, 3.5)
 	# rug, a lamp with a fringed shade, a wash bowl on the floor
 	_box(Vector3(3.0, 0.02, 2.2), Color("5a2a2a"), o + Vector3(0.6, 0.02, 0.9), Vector3(0, -4, 0), false)
 	_box(Vector3(2.6, 0.025, 1.8), Color("7a5a3a"), o + Vector3(0.6, 0.02, 0.9), Vector3(0, -4, 0), false)

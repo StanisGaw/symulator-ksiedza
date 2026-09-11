@@ -8,9 +8,6 @@ const WALK_SPEED := 7.0
 const DOOR_OUT := Vector3(0, 0, 10.5)
 const DOOR_IN := Vector3(0, 0, 7.4)
 const COMMUNION := Vector3(0, 0, -4.3)
-const COATS := [Color("3a3a44"), Color("4a3a30"), Color("2f3a4a"), Color("5a5048"), Color("3a2e3a"), Color("4a4a3a"), Color("6a5a4a")]
-const HAIRS := [Color("2e1c14"), Color("6a6a6a"), Color("1a1a1a"), Color("8a7a5a"), Color("b0a090")]
-const SKINS := [Color("c9a58a"), Color("d9b8a0"), Color("b89478")]
 
 var active := false
 var phase := 0
@@ -31,7 +28,8 @@ func _ready() -> void:
 				seats.append(Vector3(side + (k - 1.5) * 0.8, 0, z + 0.1))
 
 
-func start(attendance: int) -> void:
+func start(_def: Dictionary) -> void:
+	var attendance: int = Game.mass_attendance
 	active = true
 	phase = 0
 	phase_time = 0.0
@@ -42,7 +40,8 @@ func start(attendance: int) -> void:
 	order.shuffle()
 	for i in range(count):
 		var seat: Vector3 = seats[order[i]]
-		var node := _make_person(i)
+		# ziarno z samego miejsca, żeby ten sam parafianin wracał w kolejną niedzielę
+		var node := Person.make(int(order[i]))
 		node.position = DOOR_OUT + Vector3(randf_range(-1.2, 1.2), 0, i * 0.5)
 		add_child(node)
 		people.append({
@@ -54,38 +53,6 @@ func start(attendance: int) -> void:
 		player.global_position = global_position + Vector3(0, 1.1, -5.0)
 		if player.has_method("face"):
 			player.face(Vector3(0, 0, 1))
-
-
-func _make_person(i: int) -> Node3D:
-	var root := Node3D.new()
-	var body := MeshInstance3D.new()
-	var cyl := CylinderMesh.new()
-	cyl.top_radius = 0.28
-	cyl.bottom_radius = 0.36
-	cyl.height = 1.3
-	cyl.radial_segments = 8
-	cyl.rings = 1
-	body.mesh = cyl
-	body.material_override = ToonMaterial.make(COATS[i % COATS.size()])
-	body.position = Vector3(0, 0.65, 0)
-	root.add_child(body)
-	var head := MeshInstance3D.new()
-	var sph := SphereMesh.new()
-	sph.radius = 0.24
-	sph.height = 0.48
-	sph.radial_segments = 8
-	sph.rings = 5
-	head.mesh = sph
-	head.material_override = ToonMaterial.make(SKINS[i % SKINS.size()])
-	head.position = Vector3(0, 1.55, 0)
-	root.add_child(head)
-	var hair := MeshInstance3D.new()
-	hair.mesh = sph
-	hair.material_override = ToonMaterial.make(HAIRS[i % HAIRS.size()])
-	hair.position = Vector3(0, 1.62, 0)
-	hair.scale = Vector3(1.05, 0.55, 1.05)
-	root.add_child(hair)
-	return root
 
 
 func _process(delta: float) -> void:

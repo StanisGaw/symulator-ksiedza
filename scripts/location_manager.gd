@@ -92,6 +92,8 @@ func go_to(location_id: String, spawn: String, keep_pos: bool = false) -> void:
 	var packed: PackedScene = load("res://scenes/locations/%s.tscn" % location_id)
 	current = packed.instantiate()
 	add_child(current)
+	# każda lokacja dostaje reżysera krótkich scen czynności
+	current.add_child(ActivityScene.new())
 	var pos := kept - Vector3(0, 1.1, 0)
 	if not keep_pos:
 		var marker := current.find_child("Spawn_" + spawn, true, false) as Marker3D

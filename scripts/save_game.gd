@@ -7,7 +7,7 @@ const PATH := "user://parafia.save"
 const VERSION := 1
 
 const INTS := ["day", "start_unix", "money", "reputation", "condition", "trad", "young", "curia",
-	"week_income", "week_expenses", "mass_hour"]
+	"week_income", "week_expenses", "mass_hour", "rests_today", "visit_index"]
 const FLOATS := ["energy"]
 const DICTS := ["done_today"]
 const ARRAYS := ["scheduled", "pending_investments", "fired_events", "log_lines", "built", "seen"]

@@ -21,16 +21,26 @@ const ACTIVITIES := {
 	"repair_gutter": {"label": "Napraw rynnę", "minutes": 60, "energy": 20, "once": true,
 		"effects": {"condition": 6}, "toast": "Rynna naprawiona. Stan budynków +6.", "builds": "gutter"},
 	"sweep": {"label": "Zamieć plac", "minutes": 30, "energy": 10, "once": true,
-		"effects": {"reputation": 1}, "toast": "Plac zamieciony. Reputacja +1.", "world": true},
-	"visit_sick": {"label": "Odwiedź chorą (samochód)", "minutes": 90, "energy": 20, "once": true,
-		"effects": {"reputation": 2, "young": 1}, "toast": "Modlitwa u chorej pani Haliny. Reputacja +2, młode rodziny +1.",
-		"cutscene": "Odwiedziny u chorej pani Haliny. W telewizorze leci Telewizja Trwam", "cut_location": "visit", "return_location": "outside", "return_spawn": "car"},
+		"effects": {"reputation": 1}, "toast": "Plac zamieciony. Reputacja +1.", "world": true,
+		"cutscene": "Zamiatanie placu", "director_group": "activity_scene", "scene": {"kind": "sweep", "seconds": 4.5}},
+	"visit_sick": {"label": "Odwiedziny chorego (samochód)", "minutes": 90, "energy": 20, "once": true,
+		"visit": true, "effects": {}, "toast": "",
+		"cutscene": "Odwiedziny", "cut_location": "visit", "return_location": "outside", "return_spawn": "car"},
 	"mass": {"label": "Odpraw mszę", "minutes": 60, "energy": 25, "once": true, "mass": true,
 		"cutscene": "Msza święta", "director_group": "mass_director"},
 	"confession": {"label": "Spowiadaj", "minutes": 45, "energy": 10, "once": true,
-		"effects": {"trad": 2, "reputation": 1}, "toast": "Trzy spowiedzi. Tradycjonaliści +2."},
+		"effects": {"trad": 2, "reputation": 1}, "toast": "Trzy spowiedzi. Tradycjonaliści +2.",
+		"cutscene": "Spowiedź", "director_group": "activity_scene", "scene": {"kind": "confession", "seconds": 6.0}},
+	"read_breviary": {"label": "Usiądź z brewiarzem", "minutes": 60, "energy": -25, "rest": true,
+		"toast": "Godzina na ławce z brewiarzem. Głowa lżejsza.",
+		"cutscene": "Brewiarz", "director_group": "activity_scene", "scene": {"kind": "read", "seconds": 3.5}},
+	"night": {"label": "Sen", "minutes": 0, "energy": 0, "night": true,
+		"cutscene": "Noc", "director_group": "activity_scene", "scene": {"kind": "sleep", "seconds": 2.5}},
+	"meal": {"label": "Zjedz obiad", "minutes": 45, "energy": -20, "rest": true, "money": -25,
+		"toast": "Obiad zjedzony. Za zakupy poszło 25 zł."},
 	"clean_church": {"label": "Posprzątaj kościół", "minutes": 45, "energy": 15, "once": true,
-		"effects": {"condition": 3, "trad": 1}, "toast": "Kościół posprzątany. Stan budynków +3.", "world": true},
+		"effects": {"condition": 3, "trad": 1}, "toast": "Kościół posprzątany. Stan budynków +3.", "world": true,
+		"cutscene": "Sprzątanie kościoła", "director_group": "activity_scene", "scene": {"kind": "sweep", "walk": false, "seconds": 4.0, "zoom": 9.0}},
 }
 
 const INVESTMENTS := {
@@ -48,6 +58,7 @@ const INVESTMENTS := {
 
 var day := 1
 var start_unix := 0
+var visit_index := 0
 var minutes := float(DAY_START)
 var energy := 100.0
 var money := 12000
@@ -61,6 +72,7 @@ var week_expenses := 0
 var mass_hour := 0
 var location := "outside"
 var done_today: Dictionary = {}
+var rests_today := 0
 var scheduled: Array = []
 var pending_investments: Array = []
 var fired_events: Array = []
@@ -72,9 +84,9 @@ var cutscene := false
 var cutscene_id := ""
 var _cut_start := 0.0
 var _cut_len := 0.0
-var _mass_attendance := 0
+var mass_attendance := 0
 var _mass_roraty := false
-var _skip_buffer: Array[String] = []
+var _sleep_minutes := 480.0
 
 
 func _ready() -> void:
@@ -95,6 +107,10 @@ func _ready() -> void:
 					"hour": 0, "minute": 0, "second": 0}))
 		elif arg.begins_with("--day="):
 			day = maxi(int(arg.trim_prefix("--day=")), 1)
+		elif arg.begins_with("--visitor="):
+			visit_index = maxi(int(arg.trim_prefix("--visitor=")), 0)
+		elif arg.begins_with("--energy="):
+			energy = clampf(float(arg.trim_prefix("--energy=")), 0.0, 100.0)
 		elif arg.begins_with("--condition="):
 			condition = clampi(int(arg.trim_prefix("--condition=")), 0, 100)
 		elif arg.begins_with("--hour="):
@@ -126,7 +142,12 @@ func time_of_day() -> float:
 
 
 func clock_text() -> String:
-	var m := int(minutes)
+	return clock_text_at(minutes)
+
+
+## Godzina dowolnego momentu doby, także po przekroczeniu północy.
+static func clock_text_at(value: float) -> String:
+	var m := int(value) % (24 * 60)
 	return "%02d:%02d" % [m / 60, m % 60]
 
 
@@ -215,18 +236,24 @@ func do_activity(id: String) -> void:
 	if modal_open:
 		return
 	var def: Dictionary = ACTIVITIES[id]
-	if def.get("once", false) and done_today.has(id):
-		toast.emit("To już dziś zrobione.")
-		return
-	if energy < def["energy"]:
-		toast.emit("Za mało energii. Idź spać na plebanii.")
-		return
+	var is_rest: bool = def.get("rest", false)
+	if is_rest:
+		if not _can_rest(def):
+			return
+	else:
+		if def.get("once", false) and done_today.has(id):
+			toast.emit("To już dziś zrobione.")
+			return
+		if energy < def["energy"]:
+			toast.emit("Za mało energii. Usiądź z brewiarzem albo idź spać.")
+			return
 	if minutes + def["minutes"] > 24 * 60:
 		toast.emit("Za późno na to dzisiaj.")
 		return
 	minutes += def["minutes"]
-	energy = maxf(0.0, energy - def["energy"])
-	done_today[id] = true
+	if not is_rest:
+		energy = maxf(0.0, energy - def["energy"])
+		done_today[id] = true
 	if def.has("cutscene"):
 		_begin_cutscene(id, def)
 	else:
@@ -234,8 +261,54 @@ func do_activity(id: String) -> void:
 	state_changed.emit()
 
 
+## Odpoczynek w ciągu dnia. Każdy kolejny daje mniej, bo od leżenia człowiek nie wypoczywa
+## w nieskończoność: pełna wartość, potem 60, 40 i 20 procent.
+const REST_FALLOFF := [1.0, 0.6, 0.4, 0.2]
+
+
+func rest_gain(def: Dictionary) -> int:
+	var base := -int(def["energy"])
+	var factor: float = REST_FALLOFF[mini(rests_today, REST_FALLOFF.size() - 1)]
+	return maxi(1, int(round(base * factor)))
+
+
+func _can_rest(def: Dictionary) -> bool:
+	if energy >= 99.0:
+		toast.emit("Nie jesteś zmęczony.")
+		return false
+	if def.has("money") and money + int(def["money"]) < 0:
+		toast.emit("Nie ma za co.")
+		return false
+	return true
+
+
+func _take_rest(def: Dictionary) -> void:
+	var gain := rest_gain(def)
+	energy = clampf(energy + gain, 0.0, 100.0)
+	rests_today += 1
+	if def.has("money"):
+		apply_effects({"money": def["money"]})
+	toast.emit("%s Energia +%d." % [def["toast"], gain])
+	state_changed.emit()
+
+
+## Kto jest następny w kolejce do odwiedzin.
+func next_visit() -> Dictionary:
+	return Visits.current(self)
+
+
 ## Skutki czynności: liczby, komunikat i ślad w świecie.
 func _finish_activity(def: Dictionary) -> void:
+	if def.get("rest", false):
+		_take_rest(def)
+		return
+	if def.get("visit", false):
+		var person := next_visit()
+		apply_effects(person["effects"])
+		toast.emit(person["toast"])
+		add_log(person["toast"])
+		Visits.advance(self)
+		return
 	apply_effects(def["effects"])
 	toast.emit(def["toast"])
 	add_log(def["toast"])
@@ -267,14 +340,17 @@ func _begin_cutscene(id: String, def: Dictionary) -> void:
 	cutscene = true
 	if def.get("mass", false):
 		_mass_roraty = Calendar.is_roraty(day, _cut_start)
-		_mass_attendance = _attendance(_cut_start)
-	cutscene_started.emit(def["cutscene"])
+		mass_attendance = _attendance(_cut_start)
+	var label: String = def["cutscene"]
+	if def.get("visit", false):
+		label = next_visit()["scene"]
+	cutscene_started.emit(label)
 	if def.has("cut_location"):
 		location_change_requested.emit(def["cut_location"], "start")
 	elif def.has("director_group"):
 		var director := get_tree().get_first_node_in_group(def["director_group"])
 		if director:
-			director.start(_mass_attendance)
+			director.start(def)
 		else:
 			finish_cutscene()
 	else:
@@ -298,8 +374,11 @@ func finish_cutscene() -> void:
 	cutscene_id = ""
 	var def: Dictionary = ACTIVITIES[id]
 	cutscene_ended.emit()
+	if def.get("night", false):
+		_wake_up()
+		return
 	if def.get("mass", false):
-		_hold_mass(_mass_attendance)
+		_hold_mass(mass_attendance)
 	else:
 		_finish_activity(def)
 	if def.has("return_location"):
@@ -384,44 +463,50 @@ func _apply_special(kind: String) -> void:
 
 # ---------- day flow ----------
 
-func sleep() -> void:
-	if modal_open:
-		return
-	var hour := minutes / 60.0
-	var penalty := maxf(0.0, (hour - 22.0) * 8.0)
-	_start_new_day(100.0 - penalty, [])
+## Ile energii daje godzina snu. Osiem godzin wystarcza na pełną regenerację,
+## krótka noc zostawia człowieka zmęczonym i nie trzeba do tego osobnej kary.
+const ENERGY_PER_HOUR := 12.0
+const MAX_SLEEP_HOURS := 12
 
 
-## Przewijanie pustych dni. Zatrzymuje się, gdy coś wymaga decyzji, i pokazuje
-## jeden raport z tego, co się przez ten czas wydarzyło.
-func skip_days(count: int) -> void:
+func sleep_hours(hours: float) -> void:
 	if modal_open or cutscene:
 		return
-	var collected: Array[String] = []
-	var passed := 0
-	for i in count:
-		_skip_buffer.clear()
-		_start_new_day(100.0, [], true)
-		passed += 1
-		if not _skip_buffer.is_empty():
-			collected.append("%s:" % date_text())
-			for line in _skip_buffer:
-				collected.append("   " + line)
-		if not Events.due_events(self).is_empty():
-			break
-		if money < 0:
-			collected.append("Konto zeszło na minus. Przewijanie zatrzymane.")
-			break
-	# raport z przewijania musi się zmieścić w oknie
-	if collected.size() > 18:
-		var hidden := collected.size() - 18
-		collected.resize(18)
-		collected.append("…i jeszcze %d wpisów w kronice." % hidden)
-	if collected.is_empty():
-		collected.append("Spokojne dni. Msze, spowiedzi, nic więcej.")
-	request_modal("report", {"title": "Minęło dni: %d.   %s   %s" % [passed, date_text(), season()], "lines": collected})
-	for ev in Events.due_events(self):
-		request_modal("event", {"event": ev})
+	_sleep_minutes = clampf(hours, 0.5, float(MAX_SLEEP_HOURS)) * 60.0
+	_begin_cutscene("night", ACTIVITIES["night"])
+
+
+## „godzinę”, „trzy godziny”, „osiem godzin” — polska odmiana w jednym miejscu.
+static func hours_text(hours: float) -> String:
+	var h := int(round(hours))
+	if h == 1:
+		return "godzinę"
+	var last := h % 10
+	if last >= 2 and last <= 4 and (h < 12 or h > 14):
+		return "%d godziny" % h
+	return "%d godzin" % h
+
+
+## Ile godzin dzieli nas od najbliższej szóstej rano. Zero, gdy to za długo, żeby to był sen.
+func hours_until_six() -> float:
+	var target := 6.0 * 60.0
+	var delta := target - minutes
+	if delta <= 0.0:
+		delta += 24.0 * 60.0
+	var hours := delta / 60.0
+	return hours if hours <= float(MAX_SLEEP_HOURS) else 0.0
+
+
+func _wake_up() -> void:
+	var target := minutes + _sleep_minutes
+	var gained := _sleep_minutes / 60.0 * ENERGY_PER_HOUR
+	if target >= 24.0 * 60.0:
+		_start_new_day(energy + gained, [], target - 24.0 * 60.0)
+	else:
+		minutes = target
+		energy = clampf(energy + gained, 0.0, 100.0)
+		toast.emit("Przespane %s. Energia %d%%." % [hours_text(_sleep_minutes / 60.0), int(energy)])
+		state_changed.emit()
 
 
 func _force_sleep() -> void:
@@ -429,13 +514,14 @@ func _force_sleep() -> void:
 	_start_new_day(60.0, lines)
 
 
-func _start_new_day(new_energy: float, extra_lines: Array[String], fast: bool = false) -> void:
+func _start_new_day(new_energy: float, extra_lines: Array[String], wake_minutes: float = float(DAY_START)) -> void:
 	var missed_holy_day := Calendar.is_holy_day(day) and not done_today.has("mass")
 	var missed_name := Calendar.feast_name(day)
 	day += 1
-	minutes = float(DAY_START)
+	minutes = clampf(wake_minutes, 0.0, 23.0 * 60.0)
 	energy = clampf(new_energy, 20.0, 100.0)
 	done_today.clear()
+	rests_today = 0
 	var lines: Array[String] = extra_lines.duplicate()
 	if missed_holy_day:
 		# święto nakazane bez mszy zauważą wszyscy, łącznie z kurią
@@ -463,10 +549,6 @@ func _start_new_day(new_energy: float, extra_lines: Array[String], fast: bool = 
 	var feast: String = Calendar.feast_name(day)
 	if feast != "":
 		lines.push_front("Dziś %s. %s" % [feast, str(Calendar.feast(day).get("note", ""))])
-	if fast:
-		# przewijanie zbiera dni w jeden raport zamiast otwierać okno co ranek
-		_skip_buffer.assign(lines)
-		return
 	if not lines.is_empty():
 		request_modal("report", {"title": "%s   %s" % [date_text(), season()], "lines": lines})
 	for ev in Events.due_events(self):
@@ -546,6 +628,7 @@ func start_new_game() -> void:
 	week_expenses = 0
 	mass_hour = 0
 	done_today.clear()
+	rests_today = 0
 	scheduled.clear()
 	pending_investments.clear()
 	fired_events.clear()
