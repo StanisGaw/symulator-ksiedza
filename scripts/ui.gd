@@ -51,9 +51,9 @@ func _process(_delta: float) -> void:
 	var feast: String = Game.feast_name()
 	if feast != "":
 		head += "   •   " + feast
-	_hud.text = "%s\n%s      Energia %d%%      %s zł      Reputacja %d   Budynki %d   Tradycjonaliści %d   Młode rodziny %d   Kuria %d" % [
+	_hud.text = "%s\n%s      Energia %d%%      %s zł      Reputacja %d   Budynki %d   Tradycjonaliści %d   Młode rodziny %d   Kuria %d   Szacunek %d" % [
 		head, Game.clock_text(), int(Game.energy), _money(Game.money),
-		Game.reputation, Game.condition, Game.trad, Game.young, Game.curia]
+		Game.reputation, Game.condition, Game.trad, Game.young, Game.curia, Game.respect]
 
 
 # ---------- building blocks ----------
@@ -234,6 +234,7 @@ func _show_next() -> void:
 		"finance": _show_finance()
 		"status": _show_status()
 		"sleep": _show_sleep()
+		"bench": _show_bench()
 		"continue": _show_continue(item["data"])
 		"confirm_new": _show_confirm_new()
 
@@ -285,6 +286,35 @@ func _button(box: Control, text: String, cb: Callable, enabled: bool = true) -> 
 	b.pressed.connect(cb)
 	box.add_child(b)
 	return b
+
+
+func _show_bench() -> void:
+	var box := _window("Ławka przed kościołem", 720.0)
+	_text(box, "Brewiarz, ptaki i spokój. Godzina siedzenia to +%d energii. Dobre miejsce, żeby doczekać do mszy." % int(Game.READ_ENERGY_PER_HOUR))
+	var info := _text(box, "", 22)
+	var slider := HSlider.new()
+	slider.min_value = Game.READ_MIN_MINUTES
+	slider.max_value = Game.READ_MAX_MINUTES
+	slider.step = 15
+	slider.value = 60
+	slider.custom_minimum_size = Vector2(0, 44)
+	box.add_child(slider)
+	var describe := func(span: float) -> void:
+		var energy := mini(100, int(Game.energy) + Game.read_gain(span))
+		info.text = "%s  •  wstajesz o %s  •  energia %d%%" % [
+			Game.duration_text(span), Game.clock_text_at(Game.minutes + span), energy]
+	slider.value_changed.connect(describe)
+	describe.call(slider.value)
+	_button(box, "Siedź", func() -> void:
+		var span: float = slider.value
+		_close_modal()
+		Game.call_deferred("read_breviary", span))
+	var wait := Game.minutes_to_next_mass()
+	if wait >= float(Game.READ_MIN_MINUTES) and wait <= float(Game.READ_MAX_MINUTES):
+		_button(box, "Poczekaj do mszy o %02d:00 (%s)" % [Game.next_mass_hour(), Game.duration_text(wait)], func() -> void:
+			_close_modal()
+			Game.call_deferred("read_breviary", wait))
+	_button(box, "Wróć", _close_modal)
 
 
 func _show_sleep() -> void:

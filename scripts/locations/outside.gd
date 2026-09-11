@@ -10,7 +10,7 @@ func _ready() -> void:
 	_build_parking_and_car()
 	var lamp := _build_street_furniture()
 	_build_graveyard()
-	_build_tree(Vector3(-7.5, 0, 4))
+	_build_tree(Vector3(-7.5, 0, 4), true)
 	_build_tree(Vector3(15, 0, -12))
 	var sun := DirectionalLight3D.new()
 	sun.name = "Sun"
@@ -38,12 +38,9 @@ func _build_ground() -> void:
 	for k in range(-1, 2):
 		_box(Vector3(0.1, 0.07, 5), Palette.LINE, Vector3(9 + k * 2.4, 0.04, 3), Vector3.ZERO, false)
 	if not WorldState.done_today("sweep"):
-		for i in range(18):
-			var x := -9.0 + float((i * 37) % 23)
-			var z := 5.0 + float((i * 53) % 7)
-			_tuft(Vector3(x, 0.25, z), 0.15, 0.5, Color("5a5a3a"))
+		_build_litter()
 	else:
-		# zamiecione: jedna kupka liści przy miotle
+		# po zamiataniu zostaje tylko kupka liści przy miotle
 		for i in range(3):
 			_tuft(Vector3(2.8 + i * 0.18, 0.12, 6.6 - i * 0.12), 0.2, 0.24, Color("5a5a3a"))
 	if WorldState.condition() == WorldState.BAD and not WorldState.snow():
@@ -54,6 +51,29 @@ func _build_ground() -> void:
 			_tuft(Vector3(wx, 0.45, wz), 0.16, 0.9, Palette.WEED)
 		for i in range(10):
 			_tuft(Vector3(4.6 + float((i * 23) % 7) * 0.5, 0.45, -8.0 + float((i * 37) % 9)), 0.16, 0.9, Palette.WEED)
+
+
+## Śmieci na placu: puszki po piwie, niedopałki, papierki i naniesione liście.
+## Wszystko znika po zamiataniu, więc efekt pracy widać gołym okiem.
+func _build_litter() -> void:
+	var cans := [Color("9aa0a8"), Color("a83a2a"), Color("2f5a2c"), Color("c8a83a")]
+	for i in range(6):
+		var cx := -5.0 + float((i * 41) % 12)
+		var cz := 1.6 + float((i * 29) % 8)
+		_cyl(0.055, 0.055, 0.13, cans[i % cans.size()], Vector3(cx, 0.055, cz), Vector3(90, float(i * 37), 0), 8)
+	for i in range(11):
+		var bx := -4.0 + float((i * 23) % 11) * 0.9
+		var bz := 2.2 + float((i * 31) % 7) * 0.8
+		_cyl(0.014, 0.014, 0.07, Color("e4ded0"), Vector3(bx, 0.014, bz), Vector3(90, float(i * 53), 0), 4)
+		_cyl(0.015, 0.015, 0.02, Color("6a5636"), Vector3(bx + 0.03, 0.015, bz + 0.02), Vector3(90, float(i * 53), 0), 4)
+	for i in range(5):
+		var px := -3.4 + float((i * 47) % 10)
+		var pz := 3.0 + float((i * 19) % 6)
+		_box(Vector3(0.16, 0.02, 0.12), Color("cfc8b4"), Vector3(px, 0.02, pz), Vector3(0, float(i * 34), 0), false)
+	for i in range(9):
+		var lx := -6.0 + float((i * 37) % 14)
+		var lz := 4.0 + float((i * 53) % 6)
+		_tuft(Vector3(lx, 0.12, lz), 0.13, 0.28, Color("5a5a3a"))
 
 
 func _tuft(pos: Vector3, radius: float, height: float, color: Color) -> void:
@@ -125,12 +145,12 @@ func _build_church() -> void:
 			_sphere(0.3 + k * 0.12, Palette.SMOKE, Vector3(3.4 + k * 0.25, 7.3 + k * 0.6, -8.0), false)
 		_landmark("heating", Vector3(3.4, 6.2, -8.0))
 	# gutter to repair by the tower, broom by the path, notice board
-	var gutter_tilt := Vector3.ZERO if WorldState.has("gutter") else Vector3(0, 0, 16)
-	_cyl(0.06, 0.06, 3.6, Palette.LAMP_POST, Vector3(-1.85, 2.0, 0.9), gutter_tilt, 6)
-	if not WorldState.has("gutter"):
-		# zerwana rura zostawia kałużę pod ścianą
+	var fixed: bool = WorldState.has("gutter")
+	_cyl(0.06, 0.06, 3.6, Palette.LAMP_POST, Vector3(-1.85, 2.0, 0.9), Vector3.ZERO if fixed else Vector3(0, 0, 16), 6)
+	if not fixed:
+		# zerwana rura zostawia kałużę pod ścianą; po naprawie nie ma już czego naprawiać
 		_box(Vector3(1.2, 0.03, 0.9), Palette.STAIN, Vector3(-2.2, 0.05, 1.0), Vector3.ZERO, false)
-	_activity(Vector3(-1.85, 1, 1.6), Vector3(1.6, 2, 1.6), "repair_gutter")
+		_activity(Vector3(-1.85, 1, 1.6), Vector3(1.6, 2, 1.6), "repair_gutter")
 	# miotła stoi przy ścieżce, z dala od drzwi, żeby było ją widać
 	_cyl(0.03, 0.03, 1.4, Palette.TRUNK, Vector3(2.3, 0.7, 6.2), Vector3(0, 0, 12), 5)
 	_box(Vector3(0.18, 0.35, 0.18), Color("8a7a4a"), Vector3(2.45, 0.18, 6.2))
@@ -183,7 +203,7 @@ func _build_street_furniture() -> OmniLight3D:
 	_box(Vector3(0.1, 0.5, 0.45), Palette.BENCH_LEG, Vector3(-4.2, 0.25, 5.5))
 	_box(Vector3(0.1, 0.5, 0.45), Palette.BENCH_LEG, Vector3(-2.6, 0.25, 5.5))
 	_collider(Vector3(1.9, 1, 0.6), Vector3(-3.4, 0.5, 5.4))
-	_activity(Vector3(-3.4, 1, 6.3), Vector3(2.2, 2, 1.2), "read_breviary")
+	_interactable(Vector3(-3.4, 1, 6.3), Vector3(2.2, 2, 1.2), "Ławka: usiądź z brewiarzem", "bench")
 	_box(Vector3(0.08, 1.2, 1.8), Palette.BOARD_FRAME, Vector3(-1.6, 1.4, 2.6))
 	_box(Vector3(0.04, 1.0, 1.6), Palette.BOARD_FACE, Vector3(-1.54, 1.4, 2.6), Vector3.ZERO, false)
 	_cyl(0.05, 0.05, 0.9, Palette.BOARD_FRAME, Vector3(-1.6, 0.45, 2.0), Vector3.ZERO, 6)
@@ -205,13 +225,23 @@ func _build_graveyard() -> void:
 	_collider(Vector3(0.3, 1.2, 5), Vector3(-7.6, 0.55, -5))
 
 
-func _build_tree(pos: Vector3) -> void:
+func _build_tree(pos: Vector3, apples: bool = false) -> void:
 	_cyl(0.18, 0.26, 1.6, Palette.TRUNK, pos + Vector3(0, 0.8, 0), Vector3.ZERO, 7)
 	_collider(Vector3(0.5, 2, 0.5), pos + Vector3(0, 1, 0))
 	_sphere(1.5, WorldState.canopy_color(Palette.CANOPY), pos + Vector3(0, 2.5, 0))
 	_sphere(1.1, WorldState.canopy_color(Palette.CANOPY_2), pos + Vector3(0.3, 3.6, 0.2))
 	if WorldState.snow():
 		_sphere(0.9, Palette.SNOW, pos + Vector3(0.1, 3.9, 0.1), false)
+	if not apples:
+		return
+	# jabłoń: owoce na dolnych gałęziach dojrzewają od lata i odnawiają się co dzień
+	var left := WorldState.apples_on_tree()
+	for i in range(left):
+		var a := TAU * float(i) / float(Game.APPLES_PER_DAY) + 0.7
+		# na zewnątrz korony, żeby owoce było widać, i na wysokości ręki
+		_sphere(0.17, Palette.APPLE, pos + Vector3(cos(a) * 1.62, 2.05 + (i % 2) * 0.28, sin(a) * 1.62), false)
+	if left > 0:
+		_activity(Vector3(pos.x + 1.2, 1, pos.z + 1.4), Vector3(2.0, 2, 1.8), "pick_apple")
 
 
 ## Czapa śniegu na dachu: ta sama bryła, odrobinę mniejsza i wyżej.

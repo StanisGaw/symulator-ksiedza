@@ -7,10 +7,11 @@ const PATH := "user://parafia.save"
 const VERSION := 1
 
 const INTS := ["day", "start_unix", "money", "reputation", "condition", "trad", "young", "curia",
-	"week_income", "week_expenses", "mass_hour", "rests_today", "visit_index"]
+	"week_income", "week_expenses", "mass_hour", "meals_today", "apples_picked", "visit_index", "respect"]
 const FLOATS := ["energy"]
 const DICTS := ["done_today"]
-const ARRAYS := ["scheduled", "pending_investments", "fired_events", "log_lines", "built", "seen"]
+const ARRAYS := ["scheduled", "pending_investments", "fired_events", "log_lines", "built", "seen",
+	"masses_done", "masses_missed"]
 
 
 static func has_save() -> bool:

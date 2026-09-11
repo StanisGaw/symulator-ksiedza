@@ -24,6 +24,15 @@ func face(dir: Vector3) -> void:
 	_model.rotation.y = atan2(dir.x, dir.z)
 
 
+## Obrót modelu wokół pionu, do animacji scen.
+func model_yaw() -> float:
+	return _model.rotation.y
+
+
+func set_model_yaw(value: float) -> void:
+	_model.rotation.y = value
+
+
 ## Rekwizyt w rękach na czas sceny: miotła, brewiarz. Trzymany przez model,
 ## więc obraca się razem z księdzem.
 func hold(prop: Node3D) -> void:
@@ -54,9 +63,9 @@ func set_pose(pose: String) -> void:
 			_model.scale = Vector3(1, 0.94, 1)
 			_model.rotation.x = deg_to_rad(24)
 		"lie":
-			_model.scale = Vector3(1, 0.9, 1)
-			_model.rotation.x = deg_to_rad(88)
-			_model.position.y = -0.55
+			# obrót o prosty kąt kładzie ciało wzdłuż łóżka, głową w stronę poduszki
+			_model.scale = Vector3(1, 0.95, 1)
+			_model.rotation = Vector3(deg_to_rad(-90), 0, 0)
 		_:
 			_model.scale = Vector3.ONE
 			_model.rotation.x = 0.0
