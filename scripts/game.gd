@@ -14,8 +14,17 @@ signal world_changed
 
 const MINUTES_PER_SECOND := 2.0
 const FAST_MULT := 10.0
-const DAY_START := 7 * 60
+const DAY_START := 6 * 60
 const WEEKLY_EXPENSES := 4200
+## Msze są o stałych porach. Żeby zacząć, trzeba być w kościele najwyżej kwadrans przed
+## i najwyżej dziesięć minut po. Opuszczona msza kosztuje szacunek i tradycjonalistów.
+const MASS_HOURS := [7, 12, 19]
+const MASS_HOURS_WEEKDAY := [7, 19]
+const MASS_WINDOW_BEFORE := 15
+const MASS_WINDOW_AFTER := 10
+const MASS_ATTENDANCE := {7: 0.75, 12: 1.0, 19: 0.85}
+const RESPECT_PER_MASS := 2
+const RESPECT_PER_MISSED := 3
 
 const ACTIVITIES := {
 	"repair_gutter": {"label": "Napraw rynnę", "minutes": 60, "energy": 20, "once": true,
@@ -26,21 +35,22 @@ const ACTIVITIES := {
 	"visit_sick": {"label": "Odwiedziny chorego (samochód)", "minutes": 90, "energy": 20, "once": true,
 		"visit": true, "effects": {}, "toast": "",
 		"cutscene": "Odwiedziny", "cut_location": "visit", "return_location": "outside", "return_spawn": "car"},
-	"mass": {"label": "Odpraw mszę", "minutes": 60, "energy": 25, "once": true, "mass": true,
+	"mass": {"label": "Odpraw mszę", "minutes": 60, "energy": 25, "mass": true,
 		"cutscene": "Msza święta", "director_group": "mass_director"},
 	"confession": {"label": "Spowiadaj", "minutes": 45, "energy": 10, "once": true,
 		"effects": {"trad": 2, "reputation": 1}, "toast": "Trzy spowiedzi. Tradycjonaliści +2.",
 		"cutscene": "Spowiedź", "director_group": "activity_scene", "scene": {"kind": "confession", "seconds": 6.0}},
-	"read_breviary": {"label": "Usiądź z brewiarzem", "minutes": 60, "energy": -25, "rest": true,
-		"toast": "Godzina na ławce z brewiarzem. Głowa lżejsza.",
+	"read_breviary": {"label": "Usiądź z brewiarzem", "minutes": 0, "energy": 0, "read": true,
 		"cutscene": "Brewiarz", "director_group": "activity_scene", "scene": {"kind": "read", "seconds": 3.5}},
 	"night": {"label": "Sen", "minutes": 0, "energy": 0, "night": true,
 		"cutscene": "Noc", "director_group": "activity_scene", "scene": {"kind": "sleep", "seconds": 2.5}},
-	"meal": {"label": "Zjedz obiad", "minutes": 45, "energy": -20, "rest": true, "money": -25,
+	"pick_apple": {"label": "Zerwij jabłko", "minutes": 5, "energy": -6, "apple": true,
+		"toast": "Jabłko prosto z drzewa."},
+	"meal": {"label": "Zjedz obiad", "minutes": 45, "energy": -20, "meal": true, "money": -25,
 		"toast": "Obiad zjedzony. Za zakupy poszło 25 zł."},
 	"clean_church": {"label": "Posprzątaj kościół", "minutes": 45, "energy": 15, "once": true,
 		"effects": {"condition": 3, "trad": 1}, "toast": "Kościół posprzątany. Stan budynków +3.", "world": true,
-		"cutscene": "Sprzątanie kościoła", "director_group": "activity_scene", "scene": {"kind": "sweep", "walk": false, "seconds": 4.0, "zoom": 9.0}},
+		"cutscene": "Sprzątanie kościoła", "director_group": "activity_scene", "scene": {"kind": "sweep", "seconds": 4.0, "zoom": 9.0}},
 }
 
 const INVESTMENTS := {
@@ -70,9 +80,13 @@ var curia := 50
 var week_income := 0
 var week_expenses := 0
 var mass_hour := 0
+var respect := 0
+var masses_done: Array = []
+var masses_missed: Array = []
 var location := "outside"
 var done_today: Dictionary = {}
-var rests_today := 0
+var meals_today := 0
+var apples_picked := 0
 var scheduled: Array = []
 var pending_investments: Array = []
 var fired_events: Array = []
@@ -86,7 +100,9 @@ var _cut_start := 0.0
 var _cut_len := 0.0
 var mass_attendance := 0
 var _mass_roraty := false
+var _mass_started_hour := 12
 var _sleep_minutes := 480.0
+var _read_minutes := 60.0
 
 
 func _ready() -> void:
@@ -97,6 +113,9 @@ func _ready() -> void:
 		SaveGame.wipe()
 	if start_unix == 0:
 		start_unix = Calendar.today_start_unix()
+	# po wczytaniu albo starcie o późniejszej godzinie msze, których pora minęła,
+	# muszą być od razu rozliczone, a nie dopiero przy pierwszej klatce bez okna
+	call_deferred("_check_missed_masses")
 	for arg in args:
 		if arg.begins_with("--start="):
 			# --start=2025-12-24 zaczyna grę w wybranym dniu roku
@@ -131,6 +150,7 @@ func _process(delta: float) -> void:
 		return
 	var mult := FAST_MULT if Input.is_action_pressed("time_faster") else 1.0
 	minutes += delta * MINUTES_PER_SECOND * mult
+	_check_missed_masses()
 	if minutes >= 24 * 60:
 		_force_sleep()
 
@@ -170,6 +190,58 @@ func feast_name() -> String:
 
 func is_sunday() -> bool:
 	return Calendar.is_sunday(day)
+
+
+# ---------- msze ----------
+
+## W dzień powszedni są dwie msze, rano i wieczorem. Suma w południe dochodzi
+## w niedziele i święta nakazane, kiedy ludzie faktycznie mają czas przyjść.
+func mass_hours_today() -> Array:
+	if is_sunday() or Calendar.is_holy_day(day):
+		return MASS_HOURS
+	return MASS_HOURS_WEEKDAY
+
+
+## Godzina mszy, której okno jest teraz otwarte. -1, gdy żadnej.
+func open_mass_hour() -> int:
+	for h in mass_hours_today():
+		if masses_done.has(h):
+			continue
+		if minutes >= h * 60 - MASS_WINDOW_BEFORE and minutes <= h * 60 + MASS_WINDOW_AFTER:
+			return int(h)
+	return -1
+
+
+## Najbliższa msza, której jeszcze nie odprawiono. -1, gdy na dziś już po wszystkim.
+func next_mass_hour() -> int:
+	for h in mass_hours_today():
+		if not masses_done.has(h) and not masses_missed.has(h):
+			return int(h)
+	return -1
+
+
+func mass_hint() -> String:
+	var next := next_mass_hour()
+	if next < 0:
+		return "Na dziś już po mszach."
+	var wait := int(next * 60 - MASS_WINDOW_BEFORE - minutes)
+	if wait <= 0:
+		return "Msza o %02d:00 właśnie się zaczyna." % next
+	return "Najbliższa msza o %02d:00. Wejdź do kościoła najwyżej kwadrans wcześniej, czyli za %s." % [next, duration_text(float(wait))]
+
+
+## Msze, na które ksiądz nie zdążył, rozliczają się same, gdy minie ich pora.
+func _check_missed_masses() -> void:
+	for h in mass_hours_today():
+		if masses_done.has(h) or masses_missed.has(h):
+			continue
+		if minutes > h * 60 + MASS_WINDOW_AFTER:
+			masses_missed.append(h)
+			respect -= RESPECT_PER_MISSED
+			apply_effects({"trad": -2, "reputation": -1})
+			var text := "Msza o %02d:00 się nie odbyła. Szacunek -%d, tradycjonaliści -2." % [h, RESPECT_PER_MISSED]
+			toast.emit(text)
+			add_log(text)
 
 
 # ---------- effects ----------
@@ -236,9 +308,28 @@ func do_activity(id: String) -> void:
 	if modal_open:
 		return
 	var def: Dictionary = ACTIVITIES[id]
-	var is_rest: bool = def.get("rest", false)
-	if is_rest:
-		if not _can_rest(def):
+	if def.get("apple", false):
+		_pick_apple(def)
+		return
+	var mass_hour_now := -1
+	if def.get("mass", false):
+		mass_hour_now = open_mass_hour()
+		if mass_hour_now < 0:
+			toast.emit(mass_hint())
+			return
+	if def.has("builds") and built.has(def["builds"]):
+		toast.emit("To już naprawione.")
+		return
+	var is_meal: bool = def.get("meal", false)
+	if is_meal:
+		if meals_today >= MEALS_PER_DAY:
+			toast.emit("Dwa posiłki dziennie wystarczą.")
+			return
+		if energy >= 99.0:
+			toast.emit("Nie jesteś głodny.")
+			return
+		if money + int(def["money"]) < 0:
+			toast.emit("Nie ma za co.")
 			return
 	else:
 		if def.get("once", false) and done_today.has(id):
@@ -251,9 +342,13 @@ func do_activity(id: String) -> void:
 		toast.emit("Za późno na to dzisiaj.")
 		return
 	minutes += def["minutes"]
-	if not is_rest:
+	if not is_meal:
 		energy = maxf(0.0, energy - def["energy"])
 		done_today[id] = true
+	if mass_hour_now >= 0:
+		# msza liczy się jako odprawiona dopiero tutaj, po wszystkich kontrolach
+		_mass_started_hour = mass_hour_now
+		masses_done.append(mass_hour_now)
 	if def.has("cutscene"):
 		_begin_cutscene(id, def)
 	else:
@@ -261,33 +356,79 @@ func do_activity(id: String) -> void:
 	state_changed.emit()
 
 
-## Odpoczynek w ciągu dnia. Każdy kolejny daje mniej, bo od leżenia człowiek nie wypoczywa
-## w nieskończoność: pełna wartość, potem 60, 40 i 20 procent.
-const REST_FALLOFF := [1.0, 0.6, 0.4, 0.2]
+## Jabłka z przykościelnego drzewa: mały zastrzyk energii, trzy dziennie,
+## do zerwania tylko wtedy, gdy owoce są na drzewie.
+const APPLES_PER_DAY := 3
 
 
-func rest_gain(def: Dictionary) -> int:
-	var base := -int(def["energy"])
-	var factor: float = REST_FALLOFF[mini(rests_today, REST_FALLOFF.size() - 1)]
-	return maxi(1, int(round(base * factor)))
+func apples_left() -> int:
+	return maxi(0, APPLES_PER_DAY - apples_picked)
 
 
-func _can_rest(def: Dictionary) -> bool:
-	if energy >= 99.0:
-		toast.emit("Nie jesteś zmęczony.")
-		return false
-	if def.has("money") and money + int(def["money"]) < 0:
-		toast.emit("Nie ma za co.")
-		return false
-	return true
-
-
-func _take_rest(def: Dictionary) -> void:
-	var gain := rest_gain(def)
+func _pick_apple(def: Dictionary) -> void:
+	if apples_left() <= 0:
+		toast.emit("Na dolnych gałęziach nic już nie ma. Jutro dojrzeją następne.")
+		return
+	if minutes + def["minutes"] > 24 * 60:
+		toast.emit("Za późno na to dzisiaj.")
+		return
+	minutes += def["minutes"]
+	apples_picked += 1
+	var gain := -int(def["energy"])
 	energy = clampf(energy + gain, 0.0, 100.0)
-	rests_today += 1
-	if def.has("money"):
-		apply_effects({"money": def["money"]})
+	toast.emit("%s Energia +%d. Zostały jabłka: %d." % [def["toast"], gain, apples_left()])
+	world_changed.emit()
+	state_changed.emit()
+
+
+## Ławka z brewiarzem: energia rośnie z czasem, który się na niej spędzi.
+## Sen daje 12 na godzinę, czytanie 10, więc siedzenie nigdy nie bije nocy.
+const READ_ENERGY_PER_HOUR := 10.0
+const READ_MIN_MINUTES := 15
+const READ_MAX_MINUTES := 240
+const MEALS_PER_DAY := 2
+
+
+func read_breviary(total_minutes: float) -> void:
+	if modal_open or cutscene:
+		return
+	var span := clampf(total_minutes, float(READ_MIN_MINUTES), float(READ_MAX_MINUTES))
+	if minutes + span > 24 * 60:
+		toast.emit("Za późno, żeby tyle siedzieć. Idź spać.")
+		return
+	_read_minutes = span
+	minutes += span
+	_begin_cutscene("read_breviary", ACTIVITIES["read_breviary"])
+
+
+func read_gain(total_minutes: float) -> int:
+	return int(round(total_minutes / 60.0 * READ_ENERGY_PER_HOUR))
+
+
+## „45 minut”, „1 h 30 min”
+static func duration_text(total_minutes: float) -> String:
+	var m := int(round(total_minutes))
+	if m < 60:
+		return "%d minut" % m
+	if m % 60 == 0:
+		return hours_text(float(m) / 60.0)
+	return "%d h %d min" % [m / 60, m % 60]
+
+
+## Ile minut zostało do otwarcia okna najbliższej mszy. Zero, gdy okno już otwarte
+## albo gdy na dziś nie ma czego czekać.
+func minutes_to_next_mass() -> float:
+	var next := next_mass_hour()
+	if next < 0:
+		return 0.0
+	return maxf(0.0, next * 60 - MASS_WINDOW_BEFORE - minutes)
+
+
+func _take_meal(def: Dictionary) -> void:
+	var gain := -int(def["energy"])
+	energy = clampf(energy + gain, 0.0, 100.0)
+	meals_today += 1
+	apply_effects({"money": def["money"]})
 	toast.emit("%s Energia +%d." % [def["toast"], gain])
 	state_changed.emit()
 
@@ -299,8 +440,14 @@ func next_visit() -> Dictionary:
 
 ## Skutki czynności: liczby, komunikat i ślad w świecie.
 func _finish_activity(def: Dictionary) -> void:
-	if def.get("rest", false):
-		_take_rest(def)
+	if def.get("meal", false):
+		_take_meal(def)
+		return
+	if def.get("read", false):
+		var gain := read_gain(_read_minutes)
+		energy = clampf(energy + gain, 0.0, 100.0)
+		toast.emit("Na ławce z brewiarzem: %s. Energia +%d." % [duration_text(_read_minutes), gain])
+		state_changed.emit()
 		return
 	if def.get("visit", false):
 		var person := next_visit()
@@ -325,6 +472,10 @@ func _attendance(start_minutes: float) -> int:
 		attendance = int(attendance * 2.2)
 	if mass_hour == 99:
 		attendance = int(attendance * 1.25)
+	attendance = int(attendance * float(MASS_ATTENDANCE.get(_mass_started_hour, 1.0)))
+	if _mass_started_hour == mass_hour:
+		# godzina sumy ustalona z parafianami przyciąga dodatkowych
+		attendance = int(attendance * 1.1)
 	# święta ściągają ludzi, którzy nie przychodzą w zwykłą niedzielę
 	attendance = int(attendance * Calendar.attendance_multiplier(day, start_minutes))
 	if Calendar.is_roraty(day, start_minutes):
@@ -389,10 +540,16 @@ func finish_cutscene() -> void:
 func _hold_mass(attendance: int) -> void:
 	var taca := int(attendance * randf_range(3.2, 5.0) * Calendar.taca_multiplier(day, _cut_start))
 	apply_effects({"money": taca, "reputation": 1})
-	if mass_hour == 7:
-		apply_effects({"trad": 1})
-	elif mass_hour == 11:
-		apply_effects({"young": 1})
+	var respect_gain := RESPECT_PER_MASS * (2 if is_sunday() or Calendar.feast_name(day) != "" else 1)
+	respect += respect_gain
+	match _mass_started_hour:
+		7:
+			apply_effects({"trad": 1})
+		12:
+			apply_effects({"young": 1})
+		19:
+			# wieczorna msza dla tych, którzy rano są w pracy
+			apply_effects({"reputation": 1})
 	var label := "Msza"
 	if _mass_roraty:
 		# ciemny poranek, świece i ci, którym naprawdę zależy
@@ -400,7 +557,7 @@ func _hold_mass(attendance: int) -> void:
 		apply_effects({"trad": 2})
 	elif Calendar.feast_name(day) != "" and Calendar.attendance_multiplier(day, _cut_start) > 1.0:
 		label = Calendar.feast_name(day)
-	var text := "%s: %d osób, taca %d zł." % [label, attendance, taca]
+	var text := "%s o %02d:00: %d osób, taca %d zł. Szacunek +%d." % [label, _mass_started_hour, attendance, taca, respect_gain]
 	toast.emit(text)
 	add_log(text)
 
@@ -515,13 +672,16 @@ func _force_sleep() -> void:
 
 
 func _start_new_day(new_energy: float, extra_lines: Array[String], wake_minutes: float = float(DAY_START)) -> void:
-	var missed_holy_day := Calendar.is_holy_day(day) and not done_today.has("mass")
+	var missed_holy_day := Calendar.is_holy_day(day) and masses_done.is_empty()
 	var missed_name := Calendar.feast_name(day)
 	day += 1
 	minutes = clampf(wake_minutes, 0.0, 23.0 * 60.0)
 	energy = clampf(new_energy, 20.0, 100.0)
 	done_today.clear()
-	rests_today = 0
+	apples_picked = 0
+	meals_today = 0
+	masses_done.clear()
+	masses_missed.clear()
 	var lines: Array[String] = extra_lines.duplicate()
 	if missed_holy_day:
 		# święto nakazane bez mszy zauważą wszyscy, łącznie z kurią
@@ -628,7 +788,11 @@ func start_new_game() -> void:
 	week_expenses = 0
 	mass_hour = 0
 	done_today.clear()
-	rests_today = 0
+	apples_picked = 0
+	meals_today = 0
+	masses_done.clear()
+	masses_missed.clear()
+	respect = 0
 	scheduled.clear()
 	pending_investments.clear()
 	fired_events.clear()

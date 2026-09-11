@@ -5,14 +5,15 @@ extends Node3D
 ## scena wygląda inaczej na placu i w kościele. Każdą można pominąć.
 
 const WALK_SPEED := 3.2
+const SWEEP_SPEED := 5.5
+const SWEEP_ARC := 0.55
 
 var active := false
 var kind := ""
 var elapsed := 0.0
 var length := 4.0
 var people: Array = []
-var _path: Array = []
-var _leg := 0
+var _base_yaw := 0.0
 var _player: Node3D
 var _spots: Dictionary = {}
 var _rig: Node3D
@@ -31,7 +32,6 @@ func start(def: Dictionary) -> void:
 	length = float(scene.get("seconds", 4.0))
 	elapsed = 0.0
 	people.clear()
-	_leg = 0
 	_player = get_tree().get_first_node_in_group("player") as Node3D
 	# po scenie ksiądz wraca tam, gdzie stał, żeby nie wylądować w ławkach
 	_return_pos = _player.global_position
@@ -44,10 +44,7 @@ func start(def: Dictionary) -> void:
 		_rig.set_zoom(float(scene.get("zoom", 10.0)))
 	match kind:
 		"sweep":
-			if bool(scene.get("walk", true)):
-				_start_sweep()
-			else:
-				_start_sweep_in_place()
+			_start_sweep()
 		"confession":
 			_start_confession()
 		"read":
@@ -67,16 +64,10 @@ func _spot(name: String, fallback: Vector3 = Vector3.ZERO) -> Vector3:
 
 # ---------- poszczególne sceny ----------
 
+## Zamiatanie w miejscu: krótkie ruchy miotłą w lewo i w prawo. Ta sama animacja
+## na placu i w kościele, więc nigdzie nie da się wejść w ławki ani w ścianę.
 func _start_sweep() -> void:
-	_path = [_spot("sweep_a"), _spot("sweep_b"), _spot("sweep_a"), _spot("sweep_b")]
-	_player.global_position = _path[0] + Vector3(0, 1.1, 0)
-	_player.set_pose("work")
-	_player.hold(_broom())
-
-
-## Sprzątanie w ciasnym wnętrzu: bez chodzenia, żeby nie wchodzić w ławki.
-func _start_sweep_in_place() -> void:
-	_path = []
+	_base_yaw = _player.model_yaw()
 	_player.set_pose("work")
 	_player.hold(_broom())
 
@@ -132,7 +123,8 @@ func _start_seated(spot_name: String, facing: Vector3) -> void:
 
 
 func _start_sleep() -> void:
-	_player.global_position = _spot("bed_spot") + Vector3(0, 0.9, 0)
+	# materac ma wierzch na wysokości 0.5, więc ciało kładzie się tuż nad nim
+	_player.global_position = _spot("bed_spot") + Vector3(0, 0.62, 0)
 	_player.set_pose("lie")
 
 
@@ -165,13 +157,11 @@ func _process(delta: float) -> void:
 		_finish()
 
 
-func _run_sweep(delta: float) -> void:
-	if _leg >= _path.size() - 1:
-		return
-	var goal: Vector3 = _path[_leg + 1]
-	if _step(_player, goal, delta * 1.4):
-		_leg += 1
-	_player.bob(elapsed)
+func _run_sweep(_delta: float) -> void:
+	# wymach miotłą: ciało skręca w lewo i w prawo, ramiona idą razem z nim
+	var swing := sin(elapsed * SWEEP_SPEED)
+	_player.set_model_yaw(_base_yaw + swing * SWEEP_ARC)
+	_player.bob(elapsed * 0.7)
 
 
 func _run_confession(delta: float) -> void:

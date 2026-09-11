@@ -107,9 +107,13 @@ func _ready() -> void:
 		_sphere(0.08, Palette.SPEAKER, Vector3(1.6, 1.24, -5.6), false)
 		_landmark("sound", Vector3(0, 2.6, -5.6))
 	if not WorldState.done_today("clean_church"):
-		# kurz i liście naniesione od drzwi
+		# naniesione od drzwi: kurz, liście, ogarki świec i papierki po kartkach z ogłoszeniami
 		for i in range(7):
 			_box(Vector3(0.4, 0.02, 0.3), Palette.STAIN, Vector3(-3.0 + float((i * 17) % 7), 0.02, 4.0 + float((i * 23) % 4)), Vector3(0, i * 24, 0), false)
+		for i in range(5):
+			_cyl(0.035, 0.035, 0.06, Palette.CANDLE, Vector3(-2.2 + float((i * 29) % 6), 0.03, 1.2 + float((i * 19) % 7)), Vector3(90, float(i * 41), 0), 6)
+		for i in range(4):
+			_box(Vector3(0.14, 0.015, 0.1), Palette.PAPER, Vector3(-1.4 + float((i * 31) % 5), 0.015, 2.6 + float((i * 23) % 5)), Vector3(0, float(i * 37), 0), false)
 	# altar
 	_box(Vector3(2.6, 1.0, 1.1), WorldState.altar_cloth(), Vector3(0, 0.5, -6.3))
 	_box(Vector3(3.6, 0.3, 2.4), Palette.FLOOR_WOOD, Vector3(0, 0.15, -6.0))

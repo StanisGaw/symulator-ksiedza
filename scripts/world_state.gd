@@ -89,6 +89,14 @@ static func church_ambient() -> Array:
 			return [Color("6a6478"), 1.3]
 
 
+## Jabłka wiszą na drzewie od lata do końca jesieni.
+static func apples_on_tree() -> int:
+	var season := Calendar.time_of_year(Game.day)
+	if season != "lato" and season != "jesień":
+		return 0
+	return Game.apples_left()
+
+
 static func snow() -> bool:
 	return Calendar.is_snowy(Game.day)
 

@@ -66,6 +66,6 @@ func _ready() -> void:
 	_door(Vector3(0, 1, S / 2 - 0.8), Vector3(2.0, 2, 1.2), "Wyjdź na zewnątrz", "outside", "rectory_door")
 	_spawn("door", Vector3(0, 0, S / 2 - 2.0))
 	_spawn("bed", Vector3(-1.6, 0, -2.4))
-	_spot("bed_spot", Vector3(-2.9, 0, -2.4))
+	_spot("bed_spot", Vector3(-2.9, 0, -1.35))
 	_spot("sweep_a", Vector3(-1.0, 0, 1.0))
 	_spot("sweep_b", Vector3(2.0, 0, -1.0))

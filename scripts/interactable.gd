@@ -20,8 +20,16 @@ func prompt_text() -> String:
 			return label
 		"activity":
 			var def: Dictionary = Game.ACTIVITIES[params["id"]]
-			if def.get("rest", false):
-				return "%s (%d min, +%d energii)" % [def["label"], def["minutes"], Game.rest_gain(def)]
+			if def.get("apple", false):
+				if Game.apples_left() <= 0:
+					return "Jabłoń (na dziś nic już nie zostało)"
+				return "%s (%d min, +%d energii, zostały %d)" % [def["label"], def["minutes"], -int(def["energy"]), Game.apples_left()]
+			if def.get("meal", false):
+				return "%s (%d min, +%d energii, %d zł)" % [def["label"], def["minutes"], -int(def["energy"]), -int(def["money"])]
+			if def.get("mass", false):
+				if Game.open_mass_hour() >= 0:
+					return "Odpraw mszę o %02d:00 (%d min, -%d energii)" % [Game.open_mass_hour(), def["minutes"], def["energy"]]
+				return Game.mass_hint()
 			if def.get("visit", false) and not Game.done_today.has(params["id"]):
 				return "Odwiedź: %s (%d min, -%d energii)" % [Game.next_visit()["name"], def["minutes"], def["energy"]]
 			var done: bool = Game.done_today.has(params["id"]) and bool(def.get("once", false))
@@ -44,3 +52,5 @@ func activate() -> void:
 			Game.request_modal("sleep", {})
 		"status":
 			Game.request_modal("status", {})
+		"bench":
+			Game.request_modal("bench", {})
