@@ -148,3 +148,8 @@ func _ready() -> void:
 	_box(Vector3(1.6, 2.4, 0.2), Palette.DOOR, Vector3(0, 1.2, D / 2 + 0.1))
 	_door(Vector3(0, 1, D / 2 - 0.9), Vector3(2.4, 2, 1.4), "Wyjdź na zewnątrz", "outside", "church_door")
 	_spawn("door", Vector3(0, 0, D / 2 - 2.2))
+	_spot("sweep_a", Vector3(-2.0, 0, 5.4))
+	_spot("sweep_b", Vector3(2.4, 0, 0.4))
+	_spot("confession_seat", Vector3(-3.2, 0, 5.2))
+	_spot("confession_kneel", Vector3(-2.1, 0, 5.4))
+	_spot("scene_door", Vector3(0, 0, 6.6))

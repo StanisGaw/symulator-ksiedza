@@ -5,11 +5,17 @@ extends Node3D
 
 
 var landmarks: Dictionary = {}
+## Miejsca akcji dla scen czynności: gdzie się zamiata, gdzie siada spowiednik.
+var spots: Dictionary = {}
 
 
 ## Miejsce, które kamera pokaże, gdy pojawi się tu coś nowego.
 func _landmark(id: String, pos: Vector3) -> void:
 	landmarks[id] = pos
+
+
+func _spot(spot_name: String, pos: Vector3) -> void:
+	spots[spot_name] = pos
 
 
 func _mesh(mesh: Mesh, mat: Material, pos: Vector3, rot_deg: Vector3 = Vector3.ZERO) -> MeshInstance3D:

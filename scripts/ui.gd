@@ -9,6 +9,7 @@ var _toasts: VBoxContainer
 var _modal_layer: Control
 var _cutscene_panel: PanelContainer
 var _cutscene_label: Label
+var _night: ColorRect
 var _queue: Array = []
 var _theme: Theme
 
@@ -27,9 +28,11 @@ func _ready() -> void:
 		if arg.begins_with("--modal="):
 			call_deferred("_debug_modal", arg.trim_prefix("--modal="))
 		elif arg == "--sleep":
-			Game.call_deferred("sleep")
+			Game.call_deferred("sleep_hours", 8.0)
 		elif arg == "--mass":
 			Game.call_deferred("do_activity", "mass")
+		elif arg.begins_with("--do="):
+			Game.call_deferred("do_activity", arg.trim_prefix("--do="))
 		elif arg == "--continue":
 			call_deferred("_enqueue", "continue", {"day": Game.saved_day()})
 		elif arg == "--visit":
@@ -130,6 +133,13 @@ func _build() -> void:
 	_toasts.add_theme_constant_override("separation", 8)
 	_root.add_child(_toasts)
 
+	_night = ColorRect.new()
+	_night.color = Color(0.02, 0.02, 0.04, 0.8)
+	_night.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_night.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_night.visible = false
+	_root.add_child(_night)
+
 	_modal_layer = Control.new()
 	_modal_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_modal_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -137,8 +147,8 @@ func _build() -> void:
 
 	_cutscene_panel = PanelContainer.new()
 	_cutscene_panel.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
-	_cutscene_panel.offset_left = -420
-	_cutscene_panel.offset_top = -120
+	_cutscene_panel.offset_left = -560
+	_cutscene_panel.offset_top = -150
 	_cutscene_panel.offset_right = -24
 	_cutscene_panel.offset_bottom = -24
 	var cut_box := HBoxContainer.new()
@@ -146,6 +156,7 @@ func _build() -> void:
 	_cutscene_label = Label.new()
 	_cutscene_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_cutscene_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_cutscene_label.add_theme_font_size_override("font_size", 18)
 	cut_box.add_child(_cutscene_label)
 	var skip := Button.new()
 	skip.text = "Pomiń"
@@ -162,12 +173,21 @@ func _money(v: int) -> String:
 
 
 func _on_cutscene_started(label: String) -> void:
-	_cutscene_label.text = label + " trwa…"
+	# stan sceny, nie jej napis: zmiana tekstu nie może po cichu wyłączyć wygaszania
+	if Game.cutscene_id == "night":
+		_night.visible = true
+		_night.modulate.a = 0.0
+		create_tween().tween_property(_night, "modulate:a", 1.0, 0.7)
+	_cutscene_label.text = label + "…"
 	_cutscene_panel.visible = true
 	_prompt.visible = false
 
 
 func _on_cutscene_ended() -> void:
+	if _night.visible:
+		var tween := create_tween()
+		tween.tween_property(_night, "modulate:a", 0.0, 0.6)
+		tween.tween_callback(func() -> void: _night.visible = false)
 	_cutscene_panel.visible = false
 	_prompt.visible = true
 
@@ -268,19 +288,32 @@ func _button(box: Control, text: String, cb: Callable, enabled: bool = true) -> 
 
 
 func _show_sleep() -> void:
-	var box := _window("Łóżko", 700.0)
-	_text(box, "Możesz przespać jedną noc albo przewinąć spokojniejszy czas. Przewijanie zatrzyma się samo, gdy coś będzie wymagało decyzji, ale przez ten czas nie odprawiasz mszy i nie ma tacy.")
-	_button(box, "Prześpij do jutra", func() -> void:
-		Game.sleep()
-		_close_modal())
-	_button(box, "Przewiń tydzień", func() -> void:
+	var box := _window("Łóżko", 720.0)
+	_text(box, "Godzina snu to +%d energii, osiem godzin stawia na nogi. Dłuższy sen zabiera dzień, a msze same się nie odprawią." % int(Game.ENERGY_PER_HOUR))
+	var info := _text(box, "", 22)
+	var slider := HSlider.new()
+	slider.min_value = 1
+	slider.max_value = Game.MAX_SLEEP_HOURS
+	slider.step = 1
+	slider.value = 8
+	slider.custom_minimum_size = Vector2(0, 44)
+	box.add_child(slider)
+	var describe := func(hours: float) -> void:
+		var energy := mini(100, int(Game.energy + hours * Game.ENERGY_PER_HOUR))
+		var wake := Game.clock_text_at(Game.minutes + hours * 60.0)
+		var next_day := " (jutro)" if Game.minutes + hours * 60.0 >= 24.0 * 60.0 else ""
+		info.text = "%s  •  pobudka o %s%s  •  energia %d%%" % [Game.hours_text(hours), wake, next_day, energy]
+	slider.value_changed.connect(describe)
+	describe.call(slider.value)
+	_button(box, "Śpij", func() -> void:
+		var hours: float = slider.value
 		_close_modal()
-		Game.call_deferred("skip_days", 7))
-	var to_feast := Calendar.days_to_next_feast(Game.day)
-	if to_feast > 1:
-		_button(box, "Przewiń do %s (%d dni)" % [Calendar.feast_name(Game.day + to_feast), to_feast], func() -> void:
+		Game.call_deferred("sleep_hours", hours))
+	var to_six := Game.hours_until_six()
+	if to_six > 0.0:
+		_button(box, "Śpij do 6:00 (%s)" % Game.hours_text(to_six), func() -> void:
 			_close_modal()
-			Game.call_deferred("skip_days", to_feast))
+			Game.call_deferred("sleep_hours", to_six))
 	_button(box, "Wróć", _close_modal)
 
 

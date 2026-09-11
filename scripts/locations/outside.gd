@@ -22,6 +22,9 @@ func _ready() -> void:
 	_spawn("church_door", Vector3(1, 0, 1.9))
 	_spawn("rectory_door", Vector3(11, 0, -2.6))
 	_spawn("car", Vector3(7.2, 0, 5.8))
+	_spot("sweep_a", Vector3(-1.0, 0, 3.4))
+	_spot("sweep_b", Vector3(2.4, 0, 8.4))
+	_spot("bench_seat", Vector3(-3.4, 0, 5.9))
 
 
 func _build_ground() -> void:
@@ -42,7 +45,7 @@ func _build_ground() -> void:
 	else:
 		# zamiecione: jedna kupka liści przy miotle
 		for i in range(3):
-			_tuft(Vector3(2.6 + i * 0.18, 0.12, 2.9 - i * 0.12), 0.2, 0.24, Color("5a5a3a"))
+			_tuft(Vector3(2.8 + i * 0.18, 0.12, 6.6 - i * 0.12), 0.2, 0.24, Color("5a5a3a"))
 	if WorldState.condition() == WorldState.BAD and not WorldState.snow():
 		# chwasty wzdłuż ścian i przy krawędziach placu (zimą pod śniegiem ich nie widać)
 		for i in range(16):
@@ -128,9 +131,10 @@ func _build_church() -> void:
 		# zerwana rura zostawia kałużę pod ścianą
 		_box(Vector3(1.2, 0.03, 0.9), Palette.STAIN, Vector3(-2.2, 0.05, 1.0), Vector3.ZERO, false)
 	_activity(Vector3(-1.85, 1, 1.6), Vector3(1.6, 2, 1.6), "repair_gutter")
-	_cyl(0.03, 0.03, 1.4, Palette.TRUNK, Vector3(2.1, 0.7, 2.4), Vector3(0, 0, 12), 5)
-	_box(Vector3(0.18, 0.35, 0.18), Color("8a7a4a"), Vector3(2.25, 0.18, 2.4))
-	_activity(Vector3(2.2, 1, 2.6), Vector3(1.4, 2, 1.4), "sweep")
+	# miotła stoi przy ścieżce, z dala od drzwi, żeby było ją widać
+	_cyl(0.03, 0.03, 1.4, Palette.TRUNK, Vector3(2.3, 0.7, 6.2), Vector3(0, 0, 12), 5)
+	_box(Vector3(0.18, 0.35, 0.18), Color("8a7a4a"), Vector3(2.45, 0.18, 6.2))
+	_activity(Vector3(2.4, 1, 6.4), Vector3(1.6, 2, 1.6), "sweep")
 
 
 func _build_rectory() -> void:
@@ -160,11 +164,11 @@ func _build_parking_and_car() -> void:
 	_collider(Vector3(4.2, 2, 2.2), Vector3(cx, 1, cz))
 	_activity(Vector3(cx, 1, cz + 1.9), Vector3(4.4, 2, 1.6), "visit_sick")
 	if WorldState.life() == WorldState.GOOD:
-		# ludzie przyjeżdżają: drugie auto i stojak na rowery
-		_box(Vector3(3.6, 0.7, 1.8), Palette.CAR_DARK, Vector3(cx + 2.6, 0.6, cz - 2.2), Vector3(0, 6, 0))
-		_box(Vector3(1.9, 0.6, 1.6), Palette.GLASS, Vector3(cx + 2.3, 1.2, cz - 2.2), Vector3(0, 6, 0), false)
+		# żywa parafia: rowery przy stojaku. Drugie auto wróci razem z rozbudową parkingu
 		for k in range(3):
 			_cyl(0.04, 0.04, 0.9, Palette.LAMP_POST, Vector3(5.6, 0.45, 1.2 + k * 0.4), Vector3(0, 0, 8), 5)
+			_cyl(0.26, 0.26, 0.06, Palette.WHEEL, Vector3(5.35, 0.26, 1.2 + k * 0.4), Vector3(90, 0, 0), 8)
+			_cyl(0.26, 0.26, 0.06, Palette.WHEEL, Vector3(5.95, 0.26, 1.2 + k * 0.4), Vector3(90, 0, 0), 8)
 
 
 func _build_street_furniture() -> OmniLight3D:
@@ -179,6 +183,7 @@ func _build_street_furniture() -> OmniLight3D:
 	_box(Vector3(0.1, 0.5, 0.45), Palette.BENCH_LEG, Vector3(-4.2, 0.25, 5.5))
 	_box(Vector3(0.1, 0.5, 0.45), Palette.BENCH_LEG, Vector3(-2.6, 0.25, 5.5))
 	_collider(Vector3(1.9, 1, 0.6), Vector3(-3.4, 0.5, 5.4))
+	_activity(Vector3(-3.4, 1, 6.3), Vector3(2.2, 2, 1.2), "read_breviary")
 	_box(Vector3(0.08, 1.2, 1.8), Palette.BOARD_FRAME, Vector3(-1.6, 1.4, 2.6))
 	_box(Vector3(0.04, 1.0, 1.6), Palette.BOARD_FACE, Vector3(-1.54, 1.4, 2.6), Vector3.ZERO, false)
 	_cyl(0.05, 0.05, 0.9, Palette.BOARD_FRAME, Vector3(-1.6, 0.45, 2.0), Vector3.ZERO, 6)

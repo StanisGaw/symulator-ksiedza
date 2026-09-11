@@ -36,6 +36,11 @@ func set_offset(v: Vector3, immediate: bool = false) -> void:
 		snap()
 
 
+## Aktualny cel powiększenia, żeby scena mogła go na chwilę zmienić i przywrócić.
+func zoom_goal() -> float:
+	return _zoom_goal
+
+
 func snap() -> void:
 	if target:
 		var goal := target.global_position

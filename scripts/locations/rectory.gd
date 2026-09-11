@@ -39,6 +39,19 @@ func _ready() -> void:
 	_box(Vector3(0.6, 0.6, 0.06), Palette.DESK, Vector3(2.3, 0.8, -2.5))
 	_collider(Vector3(1.9, 1, 1.0), Vector3(2.3, 0.5, -3.2))
 	_interactable(Vector3(2.3, 1, -1.9), Vector3(2.0, 2, 1.4), "Biurko: finanse parafii", "desk")
+	# kitchen corner: table, chairs, stove
+	_box(Vector3(1.4, 0.08, 1.0), Palette.DESK, Vector3(2.6, 0.76, 1.6))
+	for x in [2.0, 3.2]:
+		for z in [1.2, 2.0]:
+			_box(Vector3(0.08, 0.74, 0.08), Palette.DESK, Vector3(x, 0.37, z))
+	_box(Vector3(0.44, 0.5, 0.44), Palette.BENCH, Vector3(1.6, 0.25, 1.6))
+	_box(Vector3(0.44, 0.5, 0.44), Palette.BENCH, Vector3(3.6, 0.25, 1.6))
+	_box(Vector3(0.9, 0.9, 0.7), Palette.WALL_INT, Vector3(3.4, 0.45, 3.0))
+	_glow_box(Vector3(0.5, 0.06, 0.4), Palette.LAMP_LIGHT, 0.8, Vector3(3.4, 0.92, 3.0))
+	_box(Vector3(0.3, 0.16, 0.3), Palette.BUCKET, Vector3(3.3, 1.0, 3.0))
+	_collider(Vector3(1.5, 1, 1.1), Vector3(2.6, 0.5, 1.6))
+	_collider(Vector3(1.0, 1, 0.8), Vector3(3.4, 0.5, 3.0))
+	_activity(Vector3(2.6, 1, 0.6), Vector3(2.0, 2, 1.2), "meal")
 	# bookshelf on the west wall
 	_box(Vector3(0.4, 2.2, 1.8), Palette.DESK, Vector3(-S / 2 + 0.25, 1.1, 1.6))
 	var books := [Palette.BOOK_A, Palette.BOOK_B, Palette.BOOK_C]
@@ -53,3 +66,6 @@ func _ready() -> void:
 	_door(Vector3(0, 1, S / 2 - 0.8), Vector3(2.0, 2, 1.2), "Wyjdź na zewnątrz", "outside", "rectory_door")
 	_spawn("door", Vector3(0, 0, S / 2 - 2.0))
 	_spawn("bed", Vector3(-1.6, 0, -2.4))
+	_spot("bed_spot", Vector3(-2.9, 0, -2.4))
+	_spot("sweep_a", Vector3(-1.0, 0, 1.0))
+	_spot("sweep_b", Vector3(2.0, 0, -1.0))

@@ -24,12 +24,39 @@ func face(dir: Vector3) -> void:
 	_model.rotation.y = atan2(dir.x, dir.z)
 
 
-## "stand" or "kneel"; used by cutscenes.
+## Rekwizyt w rękach na czas sceny: miotła, brewiarz. Trzymany przez model,
+## więc obraca się razem z księdzem.
+func hold(prop: Node3D) -> void:
+	drop_props()
+	prop.add_to_group("player_prop")
+	_model.add_child(prop)
+
+
+func drop_props() -> void:
+	for node in _model.get_children():
+		if node.is_in_group("player_prop"):
+			node.queue_free()
+
+
+## Pozy do scen: klęczenie, siedzenie, praca w pochyleniu, leżenie.
 func set_pose(pose: String) -> void:
+	_model.position.y = 0.0
 	match pose:
 		"kneel":
 			_model.scale = Vector3(1, 0.78, 1)
 			_model.rotation.x = deg_to_rad(16)
+		"sit":
+			_model.scale = Vector3(1, 0.72, 1)
+			_model.rotation.x = deg_to_rad(6)
+			_model.position.y = -0.3
+		"work":
+			# pochylony nad miotłą
+			_model.scale = Vector3(1, 0.94, 1)
+			_model.rotation.x = deg_to_rad(24)
+		"lie":
+			_model.scale = Vector3(1, 0.9, 1)
+			_model.rotation.x = deg_to_rad(88)
+			_model.position.y = -0.55
 		_:
 			_model.scale = Vector3.ONE
 			_model.rotation.x = 0.0

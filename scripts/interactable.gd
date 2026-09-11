@@ -20,6 +20,10 @@ func prompt_text() -> String:
 			return label
 		"activity":
 			var def: Dictionary = Game.ACTIVITIES[params["id"]]
+			if def.get("rest", false):
+				return "%s (%d min, +%d energii)" % [def["label"], def["minutes"], Game.rest_gain(def)]
+			if def.get("visit", false) and not Game.done_today.has(params["id"]):
+				return "Odwiedź: %s (%d min, -%d energii)" % [Game.next_visit()["name"], def["minutes"], def["energy"]]
 			var done: bool = Game.done_today.has(params["id"]) and bool(def.get("once", false))
 			if done:
 				return "%s (zrobione dziś)" % def["label"]
