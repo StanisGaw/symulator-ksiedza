@@ -27,7 +27,7 @@ func _ready() -> void:
 func _build_ground() -> void:
 	var plane := PlaneMesh.new()
 	plane.size = Vector2(70, 70)
-	_mesh(plane, ToonMaterial.make(Palette.GRASS, Color.BLACK, 0.0, false), Vector3.ZERO)
+	_mesh(plane, ToonMaterial.make(WorldState.grass_color(), Color.BLACK, 0.0, false), Vector3.ZERO)
 	_collider(Vector3(70, 1, 70), Vector3(0, -0.5, 0))
 	_box(Vector3(3.2, 0.06, 12), Palette.PATH, Vector3(0, 0.03, 6), Vector3.ZERO, false)
 	_box(Vector3(2.0, 0.06, 6), Palette.PATH, Vector3(7, 0.03, -3), Vector3(0, -35, 0), false)
@@ -43,8 +43,8 @@ func _build_ground() -> void:
 		# zamiecione: jedna kupka liści przy miotle
 		for i in range(3):
 			_tuft(Vector3(2.6 + i * 0.18, 0.12, 2.9 - i * 0.12), 0.2, 0.24, Color("5a5a3a"))
-	if WorldState.condition() == WorldState.BAD:
-		# chwasty wzdłuż ścian i przy krawędziach placu
+	if WorldState.condition() == WorldState.BAD and not WorldState.snow():
+		# chwasty wzdłuż ścian i przy krawędziach placu (zimą pod śniegiem ich nie widać)
 		for i in range(16):
 			var wx := -2.2 + float((i * 31) % 9)
 			var wz := 0.9 + float((i * 17) % 5) * 0.5
@@ -70,6 +70,7 @@ func _build_church() -> void:
 	var roof := PrismMesh.new()
 	roof.size = Vector3(6.6, 2.6, 9.6)
 	_mesh(roof, ToonMaterial.make(roof_color), Vector3(1, 5.3, -4.5))
+	_snow_cap(Vector3(6.6, 2.6, 9.6), Vector3(1, 5.3, -4.5))
 	if WorldState.condition() == WorldState.BAD and not WorldState.has("roof"):
 		# łaty na wschodniej połaci, widocznej z placu, i odpadający tynk nad drzwiami
 		for k in range(3):
@@ -139,7 +140,8 @@ func _build_rectory() -> void:
 	_collider(Vector3(5, 3.2, 5), Vector3(rx, 1.6, rz))
 	var roof := PrismMesh.new()
 	roof.size = Vector3(5.6, 1.8, 5.6)
-	_mesh(roof, ToonMaterial.make(Palette.ROOF), Vector3(rx, 4.1, rz))
+	_mesh(roof, ToonMaterial.make(WorldState.roof_color()), Vector3(rx, 4.1, rz))
+	_snow_cap(Vector3(5.6, 1.8, 5.6), Vector3(rx, 4.1, rz))
 	_box(Vector3(1.0, 2.0, 0.16), Palette.DOOR, Vector3(rx, 1.0, rz + 2.52))
 	_glow_box(Vector3(0.9, 0.9, 0.16), Palette.WINDOW, 0.7, Vector3(rx - 1.6, 1.7, rz + 2.52))
 	_glow_box(Vector3(0.16, 0.9, 0.9), Palette.WINDOW, 0.7, Vector3(rx + 2.52, 1.7, rz + 0.5))
@@ -201,5 +203,16 @@ func _build_graveyard() -> void:
 func _build_tree(pos: Vector3) -> void:
 	_cyl(0.18, 0.26, 1.6, Palette.TRUNK, pos + Vector3(0, 0.8, 0), Vector3.ZERO, 7)
 	_collider(Vector3(0.5, 2, 0.5), pos + Vector3(0, 1, 0))
-	_sphere(1.5, Palette.CANOPY, pos + Vector3(0, 2.5, 0))
-	_sphere(1.1, Palette.CANOPY_2, pos + Vector3(0.3, 3.6, 0.2))
+	_sphere(1.5, WorldState.canopy_color(Palette.CANOPY), pos + Vector3(0, 2.5, 0))
+	_sphere(1.1, WorldState.canopy_color(Palette.CANOPY_2), pos + Vector3(0.3, 3.6, 0.2))
+	if WorldState.snow():
+		_sphere(0.9, Palette.SNOW, pos + Vector3(0.1, 3.9, 0.1), false)
+
+
+## Czapa śniegu na dachu: ta sama bryła, odrobinę mniejsza i wyżej.
+func _snow_cap(size: Vector3, pos: Vector3) -> void:
+	if not WorldState.snow():
+		return
+	var cap := PrismMesh.new()
+	cap.size = Vector3(size.x * 0.99, size.y * 0.99, size.z * 0.99)
+	_mesh(cap, ToonMaterial.make(Palette.SNOW, Color.BLACK, 0.0, false), pos + Vector3(0, 0.14, 0))

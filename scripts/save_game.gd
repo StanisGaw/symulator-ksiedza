@@ -6,7 +6,7 @@ class_name SaveGame
 const PATH := "user://parafia.save"
 const VERSION := 1
 
-const INTS := ["day", "money", "reputation", "condition", "trad", "young", "curia",
+const INTS := ["day", "start_unix", "money", "reputation", "condition", "trad", "young", "curia",
 	"week_income", "week_expenses", "mass_hour"]
 const FLOATS := ["energy"]
 const DICTS := ["done_today"]

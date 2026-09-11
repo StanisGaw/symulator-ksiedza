@@ -16,7 +16,6 @@ const MINUTES_PER_SECOND := 2.0
 const FAST_MULT := 10.0
 const DAY_START := 7 * 60
 const WEEKLY_EXPENSES := 4200
-const DAY_NAMES := ["Poniedziałek", "Wtorek", "Środa", "Czwartek", "Piątek", "Sobota", "Niedziela"]
 
 const ACTIVITIES := {
 	"repair_gutter": {"label": "Napraw rynnę", "minutes": 60, "energy": 20, "once": true,
@@ -48,6 +47,7 @@ const INVESTMENTS := {
 }
 
 var day := 1
+var start_unix := 0
 var minutes := float(DAY_START)
 var energy := 100.0
 var money := 12000
@@ -73,6 +73,8 @@ var cutscene_id := ""
 var _cut_start := 0.0
 var _cut_len := 0.0
 var _mass_attendance := 0
+var _mass_roraty := false
+var _skip_buffer: Array[String] = []
 
 
 func _ready() -> void:
@@ -81,8 +83,19 @@ func _ready() -> void:
 	var args := OS.get_cmdline_user_args()
 	if args.has("--wipe"):
 		SaveGame.wipe()
+	if start_unix == 0:
+		start_unix = Calendar.today_start_unix()
 	for arg in args:
-		if arg.begins_with("--condition="):
+		if arg.begins_with("--start="):
+			# --start=2025-12-24 zaczyna grę w wybranym dniu roku
+			var parts := arg.trim_prefix("--start=").split("-", false)
+			if parts.size() == 3:
+				start_unix = int(Time.get_unix_time_from_datetime_dict({
+					"year": int(parts[0]), "month": int(parts[1]), "day": int(parts[2]),
+					"hour": 0, "minute": 0, "second": 0}))
+		elif arg.begins_with("--day="):
+			day = maxi(int(arg.trim_prefix("--day=")), 1)
+		elif arg.begins_with("--condition="):
 			condition = clampi(int(arg.trim_prefix("--condition=")), 0, 100)
 		elif arg.begins_with("--hour="):
 			minutes = clampf(float(arg.trim_prefix("--hour=")) * 60.0, 0.0, 24.0 * 60.0 - 1.0)
@@ -118,11 +131,24 @@ func clock_text() -> String:
 
 
 func day_name() -> String:
-	return DAY_NAMES[(day - 1) % 7]
+	return Calendar.day_name(day)
+
+
+## „Poniedziałek, 1 grudnia”
+func date_text() -> String:
+	return Calendar.date_text(day)
+
+
+func season() -> String:
+	return Calendar.season(day)
+
+
+func feast_name() -> String:
+	return Calendar.feast_name(day)
 
 
 func is_sunday() -> bool:
-	return day % 7 == 0
+	return Calendar.is_sunday(day)
 
 
 # ---------- effects ----------
@@ -149,6 +175,19 @@ func apply_effects(effects: Dictionary) -> void:
 	# świat pokazuje stan parafii progami, więc przebudowa tylko przy zmianie progu
 	if WorldState.condition() != before_condition or WorldState.life() != before_life:
 		world_changed.emit()
+
+
+## „12 000” zamiast „12000”, w jednym miejscu dla całej gry.
+static func money_text(v: int) -> String:
+	var digits := str(absi(v))
+	var out := ""
+	var count := 0
+	for i in range(digits.length() - 1, -1, -1):
+		out = digits[i] + out
+		count += 1
+		if count % 3 == 0 and i > 0:
+			out = " " + out
+	return ("-" if v < 0 else "") + out
 
 
 func effects_text(effects: Dictionary) -> String:
@@ -207,13 +246,18 @@ func _finish_activity(def: Dictionary) -> void:
 		world_changed.emit()
 
 
-func _attendance() -> int:
+func _attendance(start_minutes: float) -> int:
 	var attendance := int(clampf(40.0 + reputation * 1.2 + (trad + young) * 0.5 + (condition - 50) * 0.4, 15.0, 300.0))
 	if is_sunday():
 		attendance = int(attendance * 2.2)
 	if mass_hour == 99:
 		attendance = int(attendance * 1.25)
-	return attendance
+	# święta ściągają ludzi, którzy nie przychodzą w zwykłą niedzielę
+	attendance = int(attendance * Calendar.attendance_multiplier(day, start_minutes))
+	if Calendar.is_roraty(day, start_minutes):
+		attendance = int(attendance * 1.4)
+	# w kościele jest tyle miejsca, ile jest; reszta stoi na zewnątrz i tacy nie wrzuca
+	return mini(attendance, 500)
 
 
 func _begin_cutscene(id: String, def: Dictionary) -> void:
@@ -222,7 +266,8 @@ func _begin_cutscene(id: String, def: Dictionary) -> void:
 	_cut_start = minutes - _cut_len
 	cutscene = true
 	if def.get("mass", false):
-		_mass_attendance = _attendance()
+		_mass_roraty = Calendar.is_roraty(day, _cut_start)
+		_mass_attendance = _attendance(_cut_start)
 	cutscene_started.emit(def["cutscene"])
 	if def.has("cut_location"):
 		location_change_requested.emit(def["cut_location"], "start")
@@ -263,13 +308,20 @@ func finish_cutscene() -> void:
 
 
 func _hold_mass(attendance: int) -> void:
-	var taca := int(attendance * randf_range(3.2, 5.0))
+	var taca := int(attendance * randf_range(3.2, 5.0) * Calendar.taca_multiplier(day, _cut_start))
 	apply_effects({"money": taca, "reputation": 1})
 	if mass_hour == 7:
 		apply_effects({"trad": 1})
 	elif mass_hour == 11:
 		apply_effects({"young": 1})
-	var text := "Msza: %d osób, taca %d zł." % [attendance, taca]
+	var label := "Msza"
+	if _mass_roraty:
+		# ciemny poranek, świece i ci, którym naprawdę zależy
+		label = "Roraty"
+		apply_effects({"trad": 2})
+	elif Calendar.feast_name(day) != "" and Calendar.attendance_multiplier(day, _cut_start) > 1.0:
+		label = Calendar.feast_name(day)
+	var text := "%s: %d osób, taca %d zł." % [label, attendance, taca]
 	toast.emit(text)
 	add_log(text)
 
@@ -340,19 +392,57 @@ func sleep() -> void:
 	_start_new_day(100.0 - penalty, [])
 
 
+## Przewijanie pustych dni. Zatrzymuje się, gdy coś wymaga decyzji, i pokazuje
+## jeden raport z tego, co się przez ten czas wydarzyło.
+func skip_days(count: int) -> void:
+	if modal_open or cutscene:
+		return
+	var collected: Array[String] = []
+	var passed := 0
+	for i in count:
+		_skip_buffer.clear()
+		_start_new_day(100.0, [], true)
+		passed += 1
+		if not _skip_buffer.is_empty():
+			collected.append("%s:" % date_text())
+			for line in _skip_buffer:
+				collected.append("   " + line)
+		if not Events.due_events(self).is_empty():
+			break
+		if money < 0:
+			collected.append("Konto zeszło na minus. Przewijanie zatrzymane.")
+			break
+	# raport z przewijania musi się zmieścić w oknie
+	if collected.size() > 18:
+		var hidden := collected.size() - 18
+		collected.resize(18)
+		collected.append("…i jeszcze %d wpisów w kronice." % hidden)
+	if collected.is_empty():
+		collected.append("Spokojne dni. Msze, spowiedzi, nic więcej.")
+	request_modal("report", {"title": "Minęło dni: %d.   %s   %s" % [passed, date_text(), season()], "lines": collected})
+	for ev in Events.due_events(self):
+		request_modal("event", {"event": ev})
+
+
 func _force_sleep() -> void:
 	var lines: Array[String] = ["Zasnąłeś tam, gdzie stałeś. Energia rano tylko 60%."]
 	_start_new_day(60.0, lines)
 
 
-func _start_new_day(new_energy: float, extra_lines: Array[String]) -> void:
+func _start_new_day(new_energy: float, extra_lines: Array[String], fast: bool = false) -> void:
+	var missed_holy_day := Calendar.is_holy_day(day) and not done_today.has("mass")
+	var missed_name := Calendar.feast_name(day)
 	day += 1
 	minutes = float(DAY_START)
 	energy = clampf(new_energy, 20.0, 100.0)
 	done_today.clear()
 	var lines: Array[String] = extra_lines.duplicate()
-	# weekly settlement on Monday morning
-	if (day - 1) % 7 == 0:
+	if missed_holy_day:
+		# święto nakazane bez mszy zauważą wszyscy, łącznie z kurią
+		apply_effects({"trad": -6, "reputation": -3, "curia": -3})
+		lines.append("Wczoraj było święto nakazane (%s), a mszy nie było. Tradycjonaliści -6, reputacja -3, kuria -3." % missed_name)
+	# rozliczenie tygodnia w poniedziałek rano, według prawdziwego kalendarza
+	if Calendar.is_monday(day):
 		lines.append_array(_weekly_settlement())
 	# due consequences and finished works
 	var remaining: Array = []
@@ -370,8 +460,15 @@ func _start_new_day(new_energy: float, extra_lines: Array[String]) -> void:
 	scheduled = remaining
 	state_changed.emit()
 	save_now()
+	var feast: String = Calendar.feast_name(day)
+	if feast != "":
+		lines.push_front("Dziś %s. %s" % [feast, str(Calendar.feast(day).get("note", ""))])
+	if fast:
+		# przewijanie zbiera dni w jeden raport zamiast otwierać okno co ranek
+		_skip_buffer.assign(lines)
+		return
 	if not lines.is_empty():
-		request_modal("report", {"title": "Dzień %d, %s" % [day, day_name()], "lines": lines})
+		request_modal("report", {"title": "%s   %s" % [date_text(), season()], "lines": lines})
 	for ev in Events.due_events(self):
 		request_modal("event", {"event": ev})
 
@@ -380,8 +477,9 @@ func _weekly_settlement() -> Array[String]:
 	var lines: Array[String] = []
 	var expenses := WEEKLY_EXPENSES
 	money -= expenses
-	lines.append("Rozliczenie tygodnia: taca i ofiary %d zł, wydatki %d zł, rachunki i pensje %d zł." % [week_income, week_expenses, expenses])
-	lines.append("Stan konta: %d zł." % money)
+	lines.append("Rozliczenie tygodnia: taca i ofiary %s zł, wydatki %s zł, rachunki i pensje %s zł." % [
+		money_text(week_income), money_text(week_expenses), money_text(expenses)])
+	lines.append("Stan konta: %s zł." % money_text(money))
 	condition = clampi(condition - 2, 0, 100)
 	if money < 0:
 		curia = clampi(curia - 3, 0, 100)
@@ -434,6 +532,7 @@ func continue_game() -> bool:
 
 func start_new_game() -> void:
 	SaveGame.wipe()
+	start_unix = Calendar.today_start_unix()
 	day = 1
 	minutes = float(DAY_START)
 	energy = 100.0

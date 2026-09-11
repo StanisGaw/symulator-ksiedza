@@ -23,7 +23,7 @@ func _ready() -> void:
 	_box(Vector3(1.0, 0.16, 0.5), Palette.PILLOW, Vector3(-2.9, 0.58, -3.2))
 	_box(Vector3(1.3, 0.9, 0.1), Palette.DESK, Vector3(-2.9, 0.45, -3.55))
 	_collider(Vector3(1.3, 1, 2.2), Vector3(-2.9, 0.5, -2.4))
-	_interactable(Vector3(-1.8, 1, -2.4), Vector3(1.2, 2, 2.4), "Łóżko: idź spać (nowy dzień)", "bed")
+	_interactable(Vector3(-1.8, 1, -2.4), Vector3(1.2, 2, 2.4), "Łóżko: sen albo przewinięcie dni", "bed")
 	# desk with lamp, ledger and phone
 	_box(Vector3(1.8, 0.08, 0.9), Palette.DESK, Vector3(2.3, 0.78, -3.2))
 	for x in [1.5, 3.1]:

@@ -39,13 +39,17 @@ func _ready() -> void:
 func _debug_modal(kind: String) -> void:
 	match kind:
 		"event": _enqueue("event", {"event": Events.EVENTS[0]})
-		"report": _enqueue("report", {"title": "Dzień 8, Poniedziałek", "lines": ["Rozliczenie tygodnia: taca i ofiary 3 420 zł, wydatki 2 500 zł, rachunki i pensje 4 200 zł.", "Stan konta: 8 720 zł.", "Festyn parafialny: prace zakończone. młode rodziny +8, reputacja +4, tradycjonaliści -3."]})
+		"report": _enqueue("report", {"title": "Poniedziałek, 8 grudnia   Adwent", "lines": ["Rozliczenie tygodnia: taca i ofiary 3 420 zł, wydatki 2 500 zł, rachunki i pensje 4 200 zł.", "Stan konta: 8 720 zł.", "Festyn parafialny: prace zakończone. młode rodziny +8, reputacja +4, tradycjonaliści -3."]})
 		_: _enqueue(kind, {})
 
 
 func _process(_delta: float) -> void:
-	_hud.text = "Dzień %d, %s   %s      Energia %d%%      %s zł      Reputacja %d   Budynki %d   Tradycjonaliści %d   Młode rodziny %d   Kuria %d" % [
-		Game.day, Game.day_name(), Game.clock_text(), int(Game.energy), _money(Game.money),
+	var head := "%s   %s   dzień %d" % [Game.date_text(), Game.season(), Game.day]
+	var feast: String = Game.feast_name()
+	if feast != "":
+		head += "   •   " + feast
+	_hud.text = "%s\n%s      Energia %d%%      %s zł      Reputacja %d   Budynki %d   Tradycjonaliści %d   Młode rodziny %d   Kuria %d" % [
+		head, Game.clock_text(), int(Game.energy), _money(Game.money),
 		Game.reputation, Game.condition, Game.trad, Game.young, Game.curia]
 
 
@@ -154,15 +158,7 @@ func _build() -> void:
 
 
 func _money(v: int) -> String:
-	var s := str(absi(v))
-	var out := ""
-	var count := 0
-	for i in range(s.length() - 1, -1, -1):
-		out = s[i] + out
-		count += 1
-		if count % 3 == 0 and i > 0:
-			out = " " + out
-	return ("-" if v < 0 else "") + out
+	return Game.money_text(v)
 
 
 func _on_cutscene_started(label: String) -> void:
@@ -217,6 +213,7 @@ func _show_next() -> void:
 		"report": _show_report(item["data"]["title"], item["data"]["lines"])
 		"finance": _show_finance()
 		"status": _show_status()
+		"sleep": _show_sleep()
 		"continue": _show_continue(item["data"])
 		"confirm_new": _show_confirm_new()
 
@@ -268,6 +265,23 @@ func _button(box: Control, text: String, cb: Callable, enabled: bool = true) -> 
 	b.pressed.connect(cb)
 	box.add_child(b)
 	return b
+
+
+func _show_sleep() -> void:
+	var box := _window("Łóżko", 700.0)
+	_text(box, "Możesz przespać jedną noc albo przewinąć spokojniejszy czas. Przewijanie zatrzyma się samo, gdy coś będzie wymagało decyzji, ale przez ten czas nie odprawiasz mszy i nie ma tacy.")
+	_button(box, "Prześpij do jutra", func() -> void:
+		Game.sleep()
+		_close_modal())
+	_button(box, "Przewiń tydzień", func() -> void:
+		_close_modal()
+		Game.call_deferred("skip_days", 7))
+	var to_feast := Calendar.days_to_next_feast(Game.day)
+	if to_feast > 1:
+		_button(box, "Przewiń do %s (%d dni)" % [Calendar.feast_name(Game.day + to_feast), to_feast], func() -> void:
+			_close_modal()
+			Game.call_deferred("skip_days", to_feast))
+	_button(box, "Wróć", _close_modal)
 
 
 func _show_continue(data: Dictionary) -> void:

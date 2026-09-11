@@ -62,6 +62,61 @@ static func roof_color() -> Color:
 			return Palette.ROOF.lerp(Palette.ROOF_BAD, 0.45)
 
 
+# ---------- klimat okresu liturgicznego i pory roku ----------
+
+## Kolor nakrycia ołtarza: fiolet w Adwencie i Wielkim Poście, biel i złoto w świętach.
+static func altar_cloth() -> Color:
+	match Calendar.season(Game.day):
+		Calendar.ADVENT, Calendar.LENT:
+			return Palette.CLOTH_VIOLET
+		Calendar.CHRISTMAS, Calendar.EASTER:
+			return Palette.CLOTH_GOLD
+		_:
+			return Palette.ALTAR_CLOTH
+
+
+## Światło wnętrza: [kolor otoczenia, siła]. Wielki Post jest zimny i ciemny,
+## Wielkanoc jasna, święta ciepłe.
+static func church_ambient() -> Array:
+	match Calendar.season(Game.day):
+		Calendar.LENT:
+			return [Color("5a5a6e"), 0.95]
+		Calendar.EASTER:
+			return [Color("8a8496"), 1.9]
+		Calendar.CHRISTMAS:
+			return [Color("7a6e70"), 1.6]
+		_:
+			return [Color("6a6478"), 1.3]
+
+
+static func snow() -> bool:
+	return Calendar.is_snowy(Game.day)
+
+
+static func grass_color() -> Color:
+	if snow():
+		return Palette.SNOW
+	match Calendar.time_of_year(Game.day):
+		"lato":
+			return Palette.GRASS.lerp(Palette.CANOPY_SUMMER, 0.4)
+		"jesień":
+			return Palette.GRASS.lerp(Palette.LEAF_AUTUMN, 0.25)
+		_:
+			return Palette.GRASS
+
+
+static func canopy_color(base: Color) -> Color:
+	match Calendar.time_of_year(Game.day):
+		"jesień":
+			return Palette.CANOPY_AUTUMN
+		"zima":
+			return base.lerp(Palette.GRIME, 0.5)
+		"lato":
+			return Palette.CANOPY_SUMMER
+		_:
+			return base
+
+
 static func wall_color(base: Color) -> Color:
 	match condition():
 		BAD:

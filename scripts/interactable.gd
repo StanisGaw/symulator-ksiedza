@@ -37,6 +37,6 @@ func activate() -> void:
 		"desk":
 			Game.request_modal("finance", {})
 		"bed":
-			Game.sleep()
+			Game.request_modal("sleep", {})
 		"status":
 			Game.request_modal("status", {})
