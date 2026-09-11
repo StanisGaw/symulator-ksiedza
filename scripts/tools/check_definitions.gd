@@ -96,6 +96,39 @@ static func run() -> Array[String]:
 						if not ["sunday_hours", "weekday_hours"].has(key):
 							_e(problems, ow, "„set” na nieobsługiwanym polu „%s”" % key)
 
+	# posty w mediach chodzą tą samą drogą co wydarzenia, więc sprawdzamy je tak samo
+	var media_ids: Array[String] = []
+	for post in Phone.MEDIA:
+		var mid: String = str(post.get("id", ""))
+		var mwhere := "media/%s" % mid
+		if mid == "":
+			_e(problems, mwhere, "brak identyfikatora")
+		if media_ids.has(mid):
+			_e(problems, mwhere, "identyfikator powtórzony")
+		media_ids.append(mid)
+		for key in ["from", "title", "text"]:
+			if str(post.get(key, "")) == "":
+				_e(problems, mwhere, "brak pola „%s”" % key)
+		if (post.get("options", []) as Array).is_empty():
+			_e(problems, mwhere, "post bez opcji odpowiedzi")
+		for key in post.get("require", {}):
+			if not ["min", "max"].has(key):
+				_e(problems, mwhere, "nieznany warunek „%s”" % key)
+		for bound in ["min", "max"]:
+			for key in post.get("require", {}).get(bound, {}):
+				if not STATE_KEYS.has(key):
+					_e(problems, mwhere, "warunek na nieistniejącym polu „%s”" % key)
+		for opt in post.get("options", []):
+			_ce(problems, mwhere + "/" + str(opt.get("label", "?")), opt.get("effects", {}))
+		if post.has("expire"):
+			if not post.has("deadline"):
+				_e(problems, mwhere, "skutek po terminie bez terminu")
+			_ce(problems, mwhere + " (po terminie)", post["expire"].get("effects", {}))
+		elif post.has("deadline"):
+			_e(problems, mwhere, "termin bez skutku po jego minięciu")
+	for opt in Phone.excuses():
+		_ce(problems, "kuria/wyjaśnienie/" + str(opt.get("label", "?")), opt.get("effects", {}))
+
 	for id in Breakdowns.ALL:
 		var def: Dictionary = Breakdowns.ALL[id]
 		var where := "awaria/%s" % id
@@ -112,8 +145,8 @@ static func run() -> Array[String]:
 ## Wypisuje wynik i mówi, czy wszystko jest w porządku.
 static func report() -> bool:
 	var problems := run()
-	print("Wydarzenia: scenariusz %d, pula %d, kryzysy %d. Awarie: %d." % [
-		Events.SCRIPTED.size(), Events.POOL.size(), Events.CRISES.size(), Breakdowns.ALL.size()])
+	print("Wydarzenia: scenariusz %d, pula %d, kryzysy %d. Awarie: %d. Posty w mediach: %d." % [
+		Events.SCRIPTED.size(), Events.POOL.size(), Events.CRISES.size(), Breakdowns.ALL.size(), Phone.MEDIA.size()])
 	for p in problems:
 		printerr("BŁĄD  " + p)
 	if problems.is_empty():
@@ -135,6 +168,11 @@ static func _check_save(problems: Array[String]) -> void:
 	Game.event_cooldowns = {"organ_silent": 41}
 	Game.scheduled = [{"day": 9, "text": "próba", "effects": {"money": -100},
 		"chance": 0.5, "else_text": "druga wersja", "else_effects": {"reputation": -2}}]
+	Game.phone_inbox = [{"app": "poczta", "from": "Kuria", "title": "próba", "text": "próba",
+		"day": 3, "due": 6, "read": false, "answered": -1, "deadline": 3,
+		"options": [{"label": "tak", "effects": {"curia": 2}}], "expire": {"effects": {"curia": -6}}}]
+	Game.bank_log = [{"day": 3, "text": "próba", "amount": -100}]
+	Game.media_recent = {"media_remont": 5}
 	var data := {}
 	for key in SaveGame.INTS + SaveGame.FLOATS + SaveGame.STRINGS + SaveGame.DICTS + SaveGame.ARRAYS:
 		data[key] = Game.get(key)
@@ -156,6 +194,18 @@ static func _check_save(problems: Array[String]) -> void:
 			_e(problems, "zapis", "przeciwna wersja skutku wraca jako zmiennoprzecinkowa")
 		if not Game.breakdowns.has("car"):
 			_e(problems, "zapis", "trwająca awaria nie przeżyła zapisu")
+		# telefon: termin wiadomości i kwota operacji porównują się z numerem dnia,
+		# więc muszą wrócić jako liczby całkowite, a nie jako 6.0
+		var msg: Dictionary = Game.phone_inbox[0]
+		for field in ["day", "due", "answered", "deadline"]:
+			if typeof(msg[field]) != TYPE_INT:
+				_e(problems, "zapis", "pole „%s” wiadomości wraca jako zmiennoprzecinkowe" % field)
+		if typeof((Game.bank_log[0] as Dictionary)["amount"]) != TYPE_INT:
+			_e(problems, "zapis", "kwota operacji wraca jako zmiennoprzecinkowa")
+		if typeof(Game.media_recent.get("media_remont")) != TYPE_INT:
+			_e(problems, "zapis", "dzień ostatniego postu wraca jako zmiennoprzecinkowy")
+		if (Game.phone_inbox[0] as Dictionary).get("options", []).is_empty():
+			_e(problems, "zapis", "opcje odpowiedzi nie przeżyły zapisu")
 	for key in before:
 		Game.set(key, before[key])
 

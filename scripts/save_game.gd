@@ -8,16 +8,21 @@ const VERSION := 1
 
 const INTS := ["day", "start_unix", "money", "reputation", "condition", "trad", "young", "curia",
 	"week_income", "week_expenses", "meals_today", "apples_picked", "visit_index", "respect",
-	"funerals_pending", "funeral_deadline", "quiet_days"]
+	"funerals_pending", "funeral_deadline", "quiet_days", "_last_curia_mail", "_last_bank_alert"]
 const FLOATS := ["energy"]
 const STRINGS := ["deceased_name"]
-const DICTS := ["done_today", "breakdown_since", "event_cooldowns"]
+const DICTS := ["done_today", "breakdown_since", "event_cooldowns", "media_recent"]
 const ARRAYS := ["scheduled", "pending_investments", "fired_events", "log_lines", "built", "seen",
-	"masses_done", "masses_missed", "sunday_hours", "weekday_hours", "breakdowns", "pending_repairs"]
+	"masses_done", "masses_missed", "sunday_hours", "weekday_hours", "breakdowns", "pending_repairs",
+	"phone_inbox", "bank_log"]
 ## Tablice, w których muszą siedzieć liczby całkowite: JSON oddaje wszystko jako zmiennoprzecinkowe.
 const INT_ARRAYS := ["masses_done", "masses_missed", "sunday_hours", "weekday_hours"]
 ## To samo dla słowników: dzień początku awarii i dzień końca karencji wydarzenia.
-const INT_DICTS := ["breakdown_since", "event_cooldowns"]
+const INT_DICTS := ["breakdown_since", "event_cooldowns", "media_recent"]
+## Pola liczbowe w wiadomościach telefonu i historii konta - JSON oddaje je jako float,
+## a porównujemy je z numerem dnia, więc muszą wrócić jako liczby całkowite.
+const ITEM_INTS := {"phone_inbox": ["day", "due", "answered", "deadline"],
+	"bank_log": ["day", "amount"]}
 
 
 static func has_save() -> bool:
@@ -85,6 +90,13 @@ static func apply(game: Node, data: Dictionary) -> void:
 		var dict: Dictionary = game.get(key)
 		for k in dict:
 			dict[k] = int(dict[k])
+	# wiadomości telefonu i historia konta: dzień, termin i kwota muszą być całkowite
+	for key in ITEM_INTS:
+		var items: Array = game.get(key)
+		for item in items:
+			for field in ITEM_INTS[key]:
+				if item.has(field):
+					item[field] = int(item[field])
 	for item in game.scheduled:
 		item["day"] = int(item["day"])
 		# skutek odroczony ma dwie wersje, obie z liczbami całkowitymi
