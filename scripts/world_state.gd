@@ -14,6 +14,7 @@ const REVEALS := {
 	"heating": "Grzejniki pod ścianami. Nikt już nie marznie.",
 	"sound": "Nagłośnienie gotowe. Słychać w ostatniej ławce.",
 	"gutter": "Rynna trzyma się prosto.",
+	"cemetery": "Cmentarz parafialny za kościołem. Odtąd grzebiemy swoich u siebie.",
 }
 
 

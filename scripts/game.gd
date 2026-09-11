@@ -49,6 +49,8 @@ const ACTIVITIES := {
 		"cutscene": "Noc", "director_group": "activity_scene", "scene": {"kind": "sleep", "seconds": 2.5}},
 	"pick_apple": {"label": "Zerwij jabłko", "minutes": 5, "energy": -6, "apple": true,
 		"toast": "Jabłko prosto z drzewa."},
+	"funeral": {"label": "Odpraw pogrzeb", "minutes": 90, "energy": 25, "funeral": true,
+		"cutscene": "Pogrzeb", "director_group": "activity_scene", "scene": {"kind": "funeral", "seconds": 6.5, "zoom": 10.0}},
 	"meal": {"label": "Zjedz obiad", "minutes": 45, "energy": -20, "meal": true, "money": -25,
 		"toast": "Obiad zjedzony. Za zakupy poszło 25 zł."},
 	"clean_church": {"label": "Posprzątaj kościół", "minutes": 45, "energy": 15, "once": true,
@@ -56,18 +58,31 @@ const ACTIVITIES := {
 		"cutscene": "Sprzątanie kościoła", "director_group": "activity_scene", "scene": {"kind": "sweep", "seconds": 4.0, "zoom": 9.0}},
 }
 
+## Inwestycje. "builds" mówi, co stanie w świecie, "unlocks" co stanie się możliwe,
+## "weekly" ile zł tygodniowo to daje po ukończeniu, "repeatable" czy można zlecać wielokrotnie.
 const INVESTMENTS := {
 	"roof": {"label": "Remont dachu", "cost": 8000, "days": 3, "effects": {"condition": 30},
-		"desc": "Ekipa potrzebuje 3 dni. Stan budynków +30."},
+		"builds": "Nowa połać dachu nad nawą, bez łat i plandeki. Znika zaciek i wiadro w kościele.",
+		"unlocks": "Stan budynków +30 i koniec strat na przeciekach.", "weekly": 0},
 	"heating": {"label": "Ogrzewanie w kościele", "cost": 5000, "days": 2, "effects": {"trad": 8, "condition": 5},
-		"desc": "Starsi parafianie przestaną marznąć. Tradycjonaliści +8."},
+		"builds": "Grzejniki wzdłuż zachodniej ściany, komin z dymem za kościołem, cieplejsze światło.",
+		"unlocks": "Tradycjonaliści +8 i pełna frekwencja zimą.", "weekly": 0},
 	"sound": {"label": "Nagłośnienie", "cost": 3000, "days": 1, "effects": {"young": 6},
-		"desc": "Słychać kazanie w ostatniej ławce. Młode rodziny +6."},
-	"festyn": {"label": "Festyn parafialny", "cost": 2500, "days": 4, "effects": {"young": 8, "reputation": 4, "trad": -3},
-		"desc": "Dmuchaniec, grill, zespół. Młode rodziny +8, reputacja +4, tradycjonaliści -3."},
-	"curia_gift": {"label": "Przelew do kurii", "cost": 1500, "days": 0, "effects": {"curia": 6},
-		"desc": "Dobrowolna ofiara na cele diecezji. Kuria +6."},
+		"builds": "Kolumny na wieży i przy prezbiterium, mikrofon przy ołtarzu.",
+		"unlocks": "Słychać kazanie w ostatniej ławce. Młode rodziny +6.", "weekly": 0},
+	"cemetery": {"label": "Cmentarz parafialny", "cost": 12000, "days": 5, "effects": {"reputation": 3, "trad": 4},
+		"builds": "Cmentarz za kościołem: mur, brama, żwirowa alejka, kwatery z nagrobkami, kaplica cmentarna.",
+		"unlocks": "Pogrzeby w parafii zamiast u sąsiada: ofiara 800–1 200 zł i szacunek za każdy. Do tego opłaty za miejsca.",
+		"weekly": 150, "expected_weekly": 1700,
+		"yield_note": "150 zł opłat tygodniowo plus około 1 000 zł za pogrzeb, średnio półtora pogrzebu w tygodniu"},
+	"festyn": {"label": "Festyn parafialny", "cost": 2500, "days": 4, "effects": {"young": 8, "reputation": 4, "trad": -3}, "repeatable": true,
+		"builds": "Na razie nic trwałego. Namioty, grill i tłum na placu dojdą razem z rozbudową terenu.",
+		"unlocks": "Młode rodziny +8, reputacja +4, tradycjonaliści -3.", "weekly": 0},
+	"curia_gift": {"label": "Przelew do kurii", "cost": 1500, "days": 0, "effects": {"curia": 6}, "repeatable": true,
+		"builds": "Nic. Pieniądze idą do diecezji.",
+		"unlocks": "Kuria +6. Kuria pamięta ofiarodawców.", "weekly": 0},
 }
+
 
 var day := 1
 var start_unix := 0
@@ -92,6 +107,10 @@ var masses_missed: Array = []
 var location := "outside"
 var done_today: Dictionary = {}
 var meals_today := 0
+## Pogrzeby czekające na odprawienie i dzień, po którym rodzina pójdzie do sąsiedniej parafii.
+var funerals_pending := 0
+var funeral_deadline := 0
+var deceased_name := ""
 var apples_picked := 0
 var scheduled: Array = []
 var pending_investments: Array = []
@@ -351,6 +370,9 @@ func do_activity(id: String) -> void:
 	if def.has("builds") and built.has(def["builds"]):
 		toast.emit("To już naprawione.")
 		return
+	if def.get("funeral", false) and funerals_pending <= 0:
+		toast.emit("Nikt nie czeka na pogrzeb. Bogu dzięki.")
+		return
 	var is_meal: bool = def.get("meal", false)
 	if is_meal:
 		if meals_today >= MEALS_PER_DAY:
@@ -437,6 +459,11 @@ func read_gain(total_minutes: float) -> int:
 	return int(round(total_minutes / 60.0 * READ_ENERGY_PER_HOUR))
 
 
+## „1 dzień”, „3 dni”
+static func days_text(days: int) -> String:
+	return "1 dzień" if days == 1 else "%d dni" % days
+
+
 ## „45 minut”, „1 h 30 min”
 static func duration_text(total_minutes: float) -> String:
 	var m := int(round(total_minutes))
@@ -480,6 +507,15 @@ func _finish_activity(def: Dictionary) -> void:
 		energy = clampf(energy + gain, 0.0, 100.0)
 		toast.emit("Na ławce z brewiarzem: %s. Energia +%d." % [duration_text(_read_minutes), gain])
 		state_changed.emit()
+		return
+	if def.get("funeral", false):
+		var offering := randi_range(800, 1200)
+		apply_effects({"money": offering, "reputation": 2, "trad": 1})
+		respect += 2
+		funerals_pending = maxi(0, funerals_pending - 1)
+		var text := "Pogrzeb: %s. Rodzina złożyła %d zł. Reputacja +2, szacunek +2." % [deceased_name, offering]
+		toast.emit(text)
+		add_log(text)
 		return
 	if def.get("visit", false):
 		var person := next_visit()
@@ -611,7 +647,28 @@ func _hold_mass(attendance: int) -> void:
 
 func can_invest(id: String) -> bool:
 	var def: Dictionary = INVESTMENTS[id]
+	if not def.get("repeatable", false) and built.has(id):
+		return false
 	return money >= def["cost"] and not pending_investments.has(id)
+
+
+## Ile tygodni zwraca się inwestycja z samego stałego dochodu. Zero, gdy nie daje pieniędzy.
+static func payback_weeks(id: String) -> int:
+	var def: Dictionary = INVESTMENTS[id]
+	# do zwrotu liczy się cały spodziewany dochód, nie tylko stała opłata
+	var weekly := int(def.get("expected_weekly", def.get("weekly", 0)))
+	if weekly <= 0:
+		return 0
+	return int(ceil(float(def["cost"]) / float(weekly)))
+
+
+## Stały dochód z ukończonych inwestycji, doliczany przy rozliczeniu tygodnia.
+func weekly_yield() -> int:
+	var total := 0
+	for id in built:
+		if INVESTMENTS.has(id):
+			total += int(INVESTMENTS[id].get("weekly", 0))
+	return total
 
 
 func invest(id: String) -> void:
@@ -728,6 +785,22 @@ func _start_new_day(new_energy: float, extra_lines: Array[String], wake_minutes:
 	masses_done.clear()
 	masses_missed.clear()
 	var lines: Array[String] = extra_lines.duplicate()
+	# najpierw kończą się prace, żeby gotowa inwestycja liczyła się już od tego poranka
+	var remaining: Array = []
+	for item in scheduled:
+		if int(item["day"]) <= day:
+			apply_effects(item.get("effects", {}))
+			if item.has("invest"):
+				pending_investments.erase(item["invest"])
+				if not built.has(item["invest"]):
+					built.append(item["invest"])
+				world_changed.emit()
+			lines.append(item["text"])
+			add_log(item["text"])
+		else:
+			remaining.append(item)
+	scheduled = remaining
+
 	if missed_holy_day:
 		# święto nakazane bez mszy zauważą wszyscy, łącznie z kurią
 		apply_effects({"trad": -6, "reputation": -3, "curia": -3})
@@ -735,20 +808,7 @@ func _start_new_day(new_energy: float, extra_lines: Array[String], wake_minutes:
 	# rozliczenie tygodnia w poniedziałek rano, według prawdziwego kalendarza
 	if Calendar.is_monday(day):
 		lines.append_array(_weekly_settlement())
-	# due consequences and finished works
-	var remaining: Array = []
-	for item in scheduled:
-		if int(item["day"]) <= day:
-			apply_effects(item.get("effects", {}))
-			if item.has("invest"):
-				pending_investments.erase(item["invest"])
-				built.append(item["invest"])
-				world_changed.emit()
-			lines.append(item["text"])
-			add_log(item["text"])
-		else:
-			remaining.append(item)
-	scheduled = remaining
+	lines.append_array(_funeral_morning())
 	state_changed.emit()
 	save_now()
 	var feast: String = Calendar.feast_name(day)
@@ -760,10 +820,38 @@ func _start_new_day(new_energy: float, extra_lines: Array[String], wake_minutes:
 		request_modal("event", {"event": ev})
 
 
+const DECEASED := ["pani Genowefa Kruk", "pan Tadeusz Wrona", "pani Zofia Maj", "pan Henryk Sowa",
+	"pani Jadwiga Bąk", "pan Kazimierz Lis", "pani Irena Kos", "pan Stanisław Gil"]
+
+
+## Z cmentarzem parafia grzebie swoich. Co kilka dni ktoś umiera, a rodzina czeka
+## najwyżej dwa dni; potem pogrzeb odbywa się u sąsiada i ludzie to zapamiętują.
+func _funeral_morning() -> Array[String]:
+	var lines: Array[String] = []
+	if not built.has("cemetery"):
+		return lines
+	if funerals_pending > 0 and day > funeral_deadline:
+		funerals_pending = 0
+		apply_effects({"reputation": -3})
+		respect -= 2
+		lines.append("Rodzina nie doczekała się pogrzebu i pochowała %s w sąsiedniej parafii. Reputacja -3, szacunek -2." % deceased_name)
+	if funerals_pending == 0 and randf() < 0.22:
+		funerals_pending = 1
+		funeral_deadline = day + 1
+		deceased_name = DECEASED[(day * 31) % DECEASED.size()]
+		lines.append("W nocy zmarł(a) %s. Rodzina prosi o pogrzeb dziś albo jutro. Idź na cmentarz za kościołem." % deceased_name)
+	return lines
+
+
 func _weekly_settlement() -> Array[String]:
 	var lines: Array[String] = []
 	var expenses := WEEKLY_EXPENSES
 	money -= expenses
+	var yield_total := weekly_yield()
+	if yield_total > 0:
+		# przez apply_effects, żeby dochód wszedł do wpływów tygodnia w raporcie i finansach
+		apply_effects({"money": yield_total})
+		lines.append("Opłaty i dochody z inwestycji: +%s zł." % money_text(yield_total))
 	lines.append("Rozliczenie tygodnia: taca i ofiary %s zł, wydatki %s zł, rachunki i pensje %s zł." % [
 		money_text(week_income), money_text(week_expenses), money_text(expenses)])
 	lines.append("Stan konta: %s zł." % money_text(money))
@@ -839,6 +927,9 @@ func start_new_game() -> void:
 	masses_done.clear()
 	masses_missed.clear()
 	respect = 0
+	funerals_pending = 0
+	funeral_deadline = 0
+	deceased_name = ""
 	scheduled.clear()
 	pending_investments.clear()
 	fired_events.clear()

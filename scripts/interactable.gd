@@ -26,6 +26,10 @@ func prompt_text() -> String:
 				return "%s (%d min, +%d energii, zostały %d)" % [def["label"], def["minutes"], -int(def["energy"]), Game.apples_left()]
 			if def.get("meal", false):
 				return "%s (%d min, +%d energii, %d zł)" % [def["label"], def["minutes"], -int(def["energy"]), -int(def["money"])]
+			if def.get("funeral", false):
+				if Game.funerals_pending > 0:
+					return "Pogrzeb: %s czeka na pochówek (%d min, -%d energii)" % [Game.deceased_name, def["minutes"], def["energy"]]
+				return "Cmentarz: nikt nie czeka na pogrzeb"
 			if def.get("mass", false):
 				if Game.open_mass_hour() >= 0:
 					return "Odpraw mszę o %02d:00 (%d min, -%d energii)" % [Game.open_mass_hour(), def["minutes"], def["energy"]]

@@ -18,6 +18,7 @@ var _player: Node3D
 var _spots: Dictionary = {}
 var _rig: Node3D
 var _return_pos := Vector3.ZERO
+var _kneeling := false
 ## Ułożenie miotły w rękach: kąt kija (x: ujemny = w przód, y: w bok) i jego długość.
 ## Rekwizyt wisi na ciele, które w pozie "work" jest już pochylone o 26 stopni w przód,
 ## a dodatni obrót wokół X przechyla to, co wisi w dół, do tyłu. Dlatego kąt musi być
@@ -44,6 +45,7 @@ func start(def: Dictionary) -> void:
 	kind = str(scene.get("kind", ""))
 	length = float(scene.get("seconds", 4.0))
 	elapsed = 0.0
+	_kneeling = false
 	people.clear()
 	_player = get_tree().get_first_node_in_group("player") as Node3D
 	# po scenie ksiądz wraca tam, gdzie stał, żeby nie wylądować w ławkach
@@ -65,6 +67,8 @@ func start(def: Dictionary) -> void:
 			_player.hold(_book())
 		"sleep":
 			_start_sleep()
+		"funeral":
+			_start_funeral()
 		_:
 			Game.finish_cutscene()
 			return
@@ -152,6 +156,31 @@ func _start_sleep() -> void:
 	_player.set_pose("lie")
 
 
+## Pogrzeb: trumna nad grobem, żałobnicy w półkolu, ksiądz przy głowie grobu.
+## Klęka w połowie sceny, ludzie stoją ze spuszczonymi głowami.
+func _start_funeral() -> void:
+	var grave := _spot("grave")
+	_player.global_position = _spot("grave_priest") + Vector3(0, 1.1, 0)
+	_player.face(Vector3(0, 0, -1))
+	var coffin := MeshInstance3D.new()
+	var box := BoxMesh.new()
+	box.size = Vector3(0.7, 0.5, 1.9)
+	coffin.mesh = box
+	coffin.material_override = ToonMaterial.make(Palette.DESK)
+	coffin.position = grave + Vector3(0, 0.55, 0)
+	add_child(coffin)
+	people.append({"node": coffin, "state": "prop"})
+	for i in 7:
+		# półkole od strony bramy, żeby nikt nie stał w cudzym nagrobku
+		var a := PI * 0.15 + PI * 0.7 * float(i) / 6.0
+		var node := Person.make(500 + i)
+		node.position = grave + Vector3(cos(a) * 2.0, 0, sin(a) * 2.0 + 0.3)
+		node.rotation.y = atan2(grave.x - node.position.x, grave.z - node.position.z)
+		node.scale = Vector3(1, 0.96, 1)
+		add_child(node)
+		people.append({"node": node, "state": "mourn", "phase": float(i)})
+
+
 func _start_confession() -> void:
 	_start_seated("confession_seat", Vector3(1, 0, 0))
 	var entry := _spot("scene_door")
@@ -177,6 +206,8 @@ func _process(delta: float) -> void:
 			_run_confession(delta)
 		"read", "sleep":
 			_player.bob(elapsed * 0.25)
+		"funeral":
+			_run_funeral()
 	if elapsed >= length:
 		_finish()
 
@@ -186,6 +217,18 @@ func _run_sweep(_delta: float) -> void:
 	var swing := sin(elapsed * SWEEP_SPEED)
 	_player.set_model_yaw(_base_yaw + swing * SWEEP_ARC)
 	_player.bob(elapsed * 0.7)
+
+
+func _run_funeral() -> void:
+	var t := elapsed / length
+	var should_kneel := t > 0.3 and t < 0.75
+	if should_kneel != _kneeling:
+		_kneeling = should_kneel
+		_player.set_pose("kneel" if _kneeling else "stand")
+	for p in people:
+		if p["state"] == "mourn":
+			# lekkie kołysanie, każdy w swoim tempie
+			p["node"].position.y = sin(elapsed * 1.3 + float(p["phase"])) * 0.02
 
 
 func _run_confession(delta: float) -> void:
