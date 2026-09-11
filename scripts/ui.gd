@@ -290,13 +290,16 @@ func _button(box: Control, text: String, cb: Callable, enabled: bool = true) -> 
 
 func _show_bench() -> void:
 	var box := _window("Ławka przed kościołem", 720.0)
-	_text(box, "Brewiarz, ptaki i spokój. Godzina siedzenia to +%d energii. Dobre miejsce, żeby doczekać do mszy." % int(Game.READ_ENERGY_PER_HOUR))
+	_text(box, "Brewiarz, ptaki i spokój. Godzina siedzenia to +%d energii. Dobre miejsce, żeby doczekać do mszy. Do końca doby zostało %s." % [
+		int(Game.READ_ENERGY_PER_HOUR), Game.duration_text(24.0 * 60.0 - Game.minutes)])
 	var info := _text(box, "", 22)
 	var slider := HSlider.new()
 	slider.min_value = Game.READ_MIN_MINUTES
-	slider.max_value = Game.READ_MAX_MINUTES
-	slider.step = 15
-	slider.value = 60
+	# na ławce da się siedzieć najwyżej do końca doby, potem trzeba iść spać
+	slider.max_value = maxf(float(Game.READ_MIN_MINUTES),
+		floor((24.0 * 60.0 - Game.minutes) / Game.READ_STEP_MINUTES) * Game.READ_STEP_MINUTES)
+	slider.step = Game.READ_STEP_MINUTES
+	slider.value = minf(60.0, slider.max_value)
 	slider.custom_minimum_size = Vector2(0, 44)
 	box.add_child(slider)
 	var describe := func(span: float) -> void:
