@@ -439,8 +439,10 @@ func _show_status() -> void:
 	var box := _window("Stan parafii i kronika", 880.0)
 	_text(box, "Reputacja %d   Stan budynków %d   Tradycjonaliści %d   Młode rodziny %d   Kuria %d   Szacunek %d" % [
 		Game.reputation, Game.condition, Game.trad, Game.young, Game.curia, Game.respect], 18)
-	_text(box, "Msze dziś: %s.   W niedziele i święta: %s.   W dni powszednie: %s." % [
-		Game.schedule_text(), _hours_list(Game.sunday_hours), _hours_list(Game.weekday_hours)], 17)
+	_text(box, "Rozkład mszy", 22)
+	_text(box, "Dziś (%s): %s" % [Game.day_name().to_lower(), Game.schedule_text()], 17)
+	_text(box, "Niedziele i święta nakazane: %s      Dni powszednie: %s" % [
+		_hours_list(Game.sunday_hours), _hours_list(Game.weekday_hours)], 17)
 	var saved := Game.saved_day()
 	if saved > 0:
 		_text(box, "Ostatni zapis: poranek dnia %d." % saved, 17)

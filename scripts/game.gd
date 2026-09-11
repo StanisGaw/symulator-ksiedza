@@ -232,22 +232,30 @@ func open_mass_hour() -> int:
 	return -1
 
 
-## Najbliższa msza, której jeszcze nie odprawiono. -1, gdy na dziś już po wszystkim.
+## Najbliższa msza, której jeszcze nie odprawiono i której pora nie minęła.
+## Godziny po czasie pomijamy tu same, nie czekając na rozliczenie opuszczonych,
+## żeby podpowiedź nigdy nie wskazywała mszy sprzed kilku godzin.
 func next_mass_hour() -> int:
 	for h in mass_hours_today():
-		if not masses_done.has(h) and not masses_missed.has(h):
-			return int(h)
+		if masses_done.has(h) or masses_missed.has(h):
+			continue
+		if minutes > h * 60 + MASS_WINDOW_AFTER:
+			continue
+		return int(h)
 	return -1
 
 
+## Podpowiedź przy ołtarzu zawsze podaje cały dzisiejszy rozkład, żeby nie trzeba było
+## zgadywać, o której są msze i której się nie zdążyło odprawić.
 func mass_hint() -> String:
+	var plan := "Msze dziś: %s." % schedule_text()
 	var next := next_mass_hour()
 	if next < 0:
-		return "Na dziś już po mszach."
+		return "%s Na dziś już po wszystkich." % plan
 	var wait := int(next * 60 - MASS_WINDOW_BEFORE - minutes)
 	if wait <= 0:
-		return "Msza o %02d:00 właśnie się zaczyna." % next
-	return "Najbliższa msza o %02d:00. Wejdź do kościoła najwyżej kwadrans wcześniej, czyli za %s." % [next, duration_text(float(wait))]
+		return "%s Ta o %02d:00 zaczyna się teraz, stań przy ołtarzu." % [plan, next]
+	return "%s Najbliższa o %02d:00, wejdź najwyżej kwadrans wcześniej, czyli za %s." % [plan, next, duration_text(float(wait))]
 
 
 ## Msze, na które ksiądz nie zdążył, rozliczają się same, gdy minie ich pora.

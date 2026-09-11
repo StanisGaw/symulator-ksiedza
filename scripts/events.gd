@@ -4,14 +4,14 @@ class_name Events
 
 const EVENTS := [
 	{
-		"id": "mass_hour", "day": 2, "title": "Spór o godzinę niedzielnej sumy",
-		"text": "Po porannej mszy czekają na Ciebie dwie delegacje. Dziś w niedzielę odprawiasz o 7:00, 12:00 i 19:00. Starsi parafianie chcą, żeby suma wróciła na 7:00 i żeby południową odwołać, jak za poprzedniego proboszcza. Młode rodziny proszą o 11:00, bo dzieci nie wstaną. Kościelny przypomina, że każda msza to godzina Twojego czasu i że opuszczonej nikt nie wybaczy.",
+		"id": "mass_hour", "day": 2, "title": "Spór o godzinę głównej mszy w niedzielę",
+		"text": "Po porannej mszy czekają na Ciebie dwie delegacje. W niedziele i święta odprawiasz o 7:00, 12:00 i 19:00, w dni powszednie o 7:00 i 19:00. Starsi parafianie chcą, żeby główna msza, którą po staremu nazywają sumą, wróciła na 7:00, a południową żebyś odwołał. Młode rodziny proszą o 11:00, bo dzieci nie wstaną wcześniej. Kościelny przypomina, że każda msza to godzina Twojego czasu, a opuszczonej nikt nie wybaczy. Zmiana dotyczy tylko niedziel i świąt.",
 		"options": [
-			{"label": "Niedziela: 7:00 i 19:00, bez południowej", "effects": {"trad": 8, "young": -6}, "set": {"sunday_hours": [7, 19]},
+			{"label": "Niedziele i święta: 7:00 i 19:00, bez południowej", "effects": {"trad": 8, "young": -6}, "set": {"sunday_hours": [7, 19]},
 				"delayed": {"days": 4, "text": "Kilka młodych rodzin zaczęło jeździć na mszę do sąsiedniej parafii. Młode rodziny -5, reputacja -2.", "effects": {"young": -5, "reputation": -2}}},
-			{"label": "Niedziela: 11:00 i 19:00, suma z dziećmi", "effects": {"young": 8, "trad": -6}, "set": {"sunday_hours": [11, 19]},
+			{"label": "Niedziele i święta: 11:00 i 19:00, główna z dziećmi", "effects": {"young": 8, "trad": -6}, "set": {"sunday_hours": [11, 19]},
 				"delayed": {"days": 4, "text": "Tradycjonaliści napisali list do kurii w sprawie „nowinek”. Kuria -4.", "effects": {"curia": -4}}},
-			{"label": "Niedziela: 7:00, 11:00 i 19:00, trzy msze", "effects": {"trad": 3, "young": 3}, "set": {"sunday_hours": [7, 11, 19]},
+			{"label": "Niedziele i święta: 7:00, 11:00 i 19:00, trzy msze", "effects": {"trad": 3, "young": 3}, "set": {"sunday_hours": [7, 11, 19]},
 				"delayed": {"days": 7, "text": "Organista upomina się o dodatek za trzecią mszę w niedzielę. -600 zł.", "effects": {"money": -600}}},
 		]
 	},
