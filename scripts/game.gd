@@ -34,7 +34,7 @@ const ACTIVITIES := {
 		"effects": {"condition": 6}, "toast": "Rynna naprawiona. Stan budynków +6.", "builds": "gutter"},
 	"sweep": {"label": "Zamieć plac", "minutes": 30, "energy": 10, "once": true,
 		"effects": {"reputation": 1}, "toast": "Plac zamieciony. Reputacja +1.", "world": true,
-		"cutscene": "Zamiatanie placu", "director_group": "activity_scene", "scene": {"kind": "sweep", "seconds": 4.5}},
+		"cutscene": "Zamiatanie placu", "director_group": "activity_scene", "scene": {"kind": "sweep", "seconds": 4.5, "zoom": 7.0}},
 	"visit_sick": {"label": "Odwiedziny chorego (samochód)", "minutes": 90, "energy": 20, "once": true,
 		"visit": true, "effects": {}, "toast": "",
 		"cutscene": "Odwiedziny", "cut_location": "visit", "return_location": "outside", "return_spawn": "car"},

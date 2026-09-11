@@ -5,8 +5,38 @@ extends Node3D
 ## scena wygląda inaczej na placu i w kościele. Każdą można pominąć.
 
 const WALK_SPEED := 3.2
-const SWEEP_SPEED := 5.5
-const SWEEP_ARC := 0.55
+## Jedno pociągnięcie miotłą. Ruch prowadzimy punktem styku szczotki z ziemią, bo to on
+## ma się zachowywać sensownie: w przód szczotka sunie po ziemi tak daleko, jak sięgają
+## ręce, a w drodze powrotnej ksiądz ją lekko unosi i podnosi kij, przez co dłonie na
+## moment zrównują się wysokością. Kotwica i chwyty wynikają z tego, a stawy układa IK.
+const SWEEP_SPEED := 3.4
+## Zasięg pociągnięcia w przód i w tył, licząc od położenia spoczynkowego szczotki.
+const SWEEP_PUSH := 0.22
+## O ile szczotka odrywa się od ziemi i o ile stopni kładzie się kij w drodze powrotnej.
+## Kij jest sztywną dźwignią o ramieniu 1.68, więc każdy stopień położenia kija przesuwa
+## dłonie o kilka centymetrów: powyżej ośmiu stopni dolny chwyt ucieka lewej ręce poza
+## zasięg. Dlatego ręce zrównują się wysokością tylko częściowo.
+const SWEEP_LIFT := 0.12
+const SWEEP_TILT := 8.0
+## Ile stopni tułów odprowadza wymach - tylko tyle, żeby ksiądz nie stał jak słup.
+const SWEEP_BODY_YAW := 0.06
+## Ile kija wystaje ponad wyższą dłoń; reszta długości idzie w dół, do główki. Końcówka
+## jest krótka, bo dłuższa podjeżdżała księdzu pod pachę: przy 0.4 mijała ją o 7 cm, przy
+## 0.12 o 12. Skracając ją, skracamy o tyle samo całą miotłę, żeby część pod dłońmi
+## została ta sama i szczotka dalej dotykała ziemi.
+const BROOM_GRIP := 0.12
+## Odstęp między dłońmi na kiju. Szerzej rozstawione dłonie wyglądają lepiej, ale dolny
+## chwyt ucieka wtedy lewej ręce poza zasięg na końcu pociągnięcia.
+const BROOM_SPREAD := 0.42
+## Połowa grubości główki, czyli o ile jej środek jest nad punktem styku z ziemią.
+const BROOM_HEAD_HALF := 0.08
+## Brewiarz: gdzie wisi przed siedzącym księdzem i jak szeroko rozstawione są na nim dłonie.
+## Trzymamy go tak samo jak miotłę - na węźle rekwizytów, a nie w jednej dłoni - bo wtedy
+## jego położenie nie zależy od tego, jak akurat ułożona jest ręka.
+const BOOK_POS := Vector3(0.0, 1.18, 0.46)
+const BOOK_GRIP := 0.2
+## Przy brewiarzu łokcie opadają wzdłuż żeber, a nie sterczą na boki jak przy miotle.
+const BOOK_ELBOW_POLE := Vector3(0.25, -1.5, 0.15)
 
 var active := false
 var kind := ""
@@ -19,13 +49,19 @@ var _spots: Dictionary = {}
 var _rig: Node3D
 var _return_pos := Vector3.ZERO
 var _kneeling := false
-## Ułożenie miotły w rękach: kąt kija (x: ujemny = w przód, y: w bok) i jego długość.
-## Rekwizyt wisi na ciele, które w pozie "work" jest już pochylone o 26 stopni w przód,
-## a dodatni obrót wokół X przechyla to, co wisi w dół, do tyłu. Dlatego kąt musi być
-## ujemny i większy niż samo pochylenie: -76 daje w świecie około 50 stopni w przód.
-## debug: --broom=-76,-22,1.3 nadpisuje kąt X, kąt Y i długość.
-var broom_rotation := Vector3(-76, -22, 0)
-var broom_length := 1.3
+## Ułożenie miotły: kąt kija do pionu, skręt w bok i długość. Miotła wisi na węźle
+## rekwizytów, który nie pochyla się razem z tułowiem, więc kąt liczy się wprost do ziemi.
+## Kotwica to punkt, w którym kij przechodzi przez wyższą (prawą) dłoń - reszta pozy
+## wynika z niej, bo dłonie dostają go jako cel, a stawy układa IK w player.gd.
+## debug: --broom=34.4,-35.2,1.861 nadpisuje kąt, skręt i długość.
+var broom_tilt := 34.4
+var broom_yaw := -35.2
+var broom_length := 1.861
+var broom_anchor := Vector3(0.24, 1.456, 0.402)
+var _broom_node: Node3D
+## Punkt styku szczotki z ziemią w spoczynku i kierunek, w którym ksiądz pcha miotłę.
+var _brush_base := Vector3.ZERO
+var _push_dir := Vector3.FORWARD
 var _zoom_before := 14.0
 
 
@@ -40,7 +76,8 @@ func start(def: Dictionary) -> void:
 		if arg.begins_with("--broom="):
 			var parts := arg.trim_prefix("--broom=").split(",", false)
 			if parts.size() == 3:
-				broom_rotation = Vector3(float(parts[0]), float(parts[1]), 0)
+				broom_tilt = float(parts[0])
+				broom_yaw = float(parts[1])
 				broom_length = float(parts[2])
 	kind = str(scene.get("kind", ""))
 	length = float(scene.get("seconds", 4.0))
@@ -64,7 +101,10 @@ func start(def: Dictionary) -> void:
 			_start_confession()
 		"read":
 			_start_seated("bench_seat", Vector3(0, 0, 1))
-			_player.hold(_book())
+			_player.hold_two_handed(_book())
+			_player.reach_hands(BOOK_POS + Vector3(BOOK_GRIP, -0.05, -0.04),
+				BOOK_POS + Vector3(-BOOK_GRIP, -0.05, -0.04),
+				BOOK_ELBOW_POLE, BOOK_ELBOW_POLE)
 		"sleep":
 			_start_sleep()
 		"funeral":
@@ -86,19 +126,29 @@ func _spot(name: String, fallback: Vector3 = Vector3.ZERO) -> Vector3:
 func _start_sweep() -> void:
 	_base_yaw = _player.model_yaw()
 	_player.set_pose("work")
-	_player.hold(_broom())
+	_broom_node = _broom()
+	_player.hold_two_handed(_broom_node)
+	# punkt styku szczotki liczony z ustawienia spoczynkowego; to on prowadzi animację
+	var down := _stick_dir(broom_tilt)
+	_brush_base = (broom_anchor + down * (broom_length - BROOM_GRIP - 0.06)
+		- Vector3(0, BROOM_HEAD_HALF, 0))
+	# pionowy kij (np. z --broom=0,...) nie ma poziomego kierunku, więc pchamy w przód
+	var flat := Vector3(down.x, 0, down.z)
+	_push_dir = flat.normalized() if flat.length() > 0.001 else Vector3.FORWARD
+	_run_sweep(0.0)
 	# miotła stojąca w lokacji znika, bo to właśnie ją ksiądz wziął do ręki
 	for node in get_tree().get_nodes_in_group("prop_broom"):
 		node.visible = false
 
 
-## Miotła jako jedna bryła: kij i główka są dziećmi tego samego węzła, więc nie
-## da się ich rozjechać. Kij wisi z rąk w dół, główka siedzi na jego końcu.
+## Miotła jako jedna bryła: kij i główka są dziećmi tego samego węzła, więc nie da się
+## ich rozjechać. Węzeł wisi na rekwizytach księdza, bo miotła trzymana oburącz nie może
+## dyndać u jednej dłoni - to ona wyznacza chwyty, a ręce się do nich dopasowują.
 func _broom() -> Node3D:
 	var root := Node3D.new()
-	# w dłoniach na wysokości pasa, lekko przed ciałem
-	root.position = Vector3(0.1, 1.1, 0.3)
-	root.rotation_degrees = broom_rotation
+	root.position = broom_anchor
+	# węzeł rekwizytów nie jest pochylony, więc kąt kija to wprost kąt do pionu
+	root.rotation_degrees = Vector3(-broom_tilt, broom_yaw, 0)
 	var length := broom_length
 	var stick := MeshInstance3D.new()
 	var cyl := CylinderMesh.new()
@@ -109,37 +159,36 @@ func _broom() -> Node3D:
 	cyl.radial_segments = 5
 	stick.mesh = cyl
 	stick.material_override = ToonMaterial.make(Palette.TRUNK)
-	stick.position = Vector3(0, -length / 2.0, 0)
+	stick.position = Vector3(0, BROOM_GRIP - length / 2.0, 0)
 	root.add_child(stick)
 	var head := MeshInstance3D.new()
 	var box := BoxMesh.new()
 	box.size = Vector3(0.38, 0.16, 0.14)
 	head.mesh = box
-	head.material_override = ToonMaterial.make(Color("8a7a4a"))
+	head.material_override = ToonMaterial.make(Palette.CROSS)
 	# tuż pod końcem kija, żeby główka trzymała się trzonka; obrót zwrotny kładzie ją płasko
-	head.position = Vector3(0, -length + 0.06, 0.02)
-	head.rotation_degrees = Vector3(-(broom_rotation.x + 26.0), 0, 0)
+	head.position = Vector3(0, BROOM_GRIP - length + 0.06, 0.02)
+	head.rotation_degrees = Vector3(broom_tilt, 0, 0)
 	root.add_child(head)
 	return root
 
 
 func _book() -> Node3D:
 	var root := Node3D.new()
+	root.position = BOOK_POS
+	root.rotation_degrees = Vector3(-24, 0, 0)
 	var cover := MeshInstance3D.new()
 	var box := BoxMesh.new()
 	box.size = Vector3(0.3, 0.04, 0.22)
 	cover.mesh = box
 	cover.material_override = ToonMaterial.make(Palette.BOOK_A)
-	cover.position = Vector3(0.0, 1.02, 0.34)
-	cover.rotation_degrees = Vector3(-24, 0, 0)
 	root.add_child(cover)
 	var pages := MeshInstance3D.new()
 	var page_box := BoxMesh.new()
 	page_box.size = Vector3(0.27, 0.03, 0.19)
 	pages.mesh = page_box
 	pages.material_override = ToonMaterial.make(Palette.PAPER)
-	pages.position = Vector3(0.0, 1.06, 0.33)
-	pages.rotation_degrees = Vector3(-24, 0, 0)
+	pages.position = Vector3(0, 0.035, -0.01)
 	root.add_child(pages)
 	return root
 
@@ -212,11 +261,30 @@ func _process(delta: float) -> void:
 		_finish()
 
 
+## Kierunek kija w dół dla zadanego kąta do pionu; skręt w bok jest stały.
+func _stick_dir(tilt: float) -> Vector3:
+	return Basis.from_euler(Vector3(deg_to_rad(-tilt), deg_to_rad(broom_yaw), 0)) * Vector3.DOWN
+
+
+## Jedno pociągnięcie miotłą: szczotka sunie po ziemi w przód i w tył, a w drodze powrotnej
+## odrywa się i kij się kłada. Z położenia szczotki wynika kotwica, a z niej punkty chwytu,
+## które dostają dłonie - ręce nadążają za nimi, zginając i prostując łokcie, więc ruch
+## wychodzi z ramion, a nie ze skręcania całego księdza.
 func _run_sweep(_delta: float) -> void:
-	# wymach miotłą: ciało skręca w lewo i w prawo, ramiona idą razem z nim
-	var swing := sin(elapsed * SWEEP_SPEED)
-	_player.set_model_yaw(_base_yaw + swing * SWEEP_ARC)
-	_player.bob(elapsed * 0.7)
+	var phase := elapsed * SWEEP_SPEED
+	var swing := sin(phase)
+	# cosinus mówi, w którą stronę jedzie miotła; ujemny to droga powrotna
+	var back := maxf(0.0, -cos(phase))
+	var down := _stick_dir(broom_tilt + SWEEP_TILT * back)
+	var contact := _brush_base + _push_dir * (swing * SWEEP_PUSH) + Vector3(0, SWEEP_LIFT * back, 0)
+	# kij jest sztywny, więc z punktu styku wynika, gdzie musi być kotwica, a z niej chwyty
+	var anchor := (contact + Vector3(0, BROOM_HEAD_HALF, 0)
+		- down * (broom_length - BROOM_GRIP - 0.06))
+	_broom_node.position = anchor
+	_broom_node.rotation_degrees = Vector3(-(broom_tilt + SWEEP_TILT * back), broom_yaw, 0)
+	_player.reach_hands(anchor, anchor + down * BROOM_SPREAD)
+	# tułów tylko towarzyszy ruchowi rąk
+	_player.set_model_yaw(_base_yaw + swing * SWEEP_BODY_YAW)
 
 
 func _run_funeral() -> void:
@@ -280,6 +348,7 @@ func _finish() -> void:
 	for p in people:
 		p["node"].queue_free()
 	people.clear()
+	_broom_node = null
 	if _player:
 		_player.set_pose("stand")
 		_player.bob(0.0)
