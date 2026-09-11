@@ -163,8 +163,12 @@ func _step(p: Dictionary, delta: float) -> bool:
 	if dist <= move:
 		node.position = Vector3(target.x, node.position.y, target.z)
 		path.pop_front()
-		return path.is_empty()
+		if path.is_empty():
+			Person.stand(node)
+			return true
+		return false
 	node.position += to / dist * move
+	Person.advance(node, move)
 	node.rotation.y = atan2(to.x, to.z)
 	return false
 
