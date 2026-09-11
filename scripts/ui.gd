@@ -37,11 +37,18 @@ func _ready() -> void:
 			call_deferred("_enqueue", "continue", {"day": Game.saved_day()})
 		elif arg == "--visit":
 			Game.call_deferred("do_activity", "visit_sick")
+		elif arg.begins_with("--event="):
+			# --event=organ_silent otwiera konkretne wydarzenie, także kryzys
+			var ev := Events.by_id(arg.trim_prefix("--event="))
+			if ev.is_empty():
+				push_warning("Nie ma wydarzenia o tym identyfikatorze.")
+			else:
+				call_deferred("_enqueue", "event", {"event": ev})
 
 
 func _debug_modal(kind: String) -> void:
 	match kind:
-		"event": _enqueue("event", {"event": Events.EVENTS[0]})
+		"event": _enqueue("event", {"event": Events.POOL[0]})
 		"report": _enqueue("report", {"title": "Poniedziałek, 8 grudnia   Adwent", "lines": ["Rozliczenie tygodnia: taca i ofiary 3 420 zł, wydatki 2 500 zł, rachunki i pensje 4 200 zł.", "Stan konta: 8 720 zł.", "Festyn parafialny: prace zakończone. młode rodziny +8, reputacja +4, tradycjonaliści -3."]})
 		_: _enqueue(kind, {})
 
@@ -51,9 +58,13 @@ func _process(_delta: float) -> void:
 	var feast: String = Game.feast_name()
 	if feast != "":
 		head += "   •   " + feast
-	_hud.text = "%s\n%s      Energia %d%%      %s zł      Reputacja %d   Budynki %d   Tradycjonaliści %d   Młode rodziny %d   Kuria %d   Szacunek %d" % [
-		head, Game.clock_text(), int(Game.energy), _money(Game.money),
+	var line := "%s      Energia %d%%      %s zł      Reputacja %d   Budynki %d   Tradycjonaliści %d   Młode rodziny %d   Kuria %d   Szacunek %d" % [
+		Game.clock_text(), int(Game.energy), _money(Game.money),
 		Game.reputation, Game.condition, Game.trad, Game.young, Game.curia, Game.respect]
+	# awaria kosztuje codziennie, więc musi być widoczna bez otwierania okna
+	if not Game.breakdowns.is_empty():
+		line += "   •   Awarie: %d" % Game.breakdowns.size()
+	_hud.text = "%s\n%s" % [head, line]
 
 
 # ---------- building blocks ----------
@@ -376,6 +387,9 @@ func _show_confirm_new() -> void:
 
 func _show_event(ev: Dictionary) -> void:
 	var box := _window(ev["title"])
+	if ev.get("crisis", false):
+		var warn := _text(box, "To jest kryzys. Nie da się go odłożyć i każde wyjście coś kosztuje.", 18)
+		warn.add_theme_color_override("font_color", Color(0.92, 0.45, 0.35))
 	_text(box, ev["text"])
 	var opts := VBoxContainer.new()
 	opts.add_theme_constant_override("separation", 8)
@@ -409,9 +423,54 @@ func _show_finance() -> void:
 	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	list.add_theme_constant_override("separation", 10)
 	scroll.add_child(list)
+	# awarie idą przed inwestycjami, bo każdy dzień zwłoki kosztuje
+	if not Game.breakdowns.is_empty():
+		var head := _text(list, "Awarie do naprawy", 22)
+		head.add_theme_color_override("font_color", Color(0.92, 0.45, 0.35))
+		for id in Game.breakdowns:
+			_breakdown_card(list, id)
+		_text(list, "Inwestycje", 22)
 	for id in Game.INVESTMENTS:
 		_investment_card(list, id)
 	_button(box, "Zamknij", _close_modal)
+
+
+## Karta awarii: co się psuje każdego dnia, ile kosztuje naprawa i jak długo potrwa.
+func _breakdown_card(list: Control, id: String) -> void:
+	var def: Dictionary = Breakdowns.ALL[id]
+	var card := PanelContainer.new()
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.16, 0.1, 0.1)
+	style.border_color = Color(0.55, 0.3, 0.25)
+	style.set_border_width_all(1)
+	style.set_content_margin_all(14)
+	card.add_theme_stylebox_override("panel", style)
+	list.add_child(card)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 16)
+	card.add_child(row)
+	var info := VBoxContainer.new()
+	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	info.add_theme_constant_override("separation", 4)
+	row.add_child(info)
+	var open_days: int = Game.day - int(Game.breakdown_since.get(id, Game.day))
+	var since := "od dziś" if open_days <= 0 else "trwa %s" % Game.days_text(open_days)
+	_text(info, "%s   —   %s zł, %s naprawy" % [def["label"], _money(def["cost"]), Game.days_text(int(def["days"]))], 21)
+	_card_line(info, "Stan", "%s. %s" % [since, def.get("note", "")])
+	_card_line(info, "Kosztuje co dzień", Game.effects_text(def.get("daily", {})))
+	if def.has("blocks"):
+		_card_line(info, "Blokuje", str(Game.ACTIVITIES[def["blocks"]]["label"]))
+	var label := "Napraw"
+	if Game.pending_repairs.has(id):
+		label = "W trakcie"
+	elif Game.money < int(def["cost"]):
+		label = "Za drogo"
+	var b := _button(row, label, func() -> void:
+		Game.repair_breakdown(id)
+		_close_modal()
+		_enqueue("finance", {}), Game.can_repair(id))
+	b.custom_minimum_size = Vector2(150, 52)
+	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 
 
 ## Karta inwestycji: co stanie w świecie, co się odblokuje, ile to daje i kiedy się zwróci.
@@ -488,6 +547,12 @@ func _show_status() -> void:
 		_text(box, "Ostatni zapis: poranek dnia %d." % saved, 17)
 	else:
 		_text(box, "Gra zapisze się przy przejściu do nowego dnia.", 17)
+	if not Game.breakdowns.is_empty():
+		_text(box, "Awarie:", 22)
+		for id in Game.breakdowns:
+			var def: Dictionary = Breakdowns.ALL[id]
+			var state := "naprawa w toku" if Game.pending_repairs.has(id) else "naprawa %s zł" % _money(def["cost"])
+			_text(box, "• %s — %s" % [def["label"], state], 17)
 	if not Game.scheduled.is_empty():
 		_text(box, "W toku:", 22)
 		for item in Game.scheduled:

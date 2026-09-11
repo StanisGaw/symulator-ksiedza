@@ -25,6 +25,9 @@ const WINDOW := Color("d08a3a")
 const CROSS := Color("8a7a4a")
 const STONE := Color("6f7079")
 const CASSOCK := Color("101014")
+## Rękaw jest jaśniejszy od sutanny, bo przy 320x180 czarna ręka na czarnym tułowiu
+## znika - obrys też jest ciemny, więc kształtu ręki nie było w ogóle widać.
+const CASSOCK_SLEEVE := Color("262630")
 const COLLAR := Color("d8d8d8")
 const SKIN := Color("c9a58a")
 const HAIR := Color("2e1c14")

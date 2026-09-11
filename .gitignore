@@ -1,3 +1,7 @@
 .godot/
 build/
 .DS_Store
+
+# Pythonowe cache podglądów blenderowych
+__pycache__/
+*.pyc

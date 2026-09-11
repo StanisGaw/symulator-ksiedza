@@ -335,7 +335,10 @@ godot --path .
 - Finanse: konto, wpływy i wydatki tygodnia, stałe koszty rozliczane w poniedziałek rano. Inwestycje mają karty, które mówią, co stanie w świecie, co się odblokuje, ile to daje tygodniowo i po ilu tygodniach się zwróci. Ukończone inwestycje doliczają stały dochód do rozliczenia tygodnia.
 - Cmentarz parafialny (12 000 zł, 5 dni) to pierwsza inwestycja z powtarzalnym zyskiem. Za kościołem staje mur z bramą, żwirowa alejka, kwatery z nagrobkami, cyprysy i kaplica cmentarna. Od tej pory co kilka dni ktoś w parafii umiera, a rodzina czeka najwyżej dwa dni na pogrzeb: odprawiony daje 800–1 200 zł ofiary, reputację i szacunek, zaniedbany oznacza pochówek u sąsiada i utratę reputacji. Pogrzeb to scena z trumną nad grobem i żałobnikami w półkolu. Do tego 150 zł tygodniowo z opłat za miejsca.
 - Zasoby niefinansowe: reputacja, stan budynków, tradycjonaliści, młode rodziny, kuria. Zły stan budynków obniża reputację co tydzień, minus na koncie psuje relacje z kurią.
-- Wydarzenia z wyborem i odroczoną konsekwencją: spór o godzinę mszy (dzień 2), pogrzeb sołtysa (dzień 3), telefon z kurii (dzień 5) oraz przeciek w dachu, gdy stan budynków spadnie poniżej 30.
+- Wydarzenia: trzydzieści pięć definicji w trzech rodzajach. Pierwszy tydzień prowadzi scenariusz (spór o godzinę mszy, pogrzeb sołtysa, telefon z kurii), potem rano losuje się jedno wydarzenie z puli dwudziestu ośmiu, ale tylko spośród tych, których warunki są spełnione: zakres dni, pora roku, okres liturgiczny, ukończone inwestycje, trwające awarie i progi wskaźników. Szansa na wydarzenie rośnie po cichych dniach, więc gra nie potrafi zamilknąć na tydzień, i nigdy nie jest pewna. Wydarzenie z puli wraca po karencji, zwykle po miesiącu, więc rok gry nie powtarza tych samych scen.
+- Skutki odroczone bywają niepewne. Decyzja potrafi zostawić po sobie termin z monetą: zabezpieczony dach przetrwa wichurę w ośmiu przypadkach na dziewięć, kościelny po ostatniej szansie wytrzyma tydzień albo nie wytrzyma czterech dni, darowizna od przedsiębiorcy wyjdzie na jaw albo ucichnie. Tego samego wyboru nie da się więc zoptymalizować na pamięć.
+- Kryzysy progowe: bunt parafian przy reputacji poniżej 22, pismo z kurii z terminem przy relacjach poniżej 22, brak pieniędzy na faktury przy dużym minusie na koncie i nadzór budowlany przy stanie budynków poniżej 15. Kryzysu nie da się odłożyć, wchodzi zamiast wydarzenia z puli i wraca co dwa tygodnie, dopóki parafia jest w tym stanie. Okno kryzysu jest podpisane wprost i wygląda inaczej niż zwykły wybór.
+- Awarie jako stany trwałe: zerwana część dachu, padnięty piec, kuny na strychu, pęknięta rura na plebanii i samochód, który nie odpala. Awaria kosztuje co rano, dopóki się jej nie naprawi, a raport mówi, ile już trwa. Samochód odbiera odwiedziny chorych, dopóki stoi. Naprawa idzie tą samą drogą co inwestycja: płacisz dziś, prace kończą się rano. Awarie biorą się z decyzji w wydarzeniach albo psują się same, tym częściej, im gorszy jest stan budynków, a pora roku decyduje, co pada: zimą piec, jesienią dach.
 - Kalendarz i rok liturgiczny: gra zaczyna się w dniu, w którym zaczęto nową grę, i toczy się bez końca. Pasek stanu pokazuje prawdziwą datę i okres liturgiczny. Święta ruchome (Popielec, Palmowa, Triduum, Wielkanoc, Boże Ciało) liczą się z Niedzieli Wielkanocnej algorytmem Meeusa, reszta to daty stałe, od Trzech Króli po odpust parafialny. Święta ściągają więcej ludzi i hojniejszą tacę, ale tylko o właściwej porze: mnożnik Pasterki działa dopiero po dwudziestej, a poranna msza 24 grudnia jest zwykłą mszą. Msza w dzień powszedni Adwentu przed ósmą to roraty. Święto nakazane bez mszy kosztuje tradycjonalistów, reputację i kurię.
 - Klimat okresu i pory roku: w Adwencie stoi wieniec, na którym co niedzielę zapala się kolejna świeca, w Wigilię dochodzi choinka i szopka, w Wielkim Poście ołtarz jest fioletowy, krzyż zasłonięty, a światło zimne, w Wielkanoc pojawia się paschał i kwiaty. Na placu zimą leży śnieg na ziemi i na dachach, jesienią drzewa są rude, latem zielone.
 - Sen na godziny: przy łóżku suwak od jednej do dwunastu godzin, z podglądem godziny pobudki i energii, oraz gotowy przycisk „Śpij do 6:00”, gdy to najwyżej dwanaście godzin. Godzina snu to +12 energii, więc krótka noc sama w sobie jest karą i nie trzeba osobnej. Sen po północy rozpoczyna nowy dzień o godzinie pobudki, a nie sztywno o siódmej.
@@ -359,7 +362,10 @@ godot --path .
 - `scripts/calendar.gd` – daty, dni tygodnia, okresy liturgiczne, święta i ich mnożniki, roraty, świece na wieńcu adwentowym.
 - `scripts/world_state.gd` – progi stanu parafii i to, jak przekładają się na wygląd świata: kolory, warianty brył, podpisy najazdów kamery.
 - `scripts/save_game.gd` – zapis i odczyt jednego slotu (`user://parafia.save`, JSON z numerem wersji). Nieznane pola są pomijane, brakujące zostawiają wartość domyślną, więc dołożenie nowego pola stanu nie unieważnia starych zapisów.
-- `scripts/events.gd` – definicje wydarzeń.
+- `scripts/events.gd` – definicje wydarzeń w trzech listach (scenariusz, pula, kryzysy), warunki wejścia i losowanie z wagami.
+- `scripts/breakdowns.gd` – definicje awarii: co kosztują każdego dnia, ile trwa naprawa, którą czynność odbierają.
+- `scripts/tools/check_definitions.gd` – kontrola spójności definicji i przejścia stanu przez JSON (`--check`).
+- `scripts/tools/simulate.gd` – przebieg wielu dni bez gracza, do podglądu rozkładu wydarzeń (`--simulate=N`).
 - `scripts/location_manager.gd` – ładowanie lokacji, trwały gracz i kamera, punkty pojawienia.
 - `scripts/location_base.gd` i `scripts/locations/*.gd` – lokacje budowane z brył, z kolizjami, drzwiami i obiektami interakcji.
 - `scripts/interactable.gd` – obiekt interakcji: drzwi, czynność, biurko, łóżko, kronika.
@@ -371,12 +377,13 @@ godot --path .
 - `scripts/ui.gd` – cały interfejs.
 - `shaders/toon.gdshader` i `shaders/outline.gdshader` – cieniowanie toon w trzech stopniach oraz obrys metodą odwróconej bryły (`next_pass`).
 - `scripts/palette.gd` – paleta kierunku „mroczny” w jednym miejscu.
-- `scripts/player.gd` – ksiądz z brył, ruch względem stałej kamery, czujnik obiektów interakcji, spadek energii przy chodzeniu.
+- `scripts/player.gd` – ksiądz z brył, ruch względem stałej kamery, czujnik obiektów interakcji, spadek energii przy chodzeniu. Ręce mają staw łokciowy, a pozy robocze to kąty barku i łokcia policzone solverem z podglądu blenderowego.
+- `scripts/blender/` – modele budowane kodem i eksportowane do `assets/models/*.glb` przez `scripts/blender/build.sh`. W `preview/priest.py` siedzi podgląd księdza: odtwarza rig z `player.gd` w Blenderze i liczy pozy (IK dwóch kości), żeby dłonie trafiały w kij miotły, a ręce nie wchodziły w tułów. Uruchamiany ręcznie, nie jest częścią `build.sh`.
 - `scripts/camera_rig.gd` – kamera ortograficzna pod stałym kątem, podąża za graczem, gracz nie może jej obracać.
 - `scripts/day_night.gd` – cykl dnia z pochmurnym, zimnym światłem za dnia i bursztynowymi akcentami nocą; latarnie włączają się o zmierzchu.
 - `scripts/touch_controls.gd` – wirtualny joystick i przyciski dotykowe, zasilają te same akcje co klawiatura.
 
-**Argumenty debugowe** (po `--`): `--loc=church|rectory` startuje w lokacji, `--modal=finance|status|event|report` otwiera okno, `--sleep` przesypia osiem godzin, `--mass` razem z `--loc=church` uruchamia scenę mszy, `--visit` uruchamia scenę odwiedzin chorej (z `--trace` wypisuje momenty faz), `--touch` pokazuje sterowanie dotykowe na komputerze, `--wipe` kasuje zapis przed startem, `--continue` otwiera okno wczytania. Do oglądania wariantów świata: `--condition=15` i `--rep=80` ustawiają wskaźniki, `--built=roof,heating,sound,gutter,cemetery` stawia inwestycje (z `--unseen` kamera je pokaże jak przy ukończeniu prac), `--start=2026-12-24` ustawia datę startu, `--day=30` przeskakuje o tyle dni gry, `--hour=12` ustawia porę dnia, `--zoom=24` oddala kamerę, `--energy=30` ustawia energię, `--visitor=2` wybiera, do kogo jedziemy z posługą, `--broom=-76,-22,1.3` ustawia kąt kija w przód, kąt w bok i długość miotły do podglądu, `--do=sweep` uruchamia czynność (`sweep`, `confession`, `read_breviary`, `meal`, `clean_church`). Przykład:
+**Argumenty debugowe** (po `--`): `--loc=church|rectory` startuje w lokacji, `--modal=finance|status|event|report` otwiera okno, `--sleep` przesypia osiem godzin, `--mass` razem z `--loc=church` uruchamia scenę mszy, `--visit` uruchamia scenę odwiedzin chorej (z `--trace` wypisuje momenty faz), `--hires` renderuje świat w pełnej rozdzielczości zamiast w 320x180 (do oglądania animacji), `--touch` pokazuje sterowanie dotykowe na komputerze, `--wipe` kasuje zapis przed startem, `--continue` otwiera okno wczytania. Do oglądania wariantów świata: `--condition=15` i `--rep=80` ustawiają wskaźniki, `--built=roof,heating,sound,gutter,cemetery` stawia inwestycje (z `--unseen` kamera je pokaże jak przy ukończeniu prac), `--start=2026-12-24` ustawia datę startu, `--day=30` przeskakuje o tyle dni gry, `--hour=12` ustawia porę dnia, `--zoom=24` oddala kamerę, `--energy=30` ustawia energię, `--visitor=2` wybiera, do kogo jedziemy z posługą, `--broom=34.4,-35.2,1.861` ustawia kąt kija do pionu, skręt w bok i długość miotły do podglądu, `--do=sweep` uruchamia czynność (`sweep`, `confession`, `read_breviary`, `meal`, `clean_church`), `--event=organ_silent` otwiera konkretne wydarzenie po identyfikatorze, także kryzys, `--breakdown=car,furnace` startuje z trwającymi awariami. Przykład:
 
 ```bash
 godot --path . -- --loc=church
@@ -386,6 +393,18 @@ godot --path . -- --loc=church
 
 ```bash
 godot --headless --path . --import && godot --headless --path . --quit-after 120
+```
+
+**Kontrola definicji** (wyłapuje to, czego silnik nie zgłosi: literówkę w kluczu skutku, warunek na nieistniejącym polu, awarię o nieznanym identyfikatorze, losowy skutek bez wersji przeciwnej, a także pole stanu, które wraca z zapisu jako zmiennoprzecinkowe). Kończy się kodem różnym od zera, gdy coś jest nie tak, więc nadaje się do CI:
+
+```bash
+godot --headless --path . -- --check
+```
+
+**Podgląd rozkładu wydarzeń** (przebieg wielu dni bez gracza, z losowym wyborem opcji; każdy przebieg jest inny). Pokazuje, na ilu dniach coś się wydarzyło, jaka była najdłuższa cisza, ile różnych wydarzeń weszło i jakie awarie się pojawiły:
+
+```bash
+godot --headless --path . -- --simulate=120
 ```
 
 **Wersja w przeglądarce:** każdy push na gałąź `main` uruchamia workflow w `.github/workflows/deploy-pages.yml`, który pobiera Godota i szablony eksportu, buduje wersję webową (preset `Web` z wyłączonymi wątkami, żeby działała na GitHub Pages bez specjalnych nagłówków) i publikuje ją na GitHub Pages. Renderer to Compatibility, bo tylko on działa w przeglądarce.
@@ -410,7 +429,7 @@ Gra nie ma końca: rok liturgiczny wraca co roku, a rozwój idzie przez pieniąd
 - **Animacje czynności** ✅ – zamiatanie, spowiedź i sen jako krótkie sceny zamiast skoku zegara.
 - **Oprawa świąt** – przygotowania przed Bożym Narodzeniem, Wielkanocą i odpustem, wynik oprawy 0–100 mnożący frekwencję i tacę, pamięć zeszłego roku jako poprzeczka.
 - **Raport tygodnia i roku** – wykres tacy, zmiany wskaźników, statystyki parafian, kronika lat.
-- **Wydarzenia i awarie** – 20–25 wydarzeń na warunkach i sezonach zamiast sztywnych dni, awarie jako stany trwałe (zerwany dach, padnięty piec, kuny na strychu), które kosztują codziennie, dopóki się ich nie naprawi.
+- **Wydarzenia i awarie** ✅ – 35 wydarzeń na warunkach i sezonach zamiast sztywnych dni, niepewne skutki odroczone, cztery kryzysy progowe i pięć awarii jako stanów trwałych, które kosztują codziennie, dopóki się ich nie naprawi.
 - **Kolęda** – seria scen w mieszkaniach parafian, co roku w styczniu.
 
 ### Etap 2. Parafia jako mikropaństwo

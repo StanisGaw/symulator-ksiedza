@@ -200,10 +200,7 @@ func _build_street_furniture() -> OmniLight3D:
 	_collider(Vector3(0.3, 4, 0.3), Vector3(5.4, 2, 7))
 	var lamp := _omni(Vector3(5.1, 3.9, 7), Palette.LAMP_LIGHT, 0.0, 10.0)
 	lamp.name = "LampLight"
-	_box(Vector3(1.8, 0.1, 0.5), Palette.BENCH, Vector3(-3.4, 0.5, 5.5))
-	_box(Vector3(1.8, 0.5, 0.08), Palette.BENCH, Vector3(-3.4, 0.85, 5.25))
-	_box(Vector3(0.1, 0.5, 0.45), Palette.BENCH_LEG, Vector3(-4.2, 0.25, 5.5))
-	_box(Vector3(0.1, 0.5, 0.45), Palette.BENCH_LEG, Vector3(-2.6, 0.25, 5.5))
+	_model("bench", Vector3(-3.4, 0, 5.5))
 	_collider(Vector3(1.9, 1, 0.6), Vector3(-3.4, 0.5, 5.4))
 	_interactable(Vector3(-3.4, 1, 6.3), Vector3(2.2, 2, 1.2), "Ławka: usiądź z brewiarzem", "bench")
 	_box(Vector3(0.08, 1.2, 1.8), Palette.BOARD_FRAME, Vector3(-1.6, 1.4, 2.6))

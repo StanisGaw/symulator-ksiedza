@@ -34,7 +34,7 @@ const ACTIVITIES := {
 		"effects": {"condition": 6}, "toast": "Rynna naprawiona. Stan budynków +6.", "builds": "gutter"},
 	"sweep": {"label": "Zamieć plac", "minutes": 30, "energy": 10, "once": true,
 		"effects": {"reputation": 1}, "toast": "Plac zamieciony. Reputacja +1.", "world": true,
-		"cutscene": "Zamiatanie placu", "director_group": "activity_scene", "scene": {"kind": "sweep", "seconds": 4.5}},
+		"cutscene": "Zamiatanie placu", "director_group": "activity_scene", "scene": {"kind": "sweep", "seconds": 4.5, "zoom": 7.0}},
 	"visit_sick": {"label": "Odwiedziny chorego (samochód)", "minutes": 90, "energy": 20, "once": true,
 		"visit": true, "effects": {}, "toast": "",
 		"cutscene": "Odwiedziny", "cut_location": "visit", "return_location": "outside", "return_spawn": "car"},
@@ -115,6 +115,15 @@ var apples_picked := 0
 var scheduled: Array = []
 var pending_investments: Array = []
 var fired_events: Array = []
+## Trwające awarie: lista identyfikatorów z Breakdowns.ALL. Kosztują co rano,
+## dopóki nie zostaną naprawione, a niektóre blokują czynności.
+var breakdowns: Array = []
+var breakdown_since: Dictionary = {}
+var pending_repairs: Array = []
+## Dzień, od którego wydarzenie może wrócić. Bez tego pula powtarzałaby się co chwilę.
+var event_cooldowns: Dictionary = {}
+## Ile poranków z rzędu nic się nie wydarzyło. Podbija szansę, żeby gra nie milkła.
+var quiet_days := 0
 var built: Array = []
 var seen: Array = []
 var log_lines: Array = []
@@ -128,6 +137,7 @@ var _mass_roraty := false
 var _mass_started_hour := 12
 var _sleep_minutes := 480.0
 var _read_minutes := 60.0
+var _simulate_days := 0
 
 
 func _ready() -> void:
@@ -163,6 +173,19 @@ func _ready() -> void:
 			reputation = clampi(int(arg.trim_prefix("--rep=")), 0, 100)
 			trad = reputation
 			young = reputation
+		elif arg == "--check":
+			# kontrola definicji wydarzeń i awarii, bez uruchamiania gry
+			call_deferred("_run_check")
+		elif arg.begins_with("--simulate="):
+			# przebieg wielu dni bez gracza, żeby zobaczyć, co pula wydarzeń robi w praktyce
+			_simulate_days = maxi(int(arg.trim_prefix("--simulate=")), 1)
+			call_deferred("_run_simulation")
+		elif arg.begins_with("--breakdown="):
+			# --breakdown=car,furnace startuje z trwającymi awariami
+			for id in arg.trim_prefix("--breakdown=").split(",", false):
+				if Breakdowns.has(id):
+					breakdowns.append(id)
+					breakdown_since[id] = day
 		elif arg.begins_with("--built="):
 			for id in arg.trim_prefix("--built=").split(",", false):
 				built.append(id)
@@ -313,6 +336,7 @@ func apply_effects(effects: Dictionary) -> void:
 			"trad": trad = clampi(trad + v, 0, 100)
 			"young": young = clampi(young + v, 0, 100)
 			"curia": curia = clampi(curia + v, 0, 100)
+			"respect": respect += v
 			"energy": energy = clampf(energy + v, 0.0, 100.0)
 	state_changed.emit()
 	# świat pokazuje stan parafii progami, więc przebudowa tylko przy zmianie progu
@@ -335,7 +359,7 @@ static func money_text(v: int) -> String:
 
 func effects_text(effects: Dictionary) -> String:
 	var names := {"money": "zł", "reputation": "reputacja", "condition": "budynki", "trad": "tradycjonaliści",
-		"young": "młode rodziny", "curia": "kuria", "energy": "energia"}
+		"young": "młode rodziny", "curia": "kuria", "energy": "energia", "respect": "szacunek"}
 	var parts: Array[String] = []
 	for key in effects:
 		var v: int = int(effects[key])
@@ -369,6 +393,10 @@ func do_activity(id: String) -> void:
 			return
 	if def.has("builds") and built.has(def["builds"]):
 		toast.emit("To już naprawione.")
+		return
+	var blocker := blocked_by(id)
+	if blocker != "":
+		toast.emit(blocker)
 		return
 	if def.get("funeral", false) and funerals_pending <= 0:
 		toast.emit("Nikt nie czeka na pogrzeb. Bogu dzięki.")
@@ -692,32 +720,184 @@ func invest(id: String) -> void:
 
 # ---------- events ----------
 
+const DELAYED_KEYS := ["chance", "else_text", "else_effects", "breakdown", "else_breakdown", "special"]
+
+
 func choose_option(event: Dictionary, index: int) -> void:
 	var opt: Dictionary = event["options"][index]
 	if opt.has("special"):
-		_apply_special(opt["special"])
+		var msg := _apply_special(str(opt["special"]))
+		if msg != "":
+			toast.emit(msg)
+			add_log(msg)
 	if opt.has("effects"):
 		apply_effects(opt["effects"])
 	if opt.has("set"):
 		for key in opt["set"]:
 			set(key, opt["set"][key])
+	if opt.has("breakdown"):
+		add_breakdown(str(opt["breakdown"]))
+	if opt.has("fix"):
+		_clear_breakdown(str(opt["fix"]))
 	if opt.has("delayed"):
 		var d: Dictionary = opt["delayed"]
-		scheduled.append({"day": day + int(d["days"]), "text": d["text"], "effects": d.get("effects", {})})
-	fired_events.append(event["id"])
+		var item := {"day": day + int(d["days"]), "text": str(d.get("text", "")), "effects": d.get("effects", {})}
+		for key in DELAYED_KEYS:
+			if d.has(key):
+				item[key] = d[key]
+		scheduled.append(item)
+	# scenariusz pierwszego tygodnia znika na zawsze, pula i kryzysy wracają po karencji
+	if event.has("cooldown"):
+		event_cooldowns[event["id"]] = day + int(event["cooldown"])
+	else:
+		fired_events.append(event["id"])
 	add_log("%s: %s." % [event["title"], opt["label"]])
 	state_changed.emit()
 
 
-func _apply_special(kind: String) -> void:
+## Skutki, których nie da się zapisać liczbami, bo zależą od stanu parafii.
+## Zwraca komunikat do pokazania graczowi albo pusty napis.
+func _apply_special(kind: String) -> String:
 	match kind:
 		"honest_report":
 			if money >= 0:
 				apply_effects({"curia": 3})
-				toast.emit("Kuria przyjęła sprawozdanie. Kuria +3.")
-			else:
-				apply_effects({"curia": -3})
-				toast.emit("Kuria nie jest zachwycona minusem na koncie. Kuria -3.")
+				return "Kuria przyjęła sprawozdanie. Kuria +3."
+			apply_effects({"curia": -3})
+			return "Kuria nie jest zachwycona minusem na koncie. Kuria -3."
+		"visitation_ready", "visitation_raw":
+			# biskup nie czyta wskaźników, tylko widzi kościół i to, co mówią ludzie
+			var score := condition + reputation + (12 if kind == "visitation_ready" else 0)
+			if score >= 130:
+				apply_effects({"curia": 8, "respect": 3})
+				return "Biskup obszedł kościół, przejrzał księgi i powiedział, że dawno nie widział tak prowadzonej parafii. Kuria +8, szacunek +3."
+			if score >= 90:
+				apply_effects({"curia": 2})
+				return "Biskup nie miał uwag, ale też nie miał czasu na kawę. Kuria +2."
+			apply_effects({"curia": -7, "reputation": -2})
+			return "Biskup zapytał, od kiedy tak wygląda prezbiterium, i nie doczekał się odpowiedzi. Kuria -7, reputacja -2."
+		"viral_quiet":
+			if reputation >= 55:
+				apply_effects({"young": 5, "reputation": 3})
+				return "Nagranie obroniło się samo. Ludzie z powiatu piszą, że chcieliby takiego księdza. Młode rodziny +5, reputacja +3."
+			apply_effects({"reputation": -5, "curia": -3})
+			return "Fragment żyje własnym życiem i nikt nie pyta o kontekst. Reputacja -5, kuria -3."
+		"viral_answer":
+			# tu liczy się to, ile ksiądz zdążył sobie wyrobić szacunku
+			if respect >= 30:
+				apply_effects({"young": 8, "reputation": 5, "respect": 2})
+				return "Odpowiedź obejrzało więcej ludzi niż samo nagranie i wypadła dobrze. Młode rodziny +8, reputacja +5."
+			apply_effects({"young": -3, "reputation": -4, "curia": -2})
+			return "Odpowiedź wypadła nerwowo i to ona stała się materiałem. Młode rodziny -3, reputacja -4, kuria -2."
+	return ""
+
+
+# ---------- awarie ----------
+
+## Nowa awaria. Zwraca false, gdy ta awaria już trwa albo identyfikator jest nieznany.
+func add_breakdown(id: String, announce: bool = true) -> bool:
+	if not Breakdowns.has(id) or breakdowns.has(id):
+		return false
+	breakdowns.append(id)
+	breakdown_since[id] = day
+	var def: Dictionary = Breakdowns.ALL[id]
+	if announce:
+		var text := "Awaria: %s. %s" % [def["label"], def.get("note", "")]
+		toast.emit(text)
+		add_log(text)
+	if def.get("world", false):
+		world_changed.emit()
+	state_changed.emit()
+	return true
+
+
+func _clear_breakdown(id: String) -> void:
+	breakdowns.erase(id)
+	breakdown_since.erase(id)
+	pending_repairs.erase(id)
+
+
+func can_repair(id: String) -> bool:
+	if not breakdowns.has(id) or pending_repairs.has(id):
+		return false
+	return money >= int(Breakdowns.ALL[id]["cost"])
+
+
+## Naprawa idzie tą samą drogą co inwestycja: płacisz dziś, prace kończą się rano.
+func repair_breakdown(id: String) -> void:
+	if not can_repair(id):
+		toast.emit("Nie stać parafii albo naprawa już trwa.")
+		return
+	var def: Dictionary = Breakdowns.ALL[id]
+	apply_effects({"money": -int(def["cost"])})
+	var days := int(def["days"])
+	if days <= 0:
+		apply_effects(def.get("fixed_effects", {}))
+		_clear_breakdown(id)
+		toast.emit(str(def["fixed_text"]))
+		add_log(str(def["fixed_text"]))
+		world_changed.emit()
+	else:
+		pending_repairs.append(id)
+		scheduled.append({"day": day + days, "text": str(def["fixed_text"]),
+			"effects": def.get("fixed_effects", {}), "repair": id})
+		toast.emit("%s: naprawa zlecona, gotowe za %s." % [def["label"], days_text(days)])
+		add_log("Zlecono naprawę: %s (%s zł)." % [def["label"], money_text(int(def["cost"]))])
+	state_changed.emit()
+
+
+## Czynność odebrana przez awarię: bez samochodu nie pojedziesz do chorego.
+## Zwraca komunikat dla gracza albo pusty napis, gdy nic nie blokuje.
+func blocked_by(activity_id: String) -> String:
+	for id in breakdowns:
+		if str(Breakdowns.ALL[id].get("blocks", "")) == activity_id:
+			return "%s. %s" % [Breakdowns.label(id), Breakdowns.ALL[id].get("note", "")]
+	return ""
+
+
+## Awarie kosztują co rano, dopóki trwają. To jest cena zwlekania z naprawą.
+func _breakdown_morning() -> Array[String]:
+	var lines: Array[String] = []
+	for id in breakdowns:
+		if pending_repairs.has(id):
+			continue
+		var def: Dictionary = Breakdowns.ALL[id]
+		apply_effects(def.get("daily", {}))
+		var open_days := day - int(breakdown_since.get(id, day))
+		var suffix := "" if open_days < 3 else "  (%s bez naprawy)" % days_text(open_days)
+		lines.append(str(def["daily_text"]) + suffix)
+	return lines
+
+
+## Zaniedbana parafia psuje się sama. Im gorszy stan budynków, tym większa szansa,
+## a pora roku decyduje, co konkretnie pada.
+func _breakdown_risk() -> Array[String]:
+	var lines: Array[String] = []
+	var risk := clampf((60.0 - float(condition)) / 320.0, 0.0, 0.18)
+	if risk <= 0.0 or randf() >= risk:
+		return lines
+	var part := Calendar.time_of_year(day)
+	var pool: Array = []
+	var total := 0.0
+	for id in Breakdowns.ALL:
+		if breakdowns.has(id):
+			continue
+		var w := Breakdowns.natural_risk(id, part)
+		if w <= 0.0:
+			continue
+		pool.append([id, w])
+		total += w
+	if pool.is_empty():
+		return lines
+	var roll := randf() * total
+	for entry in pool:
+		roll -= float(entry[1])
+		if roll <= 0.0:
+			var id: String = entry[0]
+			if add_breakdown(id, false):
+				lines.append("Awaria: %s. %s" % [Breakdowns.label(id), Breakdowns.ALL[id].get("note", "")])
+			break
+	return lines
 
 
 # ---------- day flow ----------
@@ -788,17 +968,33 @@ func _start_new_day(new_energy: float, extra_lines: Array[String], wake_minutes:
 	# najpierw kończą się prace, żeby gotowa inwestycja liczyła się już od tego poranka
 	var remaining: Array = []
 	for item in scheduled:
-		if int(item["day"]) <= day:
-			apply_effects(item.get("effects", {}))
-			if item.has("invest"):
-				pending_investments.erase(item["invest"])
-				if not built.has(item["invest"]):
-					built.append(item["invest"])
-				world_changed.emit()
-			lines.append(item["text"])
-			add_log(item["text"])
-		else:
+		if int(item["day"]) > day:
 			remaining.append(item)
+			continue
+		# skutek odroczony bywa niepewny: "chance" rozstrzyga, która wersja dziś wchodzi
+		var hit := true
+		if item.has("chance"):
+			hit = randf() < float(item["chance"])
+		var text: String = str(item.get("text", "")) if hit else str(item.get("else_text", ""))
+		apply_effects(item.get("effects", {}) if hit else item.get("else_effects", {}))
+		var broke: String = str(item.get("breakdown", "")) if hit else str(item.get("else_breakdown", ""))
+		if broke != "" and add_breakdown(broke, false):
+			text += "  Awaria: %s. %s" % [Breakdowns.label(broke), Breakdowns.ALL[broke].get("note", "")]
+		if item.has("special"):
+			var msg := _apply_special(str(item["special"]))
+			if msg != "":
+				text = (text + " " + msg).strip_edges()
+		if item.has("invest"):
+			pending_investments.erase(item["invest"])
+			if not built.has(item["invest"]):
+				built.append(item["invest"])
+			world_changed.emit()
+		if item.has("repair"):
+			_clear_breakdown(str(item["repair"]))
+			world_changed.emit()
+		if text != "":
+			lines.append(text)
+			add_log(text)
 	scheduled = remaining
 
 	if missed_holy_day:
@@ -809,6 +1005,8 @@ func _start_new_day(new_energy: float, extra_lines: Array[String], wake_minutes:
 	if Calendar.is_monday(day):
 		lines.append_array(_weekly_settlement())
 	lines.append_array(_funeral_morning())
+	lines.append_array(_breakdown_morning())
+	lines.append_array(_breakdown_risk())
 	state_changed.emit()
 	save_now()
 	var feast: String = Calendar.feast_name(day)
@@ -816,8 +1014,25 @@ func _start_new_day(new_energy: float, extra_lines: Array[String], wake_minutes:
 		lines.push_front("Dziś %s. %s" % [feast, str(Calendar.feast(day).get("note", ""))])
 	if not lines.is_empty():
 		request_modal("report", {"title": "%s   %s" % [date_text(), season()], "lines": lines})
-	for ev in Events.due_events(self):
+	_morning_events()
+
+
+## Scenariusz pierwszego tygodnia i kryzysy wchodzą zawsze. Pula tylko wtedy, gdy dzień
+## nie jest już nimi zajęty, i tylko z pewną szansą, która rośnie po cichych dniach.
+func _morning_events() -> void:
+	var forced: Array = Events.due_events(self)
+	for ev in forced:
 		request_modal("event", {"event": ev})
+	if not forced.is_empty():
+		quiet_days = 0
+		return
+	if randf() < Events.daily_chance(quiet_days):
+		var drawn: Dictionary = Events.draw(self)
+		if not drawn.is_empty():
+			quiet_days = 0
+			request_modal("event", {"event": drawn})
+			return
+	quiet_days += 1
 
 
 const DECEASED := ["pani Genowefa Kruk", "pan Tadeusz Wrona", "pani Zofia Maj", "pan Henryk Sowa",
@@ -933,6 +1148,11 @@ func start_new_game() -> void:
 	scheduled.clear()
 	pending_investments.clear()
 	fired_events.clear()
+	breakdowns.clear()
+	breakdown_since.clear()
+	pending_repairs.clear()
+	event_cooldowns.clear()
+	quiet_days = 0
 	built.clear()
 	seen.clear()
 	log_lines.clear()
@@ -951,3 +1171,14 @@ func request_modal(kind: String, data: Dictionary) -> void:
 
 func set_prompt(text: String) -> void:
 	prompt_changed.emit(text)
+
+
+# ---------- narzędzia ----------
+
+func _run_check() -> void:
+	get_tree().quit(0 if CheckDefinitions.report() else 1)
+
+
+func _run_simulation() -> void:
+	Simulate.run(_simulate_days)
+	get_tree().quit()

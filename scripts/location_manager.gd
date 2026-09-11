@@ -20,6 +20,14 @@ var _rebuild_pending := false
 
 
 func _ready() -> void:
+	# debug: --hires renderuje świat w pełnej rozdzielczości zamiast w 320x180 upscalowanych
+	# całkowitą krotnością. Do oglądania animacji i pozy, nie do grania.
+	# rozmiaru SubViewportu nie ustawiamy wprost: przy stretch w kontenerze i tak liczy go
+	# kontener, wystarczy zdjąć pomniejszenie, żeby świat renderował się w pełnym oknie
+	var container := get_parent() as SubViewportContainer
+	if container and OS.get_cmdline_user_args().has("--hires"):
+		container.stretch_shrink = 1
+		container.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	player = PLAYER_SCENE.instantiate()
 	add_child(player)
 	rig = Node3D.new()

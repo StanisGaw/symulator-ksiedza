@@ -8,14 +8,16 @@ const VERSION := 1
 
 const INTS := ["day", "start_unix", "money", "reputation", "condition", "trad", "young", "curia",
 	"week_income", "week_expenses", "meals_today", "apples_picked", "visit_index", "respect",
-	"funerals_pending", "funeral_deadline"]
+	"funerals_pending", "funeral_deadline", "quiet_days"]
 const FLOATS := ["energy"]
 const STRINGS := ["deceased_name"]
-const DICTS := ["done_today"]
+const DICTS := ["done_today", "breakdown_since", "event_cooldowns"]
 const ARRAYS := ["scheduled", "pending_investments", "fired_events", "log_lines", "built", "seen",
-	"masses_done", "masses_missed", "sunday_hours", "weekday_hours"]
+	"masses_done", "masses_missed", "sunday_hours", "weekday_hours", "breakdowns", "pending_repairs"]
 ## Tablice, w których muszą siedzieć liczby całkowite: JSON oddaje wszystko jako zmiennoprzecinkowe.
 const INT_ARRAYS := ["masses_done", "masses_missed", "sunday_hours", "weekday_hours"]
+## To samo dla słowników: dzień początku awarii i dzień końca karencji wydarzenia.
+const INT_DICTS := ["breakdown_since", "event_cooldowns"]
 
 
 static func has_save() -> bool:
@@ -79,11 +81,17 @@ static func apply(game: Node, data: Dictionary) -> void:
 		var values: Array = game.get(key)
 		for i in values.size():
 			values[i] = int(values[i])
+	for key in INT_DICTS:
+		var dict: Dictionary = game.get(key)
+		for k in dict:
+			dict[k] = int(dict[k])
 	for item in game.scheduled:
 		item["day"] = int(item["day"])
-		var effects: Dictionary = item.get("effects", {})
-		for key in effects:
-			effects[key] = int(effects[key])
+		# skutek odroczony ma dwie wersje, obie z liczbami całkowitymi
+		for field in ["effects", "else_effects"]:
+			var effects: Dictionary = item.get(field, {})
+			for key in effects:
+				effects[key] = int(effects[key])
 
 
 static func wipe() -> void:

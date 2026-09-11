@@ -134,3 +134,12 @@ func _environment(bg: Color, ambient: Color, ambient_energy: float, fog_density:
 	we.environment = env
 	add_child(we)
 	return env
+
+
+## Model z Blendera (assets/models/<model_name>.glb). Materiały dobiera Model po nazwie.
+func _model(model_name: String, pos: Vector3, rot_deg: Vector3 = Vector3.ZERO) -> Node3D:
+	var node := Model.make(model_name)
+	node.position = pos
+	node.rotation_degrees = rot_deg
+	add_child(node)
+	return node
