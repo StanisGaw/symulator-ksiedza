@@ -7,11 +7,13 @@ const PATH := "user://parafia.save"
 const VERSION := 1
 
 const INTS := ["day", "start_unix", "money", "reputation", "condition", "trad", "young", "curia",
-	"week_income", "week_expenses", "mass_hour", "meals_today", "apples_picked", "visit_index", "respect"]
+	"week_income", "week_expenses", "meals_today", "apples_picked", "visit_index", "respect"]
 const FLOATS := ["energy"]
 const DICTS := ["done_today"]
 const ARRAYS := ["scheduled", "pending_investments", "fired_events", "log_lines", "built", "seen",
-	"masses_done", "masses_missed"]
+	"masses_done", "masses_missed", "sunday_hours", "weekday_hours"]
+## Tablice, w których muszą siedzieć liczby całkowite: JSON oddaje wszystko jako zmiennoprzecinkowe.
+const INT_ARRAYS := ["masses_done", "masses_missed", "sunday_hours", "weekday_hours"]
 
 
 static func has_save() -> bool:
@@ -67,7 +69,11 @@ static func apply(game: Node, data: Dictionary) -> void:
 	for key in ARRAYS:
 		if data.has(key) and typeof(data[key]) == TYPE_ARRAY:
 			game.set(key, (data[key] as Array).duplicate(true))
-	# JSON nie zna liczb całkowitych, więc terminy i skutki wracają jako zmiennoprzecinkowe
+	# JSON nie zna liczb całkowitych, więc godziny, terminy i skutki wracają jako zmiennoprzecinkowe
+	for key in INT_ARRAYS:
+		var values: Array = game.get(key)
+		for i in values.size():
+			values[i] = int(values[i])
 	for item in game.scheduled:
 		item["day"] = int(item["day"])
 		var effects: Dictionary = item.get("effects", {})

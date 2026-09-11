@@ -18,11 +18,11 @@ const DAY_START := 6 * 60
 const WEEKLY_EXPENSES := 4200
 ## Msze są o stałych porach. Żeby zacząć, trzeba być w kościele najwyżej kwadrans przed
 ## i najwyżej dziesięć minut po. Opuszczona msza kosztuje szacunek i tradycjonalistów.
-const MASS_HOURS := [7, 12, 19]
+const MASS_HOURS_SUNDAY := [7, 12, 19]
 const MASS_HOURS_WEEKDAY := [7, 19]
 const MASS_WINDOW_BEFORE := 15
 const MASS_WINDOW_AFTER := 10
-const MASS_ATTENDANCE := {7: 0.75, 12: 1.0, 19: 0.85}
+
 const RESPECT_PER_MASS := 2
 const RESPECT_PER_MISSED := 3
 
@@ -79,7 +79,10 @@ var young := 50
 var curia := 50
 var week_income := 0
 var week_expenses := 0
-var mass_hour := 0
+## Rozkład mszy. Wydarzenia potrafią go zmienić, więc to stan gry, a nie stała:
+## po sporze o godzinę sumy w niedzielę mogą być trzy msze zamiast dwóch.
+var sunday_hours: Array = MASS_HOURS_SUNDAY.duplicate()
+var weekday_hours: Array = MASS_HOURS_WEEKDAY.duplicate()
 var respect := 0
 var masses_done: Array = []
 var masses_missed: Array = []
@@ -194,12 +197,29 @@ func is_sunday() -> bool:
 
 # ---------- msze ----------
 
-## W dzień powszedni są dwie msze, rano i wieczorem. Suma w południe dochodzi
-## w niedziele i święta nakazane, kiedy ludzie faktycznie mają czas przyjść.
+## W dzień powszedni są dwie msze, rano i wieczorem. W niedziele i święta nakazane
+## obowiązuje rozkład niedzielny, który mogły zmienić wcześniejsze decyzje.
 func mass_hours_today() -> Array:
 	if is_sunday() or Calendar.is_holy_day(day):
-		return MASS_HOURS
-	return MASS_HOURS_WEEKDAY
+		return sunday_hours
+	return weekday_hours
+
+
+## Jak pora dnia wpływa na frekwencję: rano przychodzą najwytrwalsi, w południe
+## wszyscy, wieczorem ci po pracy. Liczy się godzina, a nie miejsce na liście.
+static func hour_attendance(hour: int) -> float:
+	if hour < 9:
+		return 0.75
+	if hour >= 16:
+		return 0.85
+	return 1.0
+
+
+func schedule_text() -> String:
+	var parts: Array[String] = []
+	for h in mass_hours_today():
+		parts.append("%02d:00" % int(h))
+	return ", ".join(parts)
 
 
 ## Godzina mszy, której okno jest teraz otwarte. -1, gdy żadnej.
@@ -470,12 +490,10 @@ func _attendance(start_minutes: float) -> int:
 	var attendance := int(clampf(40.0 + reputation * 1.2 + (trad + young) * 0.5 + (condition - 50) * 0.4, 15.0, 300.0))
 	if is_sunday():
 		attendance = int(attendance * 2.2)
-	if mass_hour == 99:
-		attendance = int(attendance * 1.25)
-	attendance = int(attendance * float(MASS_ATTENDANCE.get(_mass_started_hour, 1.0)))
-	if _mass_started_hour == mass_hour:
-		# godzina sumy ustalona z parafianami przyciąga dodatkowych
-		attendance = int(attendance * 1.1)
+	attendance = int(attendance * hour_attendance(_mass_started_hour))
+	if mass_hours_today().size() >= 3:
+		# przy trzech mszach ludzie rozkładają się na wszystkie
+		attendance = int(attendance * 0.8)
 	# święta ściągają ludzi, którzy nie przychodzą w zwykłą niedzielę
 	attendance = int(attendance * Calendar.attendance_multiplier(day, start_minutes))
 	if Calendar.is_roraty(day, start_minutes):
@@ -542,14 +560,13 @@ func _hold_mass(attendance: int) -> void:
 	apply_effects({"money": taca, "reputation": 1})
 	var respect_gain := RESPECT_PER_MASS * (2 if is_sunday() or Calendar.feast_name(day) != "" else 1)
 	respect += respect_gain
-	match _mass_started_hour:
-		7:
-			apply_effects({"trad": 1})
-		12:
-			apply_effects({"young": 1})
-		19:
-			# wieczorna msza dla tych, którzy rano są w pracy
-			apply_effects({"reputation": 1})
+	if _mass_started_hour < 9:
+		apply_effects({"trad": 1})
+	elif _mass_started_hour >= 16:
+		# wieczorna msza dla tych, którzy rano są w pracy
+		apply_effects({"reputation": 1})
+	else:
+		apply_effects({"young": 1})
 	var label := "Msza"
 	if _mass_roraty:
 		# ciemny poranek, świece i ci, którym naprawdę zależy
@@ -786,7 +803,8 @@ func start_new_game() -> void:
 	curia = 50
 	week_income = 0
 	week_expenses = 0
-	mass_hour = 0
+	sunday_hours = MASS_HOURS_SUNDAY.duplicate()
+	weekday_hours = MASS_HOURS_WEEKDAY.duplicate()
 	done_today.clear()
 	apples_picked = 0
 	meals_today = 0

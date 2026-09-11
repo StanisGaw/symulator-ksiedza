@@ -4,15 +4,15 @@ class_name Events
 
 const EVENTS := [
 	{
-		"id": "mass_hour", "day": 2, "title": "Spór o godzinę mszy",
-		"text": "Po porannej mszy czekają na Ciebie dwie delegacje. Starsi parafianie chcą, żeby niedzielna suma była o 7:00, jak za poprzedniego proboszcza. Młode rodziny proszą o 11:00, bo dzieci nie wstaną. Kościelny sugeruje, że dwie msze to dwa razy więcej roboty.",
+		"id": "mass_hour", "day": 2, "title": "Spór o godzinę niedzielnej sumy",
+		"text": "Po porannej mszy czekają na Ciebie dwie delegacje. Dziś w niedzielę odprawiasz o 7:00, 12:00 i 19:00. Starsi parafianie chcą, żeby suma wróciła na 7:00 i żeby południową odwołać, jak za poprzedniego proboszcza. Młode rodziny proszą o 11:00, bo dzieci nie wstaną. Kościelny przypomina, że każda msza to godzina Twojego czasu i że opuszczonej nikt nie wybaczy.",
 		"options": [
-			{"label": "Msza o 7:00, jak zawsze", "effects": {"trad": 8, "young": -6}, "set": {"mass_hour": 7},
+			{"label": "Niedziela: 7:00 i 19:00, bez południowej", "effects": {"trad": 8, "young": -6}, "set": {"sunday_hours": [7, 19]},
 				"delayed": {"days": 4, "text": "Kilka młodych rodzin zaczęło jeździć na mszę do sąsiedniej parafii. Młode rodziny -5, reputacja -2.", "effects": {"young": -5, "reputation": -2}}},
-			{"label": "Msza o 11:00, z dziećmi", "effects": {"young": 8, "trad": -6}, "set": {"mass_hour": 11},
+			{"label": "Niedziela: 11:00 i 19:00, suma z dziećmi", "effects": {"young": 8, "trad": -6}, "set": {"sunday_hours": [11, 19]},
 				"delayed": {"days": 4, "text": "Tradycjonaliści napisali list do kurii w sprawie „nowinek”. Kuria -4.", "effects": {"curia": -4}}},
-			{"label": "Dwie msze, 7:00 i 11:00", "effects": {"trad": 3, "young": 3}, "set": {"mass_hour": 99},
-				"delayed": {"days": 7, "text": "Organista upomina się o dodatek za drugą mszę. -600 zł.", "effects": {"money": -600}}},
+			{"label": "Niedziela: 7:00, 11:00 i 19:00, trzy msze", "effects": {"trad": 3, "young": 3}, "set": {"sunday_hours": [7, 11, 19]},
+				"delayed": {"days": 7, "text": "Organista upomina się o dodatek za trzecią mszę w niedzielę. -600 zł.", "effects": {"money": -600}}},
 		]
 	},
 	{
