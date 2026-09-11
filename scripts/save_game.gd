@@ -7,8 +7,10 @@ const PATH := "user://parafia.save"
 const VERSION := 1
 
 const INTS := ["day", "start_unix", "money", "reputation", "condition", "trad", "young", "curia",
-	"week_income", "week_expenses", "meals_today", "apples_picked", "visit_index", "respect"]
+	"week_income", "week_expenses", "meals_today", "apples_picked", "visit_index", "respect",
+	"funerals_pending", "funeral_deadline"]
 const FLOATS := ["energy"]
+const STRINGS := ["deceased_name"]
 const DICTS := ["done_today"]
 const ARRAYS := ["scheduled", "pending_investments", "fired_events", "log_lines", "built", "seen",
 	"masses_done", "masses_missed", "sunday_hours", "weekday_hours"]
@@ -22,7 +24,7 @@ static func has_save() -> bool:
 
 static func write(game: Node) -> bool:
 	var data := {"version": VERSION}
-	for key in INTS + FLOATS + DICTS + ARRAYS:
+	for key in INTS + FLOATS + STRINGS + DICTS + ARRAYS:
 		data[key] = game.get(key)
 	var f := FileAccess.open(PATH, FileAccess.WRITE)
 	if f == null:
@@ -63,6 +65,9 @@ static func apply(game: Node, data: Dictionary) -> void:
 	for key in FLOATS:
 		if data.has(key):
 			game.set(key, float(data[key]))
+	for key in STRINGS:
+		if data.has(key):
+			game.set(key, str(data[key]))
 	for key in DICTS:
 		if data.has(key) and typeof(data[key]) == TYPE_DICTIONARY:
 			game.set(key, (data[key] as Dictionary).duplicate(true))

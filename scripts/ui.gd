@@ -398,37 +398,74 @@ func _show_report(title: String, lines: Array) -> void:
 
 
 func _show_finance() -> void:
-	var box := _window("Finanse parafii", 880.0)
-	_text(box, "Konto: %s zł      W tym tygodniu: wpływy %s zł, wydatki %s zł      Stałe koszty tygodnia: %s zł (rachunki, organista, kościelny)" % [
-		_money(Game.money), _money(Game.week_income), _money(Game.week_expenses), _money(Game.WEEKLY_EXPENSES)], 18)
-	_text(box, "Inwestycje i wydatki", 22)
-	var grid := VBoxContainer.new()
-	grid.add_theme_constant_override("separation", 6)
-	box.add_child(grid)
+	var box := _window("Finanse i inwestycje", 940.0)
+	_text(box, "Konto: %s zł      W tym tygodniu: wpływy %s zł, wydatki %s zł      Stałe koszty tygodnia: %s zł      Stały dochód z inwestycji: %s zł" % [
+		_money(Game.money), _money(Game.week_income), _money(Game.week_expenses), _money(Game.WEEKLY_EXPENSES), _money(Game.weekly_yield())], 17)
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(0, 440)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	box.add_child(scroll)
+	var list := VBoxContainer.new()
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	list.add_theme_constant_override("separation", 10)
+	scroll.add_child(list)
 	for id in Game.INVESTMENTS:
-		var def: Dictionary = Game.INVESTMENTS[id]
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 14)
-		grid.add_child(row)
-		var info := VBoxContainer.new()
-		info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.add_child(info)
-		var name_l := Label.new()
-		name_l.text = "%s   %s zł" % [def["label"], _money(def["cost"])]
-		info.add_child(name_l)
-		var desc := Label.new()
-		desc.text = def["desc"]
-		desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		desc.add_theme_font_size_override("font_size", 16)
-		desc.add_theme_color_override("font_color", Color(0.7, 0.68, 0.64))
-		info.add_child(desc)
-		var pending: bool = Game.pending_investments.has(id)
-		var b := _button(row, "W trakcie" if pending else "Zleć", func() -> void:
-			Game.invest(id)
-			_close_modal()
-			_enqueue("finance", {}), Game.can_invest(id))
-		b.custom_minimum_size = Vector2(150, 52)
+		_investment_card(list, id)
 	_button(box, "Zamknij", _close_modal)
+
+
+## Karta inwestycji: co stanie w świecie, co się odblokuje, ile to daje i kiedy się zwróci.
+func _investment_card(list: Control, id: String) -> void:
+	var def: Dictionary = Game.INVESTMENTS[id]
+	var card := PanelContainer.new()
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.11, 0.11, 0.14)
+	style.border_color = Color(0.32, 0.29, 0.25)
+	style.set_border_width_all(1)
+	style.set_content_margin_all(14)
+	card.add_theme_stylebox_override("panel", style)
+	list.add_child(card)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 16)
+	card.add_child(row)
+	var info := VBoxContainer.new()
+	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	info.add_theme_constant_override("separation", 4)
+	row.add_child(info)
+	var days_text := "od ręki" if int(def["days"]) == 0 else "%s prac" % Game.days_text(int(def["days"]))
+	_text(info, "%s   —   %s zł, %s" % [def["label"], _money(def["cost"]), days_text], 21)
+	_card_line(info, "Postawi", str(def.get("builds", "")))
+	_card_line(info, "Odblokuje", str(def.get("unlocks", "")))
+	var weekly := int(def.get("weekly", 0))
+	if weekly > 0:
+		var note := str(def.get("yield_note", "%s zł tygodniowo" % _money(weekly)))
+		_card_line(info, "Zysk", "%s. Zwrot po około %d tygodniach." % [note, Game.payback_weeks(id)])
+	else:
+		_card_line(info, "Zysk", "bez stałego dochodu")
+	if not (def["effects"] as Dictionary).is_empty():
+		_card_line(info, "Po ukończeniu", Game.effects_text(def["effects"]))
+	var label := "Zleć"
+	if Game.pending_investments.has(id):
+		label = "W trakcie"
+	elif not def.get("repeatable", false) and Game.built.has(id):
+		label = "Gotowe"
+	elif Game.money < int(def["cost"]):
+		label = "Za drogo"
+	var b := _button(row, label, func() -> void:
+		Game.invest(id)
+		_close_modal()
+		_enqueue("finance", {}), Game.can_invest(id))
+	b.custom_minimum_size = Vector2(150, 52)
+	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+
+
+func _card_line(box: Control, head: String, text: String) -> void:
+	var l := Label.new()
+	l.text = "%s: %s" % [head, text]
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.add_theme_font_size_override("font_size", 16)
+	l.add_theme_color_override("font_color", Color(0.78, 0.75, 0.7))
+	box.add_child(l)
 
 
 func _hours_list(hours: Array) -> String:

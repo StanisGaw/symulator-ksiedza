@@ -10,8 +10,10 @@ func _ready() -> void:
 	_build_parking_and_car()
 	var lamp := _build_street_furniture()
 	_build_graveyard()
+	if WorldState.has("cemetery"):
+		_build_cemetery()
 	_build_tree(Vector3(-7.5, 0, 4), true)
-	_build_tree(Vector3(15, 0, -12))
+	_build_tree(Vector3(17, 0, -9))
 	var sun := DirectionalLight3D.new()
 	sun.name = "Sun"
 	sun.set_script(load("res://scripts/day_night.gd"))
@@ -211,6 +213,70 @@ func _build_street_furniture() -> OmniLight3D:
 	_collider(Vector3(0.3, 2, 1.9), Vector3(-1.6, 1, 2.6))
 	_interactable(Vector3(-0.9, 1, 2.6), Vector3(1.2, 2, 2.2), "Gablota: stan parafii", "status")
 	return lamp
+
+
+## Cmentarz parafialny za kościołem: mur, brama, żwirowa alejka, kwatery i kaplica.
+## Pojawia się po ukończeniu inwestycji; pogrzeby odprawia się przy bramie.
+func _build_cemetery() -> void:
+	var cx := 6.0
+	var front := -15.0
+	var back := -25.0
+	var half := 6.0
+	var depth := front - back
+	# mur z przerwą na bramę
+	_box(Vector3(0.3, 1.2, depth), Palette.WALL_DARK, Vector3(cx - half, 0.6, (front + back) / 2.0))
+	_box(Vector3(0.3, 1.2, depth), Palette.WALL_DARK, Vector3(cx + half, 0.6, (front + back) / 2.0))
+	_box(Vector3(half * 2 + 0.3, 1.2, 0.3), Palette.WALL_DARK, Vector3(cx, 0.6, back))
+	_box(Vector3(half - 1.0, 1.2, 0.3), Palette.WALL_DARK, Vector3(cx - half / 2.0 - 0.5, 0.6, front))
+	_box(Vector3(half - 1.0, 1.2, 0.3), Palette.WALL_DARK, Vector3(cx + half / 2.0 + 0.5, 0.6, front))
+	_collider(Vector3(0.4, 1.4, depth), Vector3(cx - half, 0.7, (front + back) / 2.0))
+	_collider(Vector3(0.4, 1.4, depth), Vector3(cx + half, 0.7, (front + back) / 2.0))
+	_collider(Vector3(half * 2 + 0.4, 1.4, 0.4), Vector3(cx, 0.7, back))
+	_collider(Vector3(half - 1.0, 1.4, 0.4), Vector3(cx - half / 2.0 - 0.5, 0.7, front))
+	_collider(Vector3(half - 1.0, 1.4, 0.4), Vector3(cx + half / 2.0 + 0.5, 0.7, front))
+	# słupki bramy z kulami i żwirowa alejka do kaplicy
+	for side in [-1.0, 1.0]:
+		_box(Vector3(0.4, 1.8, 0.4), Palette.STONE, Vector3(cx + side * 1.1, 0.9, front))
+		_sphere(0.22, Palette.STONE, Vector3(cx + side * 1.1, 1.95, front), false)
+	_box(Vector3(1.6, 0.05, depth - 1.0), Palette.PATH, Vector3(cx, 0.03, (front + back) / 2.0 - 0.3), Vector3.ZERO, false)
+	# kwatery: cztery rzędy po obu stronach alejki
+	for row in range(4):
+		var gz := front - 1.8 - row * 1.9
+		for k in range(3):
+			for side in [-1.0, 1.0]:
+				# dwa pierwsze rzędy po prawej to nowe, jeszcze puste kwatery: tu odbywają się pogrzeby
+				if side > 0 and row < 2:
+					continue
+				var gx: float = cx + side * (1.9 + k * 1.3)
+				var tall := 0.8 + float((row + k) % 3) * 0.15
+				_box(Vector3(0.5, tall, 0.14), Palette.STONE, Vector3(gx, tall / 2.0, gz), Vector3(0, side * 4.0, 0))
+				_box(Vector3(0.7, 0.14, 1.1), Palette.STONE, Vector3(gx, 0.07, gz + 0.65), Vector3.ZERO, false)
+				if (row * 3 + k) % 2 == 0:
+					_box(Vector3(0.08, 0.3, 0.06), Palette.CROSS, Vector3(gx, tall + 0.15, gz))
+					_box(Vector3(0.2, 0.06, 0.06), Palette.CROSS, Vector3(gx, tall + 0.22, gz))
+				if (row + k) % 3 == 0:
+					_sphere(0.11, Palette.FLOWER, Vector3(gx - 0.15, 0.2, gz + 0.5), false)
+					_sphere(0.11, Palette.CANDLE, Vector3(gx + 0.15, 0.2, gz + 0.5), false)
+	# kaplica cmentarna na końcu alejki
+	var kz := back + 1.6
+	_box(Vector3(3.0, 2.4, 2.2), WorldState.wall_color(Palette.WALL), Vector3(cx, 1.2, kz))
+	_collider(Vector3(3.0, 2.4, 2.2), Vector3(cx, 1.2, kz))
+	var roof := PrismMesh.new()
+	roof.size = Vector3(3.4, 1.4, 2.6)
+	_mesh(roof, ToonMaterial.make(WorldState.roof_color()), Vector3(cx, 3.1, kz))
+	_box(Vector3(0.9, 1.6, 0.14), Palette.DOOR, Vector3(cx, 0.8, kz + 1.12))
+	_box(Vector3(0.1, 0.8, 0.1), Palette.CROSS, Vector3(cx, 4.2, kz))
+	_box(Vector3(0.45, 0.1, 0.1), Palette.CROSS, Vector3(cx, 4.4, kz))
+	# cyprysy przy murze
+	for z in [front - 2.0, front - 6.0]:
+		for side in [-1.0, 1.0]:
+			_tuft(Vector3(cx + side * (half - 0.7), 1.3, z), 0.45, 2.6, Palette.CANOPY)
+	_landmark("cemetery", Vector3(cx, 1.0, (front + back) / 2.0))
+	# świeży grób przy alejce: tu odbywają się pogrzeby
+	var grave := Vector3(cx + 3.2, 0, front - 2.8)
+	_spot("grave", grave)
+	_spot("grave_priest", grave + Vector3(0, 0, -1.3))
+	_activity(Vector3(cx, 1, front - 0.9), Vector3(2.2, 2, 1.6), "funeral")
 
 
 func _build_graveyard() -> void:
