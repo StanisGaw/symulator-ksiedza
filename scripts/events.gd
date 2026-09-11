@@ -26,7 +26,8 @@ const SCRIPTED := [
 			{"label": "Niedziele i święta: 7:00 i 19:00, bez południowej", "effects": {"trad": 8, "young": -6}, "set": {"sunday_hours": [7, 19]},
 				"delayed": {"days": 4, "text": "Kilka młodych rodzin zaczęło jeździć na mszę do sąsiedniej parafii. Młode rodziny -5, reputacja -2.", "effects": {"young": -5, "reputation": -2}}},
 			{"label": "Niedziele i święta: 11:00 i 19:00, główna z dziećmi", "effects": {"young": 8, "trad": -6}, "set": {"sunday_hours": [11, 19]},
-				"delayed": {"days": 4, "text": "Tradycjonaliści napisali list do kurii w sprawie „nowinek”. Kuria -4.", "effects": {"curia": -4}}},
+				"delayed": {"days": 4, "text": "Tradycjonaliści napisali list do kurii w sprawie „nowinek”. Kuria -4.", "effects": {"curia": -4},
+					"mail": {"curia_about": "przeniesienie sumy na 11:00"}}},
 			{"label": "Niedziele i święta: 7:00, 11:00 i 19:00, trzy msze", "effects": {"trad": 3, "young": 3}, "set": {"sunday_hours": [7, 11, 19]},
 				"delayed": {"days": 7, "text": "Organista upomina się o dodatek za trzecią mszę w niedzielę. -600 zł.", "effects": {"money": -600}}},
 		]
@@ -129,7 +130,8 @@ const POOL := [
 		"text": "Pan Mietek jest w parafii dłużej niż trzech poprzednich proboszczów. Dziś nie zapalił świec przed mszą i przewrócił stojak przy chrzcielnicy. Ludzie widzieli.",
 		"options": [
 			{"label": "Zwolnij go", "effects": {"condition": -5, "reputation": -2, "trad": -4},
-				"delayed": {"days": 6, "text": "Nikt nie chce pracować za te pieniądze. Kościół otwierasz sam. Energia -10.", "effects": {"energy": -10}}},
+				"delayed": {"days": 6, "text": "Nikt nie chce pracować za te pieniądze. Kościół otwierasz sam. Energia -10.", "effects": {"energy": -10},
+					"mail": {"curia_about": "zwolnienie kościelnego po dwudziestu latach"}}},
 			{"label": "Ostatnia szansa i klucze od piwnicy zostają u ciebie", "effects": {"energy": -15},
 				"delayed": {"days": 7, "chance": 0.55,
 					"text": "Mietek wytrzymał tydzień. Kościół lśni, a on chodzi wyprostowany. Stan budynków +5, szacunek +2.", "effects": {"condition": 5, "respect": 2},
@@ -144,7 +146,8 @@ const POOL := [
 		"options": [
 			{"label": "Zgłoś na policję i postaw krzyże z ludźmi", "effects": {"reputation": 3, "energy": -20, "respect": 2}},
 			{"label": "Monitoring i zamek w bramie, 3 000 zł", "effects": {"money": -3000, "condition": 3, "reputation": 4}},
-			{"label": "Niech rodziny poprawią swoje", "effects": {"reputation": -5, "trad": -4}},
+			{"label": "Niech rodziny poprawią swoje", "effects": {"reputation": -5, "trad": -4},
+				"delayed": {"days": 2, "text": "", "mail": {"curia_about": "odmowę uprzątnięcia zdewastowanych grobów"}}},
 		]
 	},
 	{

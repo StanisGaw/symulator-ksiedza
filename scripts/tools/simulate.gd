@@ -33,6 +33,14 @@ static func run(days: int) -> void:
 	var empty: Array[String] = []
 	for i in days:
 		today_had_event[0] = false
+		# ksiądz zagląda w telefon co drugi dzień i nie na wszystko zdąży odpowiedzieć,
+		# więc w statystyce widać obie drogi: odpowiedź i termin, który minął
+		if i % 2 == 0:
+			for mi in Game.phone_inbox.size():
+				var msg: Dictionary = Game.phone_inbox[mi]
+				if msg.has("options") and int(msg.get("answered", -1)) < 0 and not bool(msg.get("expired", false)):
+					if randf() < 0.7:
+						Game.phone_answer(mi, randi() % (msg["options"] as Array).size())
 		var before: Array = Game.breakdowns.duplicate()
 		Game._start_new_day(100.0, empty)
 		for id in Game.breakdowns:
@@ -62,5 +70,21 @@ static func run(days: int) -> void:
 		print("Awarie:")
 		for id in seen_breakdowns:
 			print("   %-22s %d" % [id, seen_breakdowns[id]])
+	# telefon ma własny rytm: część wiadomości ma termin, a nieodpowiedziane biją po kurii
+	var by_app := {}
+	var answered := 0
+	var expired := 0
+	for msg in Game.phone_inbox:
+		var app: String = str(msg.get("app", "?"))
+		by_app[app] = int(by_app.get(app, 0)) + 1
+		if int(msg.get("answered", -1)) >= 0:
+			answered += 1
+		if bool(msg.get("expired", false)):
+			expired += 1
+	var parts: Array[String] = []
+	for app in by_app:
+		parts.append("%s %d" % [app, by_app[app]])
+	print("Telefon: %d wiadomości (%s), odpowiedzianych %d, po terminie %d." % [
+		Game.phone_inbox.size(), ", ".join(parts), answered, expired])
 	print("Na koniec: reputacja %d, budynki %d, kuria %d, konto %s zł, trwających awarii %d." % [
 		Game.reputation, Game.condition, Game.curia, Game.money_text(Game.money), Game.breakdowns.size()])

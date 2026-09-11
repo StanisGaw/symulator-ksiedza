@@ -28,6 +28,15 @@ const RESPECT_PER_MISSED := 3
 ## Za każde miejsce, w którym parafianie zobaczą bałagan, schodzi punkt reputacji
 ## i punkt szacunku. Liczy się to przy każdej mszy, bo wtedy ludzie to widzą.
 const MESS_PENALTY := 1
+## Telefon: ile pozycji trzymamy w historii konta i w skrzynce oraz jaka jest szansa
+## na post w mediach każdego ranka. Powtórki blokuje karencja w Phone.MEDIA_COOLDOWN.
+const BANK_LOG_MAX := 40
+const INBOX_MAX := 30
+const MEDIA_CHANCE := 0.35
+## Kiedy kuria sama pisze z prośbą o wyjaśnienia i jak często bank przypomina o debecie.
+const CURIA_MAIL_THRESHOLD := 35
+const CURIA_MAIL_COOLDOWN := 14
+const BANK_ALERT_COOLDOWN := 7
 
 const ACTIVITIES := {
 	"repair_gutter": {"label": "Napraw rynnę", "minutes": 60, "energy": 20, "once": true,
@@ -127,6 +136,13 @@ var quiet_days := 0
 var built: Array = []
 var seen: Array = []
 var log_lines: Array = []
+## Telefon: skrzynka wiadomości (poczta, media, bank) i historia operacji na koncie.
+## Wiadomości z terminem rozliczają się rano - brak odpowiedzi to też decyzja.
+var phone_inbox: Array = []
+var bank_log: Array = []
+var media_recent: Dictionary = {}
+var _last_curia_mail := -99
+var _last_bank_alert := -99
 var modal_open := false
 var cutscene := false
 var cutscene_id := ""
@@ -148,6 +164,9 @@ func _ready() -> void:
 		SaveGame.wipe()
 	if start_unix == 0:
 		start_unix = Calendar.today_start_unix()
+	# pierwszy list czeka już na starcie, także wtedy, gdy gra rusza bez menu nowej gry
+	if phone_inbox.is_empty():
+		phone_send(WELCOME_MAIL)
 	# po wczytaniu albo starcie o późniejszej godzinie msze, których pora minęła,
 	# muszą być od razu rozliczone, a nie dopiero przy pierwszej klatce bez okna
 	call_deferred("_check_missed_masses")
@@ -161,6 +180,12 @@ func _ready() -> void:
 					"hour": 0, "minute": 0, "second": 0}))
 		elif arg.begins_with("--day="):
 			day = maxi(int(arg.trim_prefix("--day=")), 1)
+		elif arg == "--mail":
+			# debug: wrzuca do telefonu list z kurii i post w mediach, żeby dało się
+			# obejrzeć wiadomość z terminem i przyciskami odpowiedzi
+			call_deferred("phone_send", Phone.curia_mail("przeniesienie sumy na 11:00", Phone.excuses()))
+			call_deferred("phone_send", Phone.MEDIA[0].duplicate(true).merged(
+				{"app": "media", "read": false, "answered": -1}, true))
 		elif arg.begins_with("--visitor="):
 			visit_index = maxi(int(arg.trim_prefix("--visitor=")), 0)
 		elif arg.begins_with("--energy="):
@@ -319,7 +344,7 @@ func _check_missed_masses() -> void:
 
 # ---------- effects ----------
 
-func apply_effects(effects: Dictionary) -> void:
+func apply_effects(effects: Dictionary, label: String = "") -> void:
 	var before_condition := WorldState.condition()
 	var before_life := WorldState.life()
 	for key in effects:
@@ -331,6 +356,7 @@ func apply_effects(effects: Dictionary) -> void:
 					week_income += v
 				else:
 					week_expenses += -v
+				bank_entry(label if label != "" else ("Wpływ" if v >= 0 else "Wydatek"), v)
 			"reputation": reputation = clampi(reputation + v, 0, 100)
 			"condition": condition = clampi(condition + v, 0, 100)
 			"trad": trad = clampi(trad + v, 0, 100)
@@ -342,6 +368,118 @@ func apply_effects(effects: Dictionary) -> void:
 	# świat pokazuje stan parafii progami, więc przebudowa tylko przy zmianie progu
 	if WorldState.condition() != before_condition or WorldState.life() != before_life:
 		world_changed.emit()
+
+
+## Dopisuje operację do historii konta w telefonie. Trzymamy ostatnie BANK_LOG_MAX pozycji,
+## bo to podgląd, a nie księgowość.
+func bank_entry(text: String, amount: int) -> void:
+	bank_log.push_front({"day": day, "text": text, "amount": amount})
+	if bank_log.size() > BANK_LOG_MAX:
+		bank_log.resize(BANK_LOG_MAX)
+
+
+## Nowa wiadomość w telefonie. Wiadomości z terminem dostają dzień, do którego czekają.
+func phone_send(msg: Dictionary) -> void:
+	var item: Dictionary = msg.duplicate(true)
+	item["day"] = day
+	item["read"] = false
+	item["answered"] = -1
+	if item.has("deadline"):
+		item["due"] = day + int(item["deadline"])
+	phone_inbox.push_front(item)
+	if item.get("app", "") == "media" and item.has("id"):
+		media_recent[str(item["id"])] = day
+	toast.emit("Telefon: %s - %s" % [item.get("from", "?"), item.get("title", "")])
+	state_changed.emit()
+
+
+func phone_unread() -> int:
+	var n := 0
+	for m in phone_inbox:
+		if not bool(m.get("read", true)):
+			n += 1
+	return n
+
+
+## Ile wiadomości czeka na odpowiedź; to one mają termin, więc HUD może je wyróżnić.
+func phone_waiting() -> int:
+	var n := 0
+	for m in phone_inbox:
+		if _phone_open_question(m):
+			n += 1
+	return n
+
+
+func _phone_open_question(msg: Dictionary) -> bool:
+	return msg.has("options") and int(msg.get("answered", -1)) < 0 and not bool(msg.get("expired", false))
+
+
+func phone_mark_read(index: int) -> void:
+	if index < 0 or index >= phone_inbox.size():
+		return
+	phone_inbox[index]["read"] = true
+	state_changed.emit()
+
+
+## Odpowiedź na wiadomość działa jak wybór w wydarzeniu: skutki od ręki, skutki odroczone
+## i wpis w kronice. Wiadomość zostaje w skrzynce z zaznaczoną odpowiedzią.
+func phone_answer(index: int, option_index: int) -> void:
+	if index < 0 or index >= phone_inbox.size():
+		return
+	var msg: Dictionary = phone_inbox[index]
+	if not _phone_open_question(msg):
+		return
+	var opt: Dictionary = msg["options"][option_index]
+	if opt.has("effects"):
+		apply_effects(opt["effects"], str(msg.get("title", "Telefon")))
+	if opt.has("set"):
+		for key in opt["set"]:
+			set(key, opt["set"][key])
+	if opt.has("delayed"):
+		var d: Dictionary = opt["delayed"]
+		scheduled.append({"day": day + int(d["days"]), "text": str(d.get("text", "")),
+			"effects": d.get("effects", {})})
+	msg["answered"] = option_index
+	msg["read"] = true
+	add_log("%s: %s." % [msg.get("title", "Telefon"), opt["label"]])
+	state_changed.emit()
+
+
+## Rano: wiadomości po terminie rozliczają się same, a media czasem coś wrzucają.
+func _phone_morning() -> Array[String]:
+	var lines: Array[String] = []
+	for msg in phone_inbox:
+		if not _phone_open_question(msg) or not msg.has("due"):
+			continue
+		if day <= int(msg["due"]):
+			continue
+		msg["expired"] = true
+		msg["read"] = true
+		var expire: Dictionary = msg.get("expire", {})
+		if expire.has("effects"):
+			apply_effects(expire["effects"], str(msg.get("title", "Telefon")))
+		var text := str(expire.get("text", "Nie odpowiedziałeś na wiadomość: %s." % msg.get("title", "")))
+		lines.append(text)
+		add_log(text)
+	if phone_inbox.size() > INBOX_MAX:
+		phone_inbox.resize(INBOX_MAX)
+	# kuria odzywa się sama, gdy relacje siadają - i chce wyjaśnień na piśmie
+	if curia < CURIA_MAIL_THRESHOLD and day - _last_curia_mail >= CURIA_MAIL_COOLDOWN:
+		_last_curia_mail = day
+		phone_send(Phone.curia_mail("ogólny stan relacji z kurią", Phone.excuses(), 4))
+		lines.append("Kuria pyta o stan relacji z parafią. Odpowiedź czeka w telefonie.")
+	# bank przypomina o debecie, bo to widać dopiero na wyciągu
+	if money < 0 and day - _last_bank_alert >= BANK_ALERT_COOLDOWN:
+		_last_bank_alert = day
+		phone_send(Phone.make("bank", "Bank Spółdzielczy", "Debet na koncie parafii",
+			"Saldo rachunku parafii jest ujemne (%s zł). Odsetki naliczamy od dnia dzisiejszego." % money_text(money),
+			{"id": "debet"}))
+	if randf() < MEDIA_CHANCE:
+		var post: Dictionary = Phone.draw_media(self, media_recent)
+		if not post.is_empty():
+			phone_send(post)
+			lines.append("W mediach: %s" % post["title"])
+	return lines
 
 
 ## „12 000” zamiast „12000”, w jednym miejscu dla całej gry.
@@ -720,7 +858,7 @@ func invest(id: String) -> void:
 
 # ---------- events ----------
 
-const DELAYED_KEYS := ["chance", "else_text", "else_effects", "breakdown", "else_breakdown", "special"]
+const DELAYED_KEYS := ["chance", "else_text", "else_effects", "breakdown", "else_breakdown", "special", "mail"]
 
 
 func choose_option(event: Dictionary, index: int) -> void:
@@ -992,6 +1130,14 @@ func _start_new_day(new_energy: float, extra_lines: Array[String], wake_minutes:
 		if item.has("repair"):
 			_clear_breakdown(str(item["repair"]))
 			world_changed.emit()
+		# list, który miał przyjść po kilku dniach - ląduje w telefonie, nie w oknie.
+		# Skrót "curia_about" składa prośbę kurii o wyjaśnienie danej decyzji.
+		if item.has("mail") and hit:
+			var mail: Dictionary = item["mail"]
+			if mail.has("curia_about"):
+				phone_send(Phone.curia_mail(str(mail["curia_about"]), Phone.excuses()))
+			else:
+				phone_send(mail)
 		if text != "":
 			lines.append(text)
 			add_log(text)
@@ -1005,6 +1151,7 @@ func _start_new_day(new_energy: float, extra_lines: Array[String], wake_minutes:
 	if Calendar.is_monday(day):
 		lines.append_array(_weekly_settlement())
 	lines.append_array(_funeral_morning())
+	lines.append_array(_phone_morning())
 	lines.append_array(_breakdown_morning())
 	lines.append_array(_breakdown_risk())
 	state_changed.emit()
@@ -1120,6 +1267,14 @@ func continue_game() -> bool:
 	return true
 
 
+## Pierwszy list w telefonie: kuria wita nowego proboszcza i od razu ustawia ton.
+const WELCOME_MAIL := {
+	"app": "poczta", "from": "Kuria diecezjalna", "id": "welcome",
+	"title": "Objęcie parafii",
+	"text": "Ksiądz kanclerz wita w nowej parafii i przypomina, że sprawozdania finansowe składa się co kwartał, a biskup lubi, gdy w parafii coś się dzieje. Na końcu, mniejszą czcionką: poprzednik zostawił budynki w stanie, który wymaga uwagi.",
+}
+
+
 func start_new_game() -> void:
 	SaveGame.wipe()
 	start_unix = Calendar.today_start_unix()
@@ -1156,6 +1311,10 @@ func start_new_game() -> void:
 	built.clear()
 	seen.clear()
 	log_lines.clear()
+	phone_inbox.clear()
+	bank_log.clear()
+	media_recent.clear()
+	phone_send(WELCOME_MAIL)
 	cutscene = false
 	cutscene_id = ""
 	state_changed.emit()
