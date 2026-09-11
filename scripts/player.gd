@@ -5,6 +5,10 @@ extends CharacterBody3D
 @export var camera_yaw_degrees: float = 35.0
 
 var _model: Node3D
+## Bryły księdza wiszą na osobnym węźle, którego początek jest na wysokości stóp.
+## Pochylenia obracamy właśnie nim, żeby ksiądz zginał się w pasie, a nie odchylał
+## całym ciałem wokół punktu na wysokości piersi.
+var _body: Node3D
 var _nearby: Array[Interactable] = []
 var _current: Interactable
 
@@ -38,11 +42,11 @@ func set_model_yaw(value: float) -> void:
 func hold(prop: Node3D) -> void:
 	drop_props()
 	prop.add_to_group("player_prop")
-	_model.add_child(prop)
+	_body.add_child(prop)
 
 
 func drop_props() -> void:
-	for node in _model.get_children():
+	for node in _body.get_children():
 		if node.is_in_group("player_prop"):
 			node.queue_free()
 
@@ -50,25 +54,25 @@ func drop_props() -> void:
 ## Pozy do scen: klęczenie, siedzenie, praca w pochyleniu, leżenie.
 func set_pose(pose: String) -> void:
 	_model.position.y = 0.0
+	_model.rotation.x = 0.0
+	_body.rotation.x = 0.0
+	_body.scale = Vector3.ONE
 	match pose:
 		"kneel":
-			_model.scale = Vector3(1, 0.78, 1)
-			_model.rotation.x = deg_to_rad(16)
+			_body.scale = Vector3(1, 0.78, 1)
+			_body.rotation.x = deg_to_rad(16)
 		"sit":
-			_model.scale = Vector3(1, 0.72, 1)
-			_model.rotation.x = deg_to_rad(6)
+			_body.scale = Vector3(1, 0.72, 1)
+			_body.rotation.x = deg_to_rad(6)
 			_model.position.y = -0.3
 		"work":
-			# pochylony nad miotłą
-			_model.scale = Vector3(1, 0.94, 1)
-			_model.rotation.x = deg_to_rad(24)
+			# pochylony nad miotłą, zgięty w pasie, stopy zostają na ziemi
+			_body.scale = Vector3(1, 0.94, 1)
+			_body.rotation.x = deg_to_rad(26)
 		"lie":
-			# obrót o prosty kąt kładzie ciało wzdłuż łóżka, głową w stronę poduszki
-			_model.scale = Vector3(1, 0.95, 1)
+			# całe ciało kładzie się wzdłuż łóżka, głową w stronę poduszki
+			_body.scale = Vector3(1, 0.95, 1)
 			_model.rotation = Vector3(deg_to_rad(-90), 0, 0)
-		_:
-			_model.scale = Vector3.ONE
-			_model.rotation.x = 0.0
 
 
 ## Walking bob for cutscenes (the model has no legs yet).
@@ -139,6 +143,7 @@ func _build_model() -> void:
 	var root := Node3D.new()
 	root.position = Vector3(0, -1.1, 0)
 	_model.add_child(root)
+	_body = root
 	_part(root, _cyl(0.34, 0.52, 1.5), Palette.CASSOCK, Vector3(0, 0.75, 0))
 	_part(root, _cyl(0.3, 0.34, 0.55), Palette.CASSOCK, Vector3(0, 1.77, 0))
 	_part(root, _cyl(0.2, 0.2, 0.12), Palette.COLLAR, Vector3(0, 2.09, 0))
