@@ -498,14 +498,19 @@ godot --path .
 
 **Pliki:**
 - `project.godot` – okno 1280×720 ze skalowaniem interfejsu, scena 3D w `SubViewport` 320×180 skalowanym bez wygładzania.
-- `scripts/game.gd` – autoload ze stanem gry, zegarem, czynnościami, inwestycjami, rozliczeniem tygodnia i kolejką konsekwencji.
+- `scripts/game.gd` – autoload ze stanem gry, zegarem, czynnościami i pętlą dnia. Trzyma **stan**, bo to on się zapisuje; reguły siedzą w modułach obok i sięgają po `Game.pole`.
+- `scripts/finance.gd` – pieniądze parafii: stałe koszty, karty inwestycji, rozliczenie tygodnia i historia konta.
+- `scripts/parish.gd` – jedyne przejście przez wskaźniki: `apply_effects` i opis skutku dla gracza. Nic nie zmienia reputacji ani relacji z pominięciem tego pliku.
+- `scripts/inbox.gd` – mechanika skrzynki w telefonie: jak wiadomość wchodzi, jak się odpowiada i co poranek robi z tymi po terminie.
+- `scripts/event_flow.gd` – wykonanie wyboru w wydarzeniu: skutki od ręki, skutki odroczone, karencje i skutki specjalne liczone ze stanu parafii.
+- `scripts/repairs.gd` – awarie jako stany trwałe: skąd się biorą, ile kosztują co rano i jak idzie naprawa.
 - `scripts/calendar.gd` – daty, dni tygodnia, okresy liturgiczne, święta i ich mnożniki, roraty, świece na wieńcu adwentowym.
 - `scripts/world_state.gd` – progi stanu parafii i to, jak przekładają się na wygląd świata: kolory, warianty brył, podpisy najazdów kamery.
 - `scripts/save_game.gd` – zapis i odczyt jednego slotu (`user://parafia.save`, JSON z numerem wersji). Nieznane pola są pomijane, brakujące zostawiają wartość domyślną, więc dołożenie nowego pola stanu nie unieważnia starych zapisów.
 - `scripts/events.gd` – definicje wydarzeń w trzech listach (scenariusz, pula, kryzysy), warunki wejścia i losowanie z wagami.
 - `scripts/breakdowns.gd` – definicje awarii: co kosztują każdego dnia, ile trwa naprawa, którą czynność odbierają.
 - `scripts/tools/check_definitions.gd` – kontrola spójności definicji i przejścia stanu przez JSON (`--check`).
-- `scripts/tools/simulate.gd` – przebieg wielu dni bez gracza, do podglądu rozkładu wydarzeń (`--simulate=N`).
+- `scripts/tools/simulate.gd` – przebieg wielu dni bez gracza, do podglądu rozkładu wydarzeń (`--simulate=N`). Z `--seed=N` przebieg jest powtarzalny, więc nadaje się na dowód, że zmiana w kodzie niczego nie przestawiła.
 - `scripts/location_manager.gd` – ładowanie lokacji, trwały gracz i kamera, punkty pojawienia.
 - `scripts/location_base.gd` i `scripts/locations/*.gd` – lokacje budowane z brył, z kolizjami, drzwiami i obiektami interakcji.
 - `scripts/interactable.gd` – obiekt interakcji: drzwi, czynność, biurko, łóżko, kronika.
@@ -515,7 +520,8 @@ godot --path .
 - `scripts/activity_scene.gd` – reżyser krótkich scen czynności, jeden na lokację. Miejsca akcji podaje lokacja, więc ta sama scena wygląda inaczej na placu i w kościele.
 - `scripts/mass_director.gd` – reżyser sceny mszy: wejście, komunia, wyjście parafian, raportowanie postępu do zegara.
 - `scripts/locations/visit.gd` – lokacja i zarazem reżyser sceny odwiedzin chorej: kamienica, sylwetka w oknach, pokój chorej, najazd kamery.
-- `scripts/ui.gd` – cały interfejs.
+- `scripts/ui.gd` – szkielet interfejsu: motyw, pasek stanu, powiadomienia, kolejka okien i wspólne klocki, z których buduje się każde okno.
+- `scripts/ui/finance_view.gd`, `scripts/ui/phone_view.gd`, `scripts/ui/status_view.gd` – poszczególne ekrany. Nowy ekran to nowy plik w tym katalogu, nie kolejna funkcja w `ui.gd`.
 - `shaders/toon.gdshader` i `shaders/outline.gdshader` – cieniowanie toon w trzech stopniach oraz obrys metodą odwróconej bryły (`next_pass`).
 - `scripts/palette.gd` – paleta kierunku „mroczny” w jednym miejscu.
 - `scripts/player.gd` – ksiądz z brył, ruch względem stałej kamery, czujnik obiektów interakcji, spadek energii przy chodzeniu. Ręce mają staw łokciowy, a pozy robocze to kąty barku i łokcia policzone solverem z podglądu blenderowego.
@@ -524,7 +530,7 @@ godot --path .
 - `scripts/day_night.gd` – cykl dnia z pochmurnym, zimnym światłem za dnia i bursztynowymi akcentami nocą; latarnie włączają się o zmierzchu.
 - `scripts/touch_controls.gd` – wirtualny joystick i przyciski dotykowe, zasilają te same akcje co klawiatura.
 
-**Argumenty debugowe** (po `--`): `--loc=church|rectory` startuje w lokacji, `--modal=finance|status|event|report` otwiera okno, `--sleep` przesypia osiem godzin, `--mass` razem z `--loc=church` uruchamia scenę mszy, `--visit` uruchamia scenę odwiedzin chorej (z `--trace` wypisuje momenty faz), `--hires` renderuje świat w pełnej rozdzielczości zamiast w 320x180 (do oglądania animacji), `--stroll` prowadzi księdza przed siebie, żeby dało się nagrać chód, `--phone` (albo `--phone=bank|media`) otwiera telefon, `--mail` wrzuca do niego list z kurii i post w mediach, `--touch` pokazuje sterowanie dotykowe na komputerze, `--wipe` kasuje zapis przed startem, `--continue` otwiera okno wczytania. Do oglądania wariantów świata: `--condition=15` i `--rep=80` ustawiają wskaźniki, `--built=roof,heating,sound,gutter,cemetery` stawia inwestycje (z `--unseen` kamera je pokaże jak przy ukończeniu prac), `--start=2026-12-24` ustawia datę startu, `--day=30` przeskakuje o tyle dni gry, `--hour=12` ustawia porę dnia, `--zoom=24` oddala kamerę, `--energy=30` ustawia energię, `--visitor=2` wybiera, do kogo jedziemy z posługą, `--broom=34.4,-35.2,1.861` ustawia kąt kija do pionu, skręt w bok i długość miotły do podglądu, `--do=sweep` uruchamia czynność (`sweep`, `confession`, `read_breviary`, `meal`, `clean_church`), `--event=organ_silent` otwiera konkretne wydarzenie po identyfikatorze, także kryzys, `--breakdown=car,furnace` startuje z trwającymi awariami. Przykład:
+**Argumenty debugowe** (po `--`): `--loc=church|rectory` startuje w lokacji, `--modal=finance|status|event|report` otwiera okno, `--sleep` przesypia osiem godzin, `--mass` razem z `--loc=church` uruchamia scenę mszy, `--visit` uruchamia scenę odwiedzin chorej (z `--trace` wypisuje momenty faz), `--hires` renderuje świat w pełnej rozdzielczości zamiast w 320x180 (do oglądania animacji), `--stroll` prowadzi księdza przed siebie, żeby dało się nagrać chód, `--phone` (albo `--phone=bank|media`) otwiera telefon, `--mail` wrzuca do niego list z kurii i post w mediach, `--touch` pokazuje sterowanie dotykowe na komputerze, `--wipe` kasuje zapis przed startem, `--continue` otwiera okno wczytania. Do oglądania wariantów świata: `--condition=15` i `--rep=80` ustawiają wskaźniki, `--built=roof,heating,sound,gutter,cemetery` stawia inwestycje (z `--unseen` kamera je pokaże jak przy ukończeniu prac), `--start=2026-12-24` ustawia datę startu, `--day=30` przeskakuje o tyle dni gry, `--hour=12` ustawia porę dnia, `--zoom=24` oddala kamerę, `--energy=30` ustawia energię, `--visitor=2` wybiera, do kogo jedziemy z posługą, `--broom=34.4,-35.2,1.861` ustawia kąt kija do pionu, skręt w bok i długość miotły do podglądu, `--do=sweep` uruchamia czynność (`sweep`, `confession`, `read_breviary`, `meal`, `clean_church`), `--event=organ_silent` otwiera konkretne wydarzenie po identyfikatorze, także kryzys, `--breakdown=car,furnace` startuje z trwającymi awariami, `--seed=7` ustala ziarno losowania, więc ten sam przebieg da ten sam wynik. Przykład:
 
 ```bash
 godot --path . -- --loc=church
@@ -547,6 +553,16 @@ godot --headless --path . -- --check
 ```bash
 godot --headless --path . -- --simulate=120
 ```
+
+Z ziarnem przebieg jest powtarzalny, więc porównanie wydruku sprzed zmiany i po zmianie
+jest dowodem, że przenoszenie kodu między plikami niczego nie przestawiło w rozgrywce:
+
+```bash
+godot --headless --path . -- --simulate=120 --seed=7 --start=2026-09-12 --wipe
+```
+
+Uwaga: błąd parsowania w skrypcie nie kończy `--check` błędem, tylko zawiesza go bez
+końca. Każde uruchomienie w tle pilnuj zegarem i brak wyniku traktuj jak porażkę.
 
 **Wersja w przeglądarce:** każdy push na gałąź `main` uruchamia workflow w `.github/workflows/deploy-pages.yml`, który pobiera Godota i szablony eksportu, uruchamia kontrolę definicji (`--check`), buduje wersję webową (preset `Web` z wyłączonymi wątkami, żeby działała na GitHub Pages bez specjalnych nagłówków) i publikuje ją na GitHub Pages. Kontrola idzie przed eksportem, więc literówka w definicji wydarzenia zatrzymuje deploy zamiast wyjechać na Pages jako wydarzenie bez skutku. Renderer to Compatibility, bo tylko on działa w przeglądarce.
 

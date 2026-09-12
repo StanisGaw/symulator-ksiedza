@@ -9,7 +9,9 @@ Zasady: każde wydanie kończy się buildem na GitHub Pages i przejściem `--che
 oraz `--simulate=120`. Jedno wydanie domyka jeden system do końca zamiast dotykać pięciu
 po trochu. Kolejność jest zależnościowa, nie z sufitu – patrz uzasadnienia.
 
-Stan na 12.09.2026: wydane jest wszystko do **2.2** (telefon).
+Stan na 12.09.2026: wydane jest wszystko do **2.2** (telefon) plus wydanie porządkowe
+**2.2.1** (rozbicie monolitów), które nie dokłada nic w grze, ale bez którego kolejne
+wydania nie dają się prowadzić równolegle.
 
 ---
 
@@ -108,6 +110,32 @@ odsyłacz do źródła.
 
 Numeracja ciągnie dotychczasową (2.1 wydarzenia, 2.2 telefon). Każde wydanie ma:
 co się zmienia w stanie gry, w świecie i w interfejsie, oraz które AC / R domyka.
+
+### 2.2.1 Wydanie porządkowe: rozbicie monolitów ✅
+
+Bez nowej funkcji w grze. `game.gd` (1343 linie) i `ui.gd` (732 linie) były wąskim
+gardłem: 2.3, 2.4 i 2.6 wszystkie pisały w tych samych dwóch plikach, więc nie dało
+się ich prowadzić obok siebie.
+
+- Stan został w `Game`, bo to on się zapisuje. Wywędrowały reguły, jako `static func`
+  sięgające po `Game.pole`: `finance.gd` (koszty, inwestycje, rozliczenie tygodnia),
+  `parish.gd` (`apply_effects` - jedyne przejście przez wskaźniki), `inbox.gd`
+  (mechanika skrzynki), `event_flow.gd` (wykonanie wyboru w wydarzeniu), `repairs.gd`
+  (awarie). `game.gd` z 1343 linii zszedł do 909.
+- `ui.gd` został szkieletem (motyw, pasek stanu, kolejka okien, wspólne klocki),
+  ekrany poszły do `scripts/ui/`: `finance_view.gd`, `phone_view.gd`, `status_view.gd`.
+  Nowy ekran to nowy plik, nie kolejna funkcja w szkielecie.
+- `--seed=N` w symulacji: przebieg stał się powtarzalny, więc „nic się nie zmieniło”
+  przestało być deklaracją, a stało się porównaniem dwóch wydruków.
+
+**Co wyszło inaczej niż planowano:** czynności (`do_activity` i okolice) oraz pętla
+poranka zostały w `game.gd`. Poranek jest miejscem, które woła wszystkie moduły po
+kolei, więc wyprowadzanie go tylko dokłada skok; czynności czekają na wydanie 2.8,
+które i tak je przepisze razem z planerem tygodnia.
+
+Przy okazji wyszła rzecz do naprawienia: **błąd parsowania w skrypcie nie kończy
+`--check` błędem, tylko zawiesza go bez końca**. W CI oznacza to workflow wiszący do
+limitu zamiast czerwonego krzyżyka. Do domknięcia przy najbliższym wydaniu.
 
 ### 2.3 Budżet tygodnia (AC-1.2, 1.5, 1.6, 11.4, R10)
 
