@@ -27,7 +27,7 @@ static func run(days: int) -> void:
 		if ev.get("crisis", false):
 			count["crisis"] = int(count["crisis"]) + 1
 		today_had_event[0] = true
-		Game.choose_option(ev, randi() % (ev["options"] as Array).size())
+		EventFlow.choose_option(ev, randi() % (ev["options"] as Array).size())
 	Game.modal_requested.connect(answer)
 
 	var empty: Array[String] = []

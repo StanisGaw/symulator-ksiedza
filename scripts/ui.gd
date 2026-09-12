@@ -423,9 +423,9 @@ func _show_event(ev: Dictionary) -> void:
 		var opt: Dictionary = ev["options"][i]
 		var label: String = opt["label"]
 		if opt.has("effects"):
-			label += "   (" + Game.effects_text(opt["effects"]) + ")"
+			label += "   (" + Parish.effects_text(opt["effects"]) + ")"
 		_button(opts, label, func() -> void:
-			Game.choose_option(ev, i)
+			EventFlow.choose_option(ev, i)
 			_close_modal())
 
 
@@ -482,7 +482,7 @@ func _breakdown_card(list: Control, id: String) -> void:
 	var since := "od dziś" if open_days <= 0 else "trwa %s" % Game.days_text(open_days)
 	_text(info, "%s   —   %s zł, %s naprawy" % [def["label"], _money(def["cost"]), Game.days_text(int(def["days"]))], 21)
 	_card_line(info, "Stan", "%s. %s" % [since, def.get("note", "")])
-	_card_line(info, "Kosztuje co dzień", Game.effects_text(def.get("daily", {})))
+	_card_line(info, "Kosztuje co dzień", Parish.effects_text(def.get("daily", {})))
 	if def.has("blocks"):
 		_card_line(info, "Blokuje", str(Game.ACTIVITIES[def["blocks"]]["label"]))
 	var label := "Napraw"
@@ -491,9 +491,9 @@ func _breakdown_card(list: Control, id: String) -> void:
 	elif Game.money < int(def["cost"]):
 		label = "Za drogo"
 	var b := _button(row, label, func() -> void:
-		Game.repair_breakdown(id)
+		Repairs.repair(id)
 		_close_modal()
-		_enqueue("finance", {}), Game.can_repair(id))
+		_enqueue("finance", {}), Repairs.can_repair(id))
 	b.custom_minimum_size = Vector2(150, 52)
 	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 
@@ -527,7 +527,7 @@ func _investment_card(list: Control, id: String) -> void:
 	else:
 		_card_line(info, "Zysk", "bez stałego dochodu")
 	if not (def["effects"] as Dictionary).is_empty():
-		_card_line(info, "Po ukończeniu", Game.effects_text(def["effects"]))
+		_card_line(info, "Po ukończeniu", Parish.effects_text(def["effects"]))
 	var label := "Zleć"
 	if Game.pending_investments.has(id):
 		label = "W trakcie"
@@ -680,7 +680,7 @@ func _phone_message(list: VBoxContainer, index: int, msg: Dictionary) -> void:
 			var opt: Dictionary = msg["options"][oi]
 			var label: String = opt["label"]
 			if opt.has("effects"):
-				label += "   (" + Game.effects_text(opt["effects"]) + ")"
+				label += "   (" + Parish.effects_text(opt["effects"]) + ")"
 			var app: String = str(msg.get("app", "poczta"))
 			_button(list, label, func() -> void:
 				Inbox.answer(index, oi)

@@ -313,38 +313,10 @@ func _check_missed_masses() -> void:
 		if minutes > h * 60 + MASS_WINDOW_AFTER:
 			masses_missed.append(h)
 			respect -= RESPECT_PER_MISSED
-			apply_effects({"trad": -2, "reputation": -1})
+			Parish.apply_effects({"trad": -2, "reputation": -1})
 			var text := "Msza o %02d:00 się nie odbyła. Szacunek -%d, tradycjonaliści -2." % [h, RESPECT_PER_MISSED]
 			toast.emit(text)
 			add_log(text)
-
-
-# ---------- effects ----------
-
-func apply_effects(effects: Dictionary, label: String = "") -> void:
-	var before_condition := WorldState.condition()
-	var before_life := WorldState.life()
-	for key in effects:
-		var v: int = int(effects[key])
-		match key:
-			"money":
-				money += v
-				if v >= 0:
-					week_income += v
-				else:
-					week_expenses += -v
-				Finance.bank_entry(label if label != "" else ("Wpływ" if v >= 0 else "Wydatek"), v)
-			"reputation": reputation = clampi(reputation + v, 0, 100)
-			"condition": condition = clampi(condition + v, 0, 100)
-			"trad": trad = clampi(trad + v, 0, 100)
-			"young": young = clampi(young + v, 0, 100)
-			"curia": curia = clampi(curia + v, 0, 100)
-			"respect": respect += v
-			"energy": energy = clampf(energy + v, 0.0, 100.0)
-	state_changed.emit()
-	# świat pokazuje stan parafii progami, więc przebudowa tylko przy zmianie progu
-	if WorldState.condition() != before_condition or WorldState.life() != before_life:
-		world_changed.emit()
 
 
 ## „12 000” zamiast „12000”, w jednym miejscu dla całej gry.
@@ -358,19 +330,6 @@ static func money_text(v: int) -> String:
 		if count % 3 == 0 and i > 0:
 			out = " " + out
 	return ("-" if v < 0 else "") + out
-
-
-func effects_text(effects: Dictionary) -> String:
-	var names := {"money": "zł", "reputation": "reputacja", "condition": "budynki", "trad": "tradycjonaliści",
-		"young": "młode rodziny", "curia": "kuria", "energy": "energia", "respect": "szacunek"}
-	var parts: Array[String] = []
-	for key in effects:
-		var v: int = int(effects[key])
-		if key == "money":
-			parts.append("%+d zł" % v)
-		else:
-			parts.append("%s %+d" % [names.get(key, key), v])
-	return ", ".join(parts)
 
 
 func add_log(text: String) -> void:
@@ -397,7 +356,7 @@ func do_activity(id: String) -> void:
 	if def.has("builds") and built.has(def["builds"]):
 		toast.emit("To już naprawione.")
 		return
-	var blocker := blocked_by(id)
+	var blocker := Repairs.blocked_by(id)
 	if blocker != "":
 		toast.emit(blocker)
 		return
@@ -518,7 +477,7 @@ func _take_meal(def: Dictionary) -> void:
 	var gain := -int(def["energy"])
 	energy = clampf(energy + gain, 0.0, 100.0)
 	meals_today += 1
-	apply_effects({"money": def["money"]})
+	Parish.apply_effects({"money": def["money"]})
 	toast.emit("%s Energia +%d." % [def["toast"], gain])
 	state_changed.emit()
 
@@ -541,7 +500,7 @@ func _finish_activity(def: Dictionary) -> void:
 		return
 	if def.get("funeral", false):
 		var offering := randi_range(800, 1200)
-		apply_effects({"money": offering, "reputation": 2, "trad": 1})
+		Parish.apply_effects({"money": offering, "reputation": 2, "trad": 1})
 		respect += 2
 		funerals_pending = maxi(0, funerals_pending - 1)
 		var text := "Pogrzeb: %s. Rodzina złożyła %d zł. Reputacja +2, szacunek +2." % [deceased_name, offering]
@@ -550,12 +509,12 @@ func _finish_activity(def: Dictionary) -> void:
 		return
 	if def.get("visit", false):
 		var person := next_visit()
-		apply_effects(person["effects"])
+		Parish.apply_effects(person["effects"])
 		toast.emit(person["toast"])
 		add_log(person["toast"])
 		Visits.advance(self)
 		return
-	apply_effects(def["effects"])
+	Parish.apply_effects(def["effects"])
 	toast.emit(def["toast"])
 	add_log(def["toast"])
 	if def.has("builds") and not built.has(def["builds"]):
@@ -646,214 +605,32 @@ func _mess_seen() -> Array[String]:
 
 func _hold_mass(attendance: int) -> void:
 	var taca := int(attendance * randf_range(3.2, 5.0) * Calendar.taca_multiplier(day, _cut_start))
-	apply_effects({"money": taca, "reputation": 1})
+	Parish.apply_effects({"money": taca, "reputation": 1})
 	var respect_gain := RESPECT_PER_MASS * (2 if is_sunday() or Calendar.feast_name(day) != "" else 1)
 	respect += respect_gain
 	if _mass_started_hour < 9:
-		apply_effects({"trad": 1})
+		Parish.apply_effects({"trad": 1})
 	elif _mass_started_hour >= 16:
 		# wieczorna msza dla tych, którzy rano są w pracy
-		apply_effects({"reputation": 1})
+		Parish.apply_effects({"reputation": 1})
 	else:
-		apply_effects({"young": 1})
+		Parish.apply_effects({"young": 1})
 	var label := "Msza"
 	if _mass_roraty:
 		# ciemny poranek, świece i ci, którym naprawdę zależy
 		label = "Roraty"
-		apply_effects({"trad": 2})
+		Parish.apply_effects({"trad": 2})
 	elif Calendar.feast_name(day) != "" and Calendar.attendance_multiplier(day, _cut_start) > 1.0:
 		label = Calendar.feast_name(day)
 	var text := "%s o %02d:00: %d osób, taca %d zł. Szacunek +%d." % [label, _mass_started_hour, attendance, taca, respect_gain]
 	var mess := _mess_seen()
 	if not mess.is_empty():
 		var penalty := MESS_PENALTY * mess.size()
-		apply_effects({"reputation": -penalty})
+		Parish.apply_effects({"reputation": -penalty})
 		respect -= penalty
 		text += " Ludzie zobaczyli bałagan (%s): reputacja -%d, szacunek -%d." % [", ".join(mess), penalty, penalty]
 	toast.emit(text)
 	add_log(text)
-
-
-# ---------- events ----------
-
-const DELAYED_KEYS := ["chance", "else_text", "else_effects", "breakdown", "else_breakdown", "special", "mail"]
-
-
-func choose_option(event: Dictionary, index: int) -> void:
-	var opt: Dictionary = event["options"][index]
-	if opt.has("special"):
-		var msg := _apply_special(str(opt["special"]))
-		if msg != "":
-			toast.emit(msg)
-			add_log(msg)
-	if opt.has("effects"):
-		apply_effects(opt["effects"])
-	if opt.has("set"):
-		for key in opt["set"]:
-			set(key, opt["set"][key])
-	if opt.has("breakdown"):
-		add_breakdown(str(opt["breakdown"]))
-	if opt.has("fix"):
-		_clear_breakdown(str(opt["fix"]))
-	if opt.has("delayed"):
-		var d: Dictionary = opt["delayed"]
-		var item := {"day": day + int(d["days"]), "text": str(d.get("text", "")), "effects": d.get("effects", {})}
-		for key in DELAYED_KEYS:
-			if d.has(key):
-				item[key] = d[key]
-		scheduled.append(item)
-	# scenariusz pierwszego tygodnia znika na zawsze, pula i kryzysy wracają po karencji
-	if event.has("cooldown"):
-		event_cooldowns[event["id"]] = day + int(event["cooldown"])
-	else:
-		fired_events.append(event["id"])
-	add_log("%s: %s." % [event["title"], opt["label"]])
-	state_changed.emit()
-
-
-## Skutki, których nie da się zapisać liczbami, bo zależą od stanu parafii.
-## Zwraca komunikat do pokazania graczowi albo pusty napis.
-func _apply_special(kind: String) -> String:
-	match kind:
-		"honest_report":
-			if money >= 0:
-				apply_effects({"curia": 3})
-				return "Kuria przyjęła sprawozdanie. Kuria +3."
-			apply_effects({"curia": -3})
-			return "Kuria nie jest zachwycona minusem na koncie. Kuria -3."
-		"visitation_ready", "visitation_raw":
-			# biskup nie czyta wskaźników, tylko widzi kościół i to, co mówią ludzie
-			var score := condition + reputation + (12 if kind == "visitation_ready" else 0)
-			if score >= 130:
-				apply_effects({"curia": 8, "respect": 3})
-				return "Biskup obszedł kościół, przejrzał księgi i powiedział, że dawno nie widział tak prowadzonej parafii. Kuria +8, szacunek +3."
-			if score >= 90:
-				apply_effects({"curia": 2})
-				return "Biskup nie miał uwag, ale też nie miał czasu na kawę. Kuria +2."
-			apply_effects({"curia": -7, "reputation": -2})
-			return "Biskup zapytał, od kiedy tak wygląda prezbiterium, i nie doczekał się odpowiedzi. Kuria -7, reputacja -2."
-		"viral_quiet":
-			if reputation >= 55:
-				apply_effects({"young": 5, "reputation": 3})
-				return "Nagranie obroniło się samo. Ludzie z powiatu piszą, że chcieliby takiego księdza. Młode rodziny +5, reputacja +3."
-			apply_effects({"reputation": -5, "curia": -3})
-			return "Fragment żyje własnym życiem i nikt nie pyta o kontekst. Reputacja -5, kuria -3."
-		"viral_answer":
-			# tu liczy się to, ile ksiądz zdążył sobie wyrobić szacunku
-			if respect >= 30:
-				apply_effects({"young": 8, "reputation": 5, "respect": 2})
-				return "Odpowiedź obejrzało więcej ludzi niż samo nagranie i wypadła dobrze. Młode rodziny +8, reputacja +5."
-			apply_effects({"young": -3, "reputation": -4, "curia": -2})
-			return "Odpowiedź wypadła nerwowo i to ona stała się materiałem. Młode rodziny -3, reputacja -4, kuria -2."
-	return ""
-
-
-# ---------- awarie ----------
-
-## Nowa awaria. Zwraca false, gdy ta awaria już trwa albo identyfikator jest nieznany.
-func add_breakdown(id: String, announce: bool = true) -> bool:
-	if not Breakdowns.has(id) or breakdowns.has(id):
-		return false
-	breakdowns.append(id)
-	breakdown_since[id] = day
-	var def: Dictionary = Breakdowns.ALL[id]
-	if announce:
-		var text := "Awaria: %s. %s" % [def["label"], def.get("note", "")]
-		toast.emit(text)
-		add_log(text)
-	if def.get("world", false):
-		world_changed.emit()
-	state_changed.emit()
-	return true
-
-
-func _clear_breakdown(id: String) -> void:
-	breakdowns.erase(id)
-	breakdown_since.erase(id)
-	pending_repairs.erase(id)
-
-
-func can_repair(id: String) -> bool:
-	if not breakdowns.has(id) or pending_repairs.has(id):
-		return false
-	return money >= int(Breakdowns.ALL[id]["cost"])
-
-
-## Naprawa idzie tą samą drogą co inwestycja: płacisz dziś, prace kończą się rano.
-func repair_breakdown(id: String) -> void:
-	if not can_repair(id):
-		toast.emit("Nie stać parafii albo naprawa już trwa.")
-		return
-	var def: Dictionary = Breakdowns.ALL[id]
-	apply_effects({"money": -int(def["cost"])})
-	var days := int(def["days"])
-	if days <= 0:
-		apply_effects(def.get("fixed_effects", {}))
-		_clear_breakdown(id)
-		toast.emit(str(def["fixed_text"]))
-		add_log(str(def["fixed_text"]))
-		world_changed.emit()
-	else:
-		pending_repairs.append(id)
-		scheduled.append({"day": day + days, "text": str(def["fixed_text"]),
-			"effects": def.get("fixed_effects", {}), "repair": id})
-		toast.emit("%s: naprawa zlecona, gotowe za %s." % [def["label"], days_text(days)])
-		add_log("Zlecono naprawę: %s (%s zł)." % [def["label"], money_text(int(def["cost"]))])
-	state_changed.emit()
-
-
-## Czynność odebrana przez awarię: bez samochodu nie pojedziesz do chorego.
-## Zwraca komunikat dla gracza albo pusty napis, gdy nic nie blokuje.
-func blocked_by(activity_id: String) -> String:
-	for id in breakdowns:
-		if str(Breakdowns.ALL[id].get("blocks", "")) == activity_id:
-			return "%s. %s" % [Breakdowns.label(id), Breakdowns.ALL[id].get("note", "")]
-	return ""
-
-
-## Awarie kosztują co rano, dopóki trwają. To jest cena zwlekania z naprawą.
-func _breakdown_morning() -> Array[String]:
-	var lines: Array[String] = []
-	for id in breakdowns:
-		if pending_repairs.has(id):
-			continue
-		var def: Dictionary = Breakdowns.ALL[id]
-		apply_effects(def.get("daily", {}))
-		var open_days := day - int(breakdown_since.get(id, day))
-		var suffix := "" if open_days < 3 else "  (%s bez naprawy)" % days_text(open_days)
-		lines.append(str(def["daily_text"]) + suffix)
-	return lines
-
-
-## Zaniedbana parafia psuje się sama. Im gorszy stan budynków, tym większa szansa,
-## a pora roku decyduje, co konkretnie pada.
-func _breakdown_risk() -> Array[String]:
-	var lines: Array[String] = []
-	var risk := clampf((60.0 - float(condition)) / 320.0, 0.0, 0.18)
-	if risk <= 0.0 or randf() >= risk:
-		return lines
-	var part := Calendar.time_of_year(day)
-	var pool: Array = []
-	var total := 0.0
-	for id in Breakdowns.ALL:
-		if breakdowns.has(id):
-			continue
-		var w := Breakdowns.natural_risk(id, part)
-		if w <= 0.0:
-			continue
-		pool.append([id, w])
-		total += w
-	if pool.is_empty():
-		return lines
-	var roll := randf() * total
-	for entry in pool:
-		roll -= float(entry[1])
-		if roll <= 0.0:
-			var id: String = entry[0]
-			if add_breakdown(id, false):
-				lines.append("Awaria: %s. %s" % [Breakdowns.label(id), Breakdowns.ALL[id].get("note", "")])
-			break
-	return lines
 
 
 # ---------- day flow ----------
@@ -932,12 +709,12 @@ func _start_new_day(new_energy: float, extra_lines: Array[String], wake_minutes:
 		if item.has("chance"):
 			hit = randf() < float(item["chance"])
 		var text: String = str(item.get("text", "")) if hit else str(item.get("else_text", ""))
-		apply_effects(item.get("effects", {}) if hit else item.get("else_effects", {}))
+		Parish.apply_effects(item.get("effects", {}) if hit else item.get("else_effects", {}))
 		var broke: String = str(item.get("breakdown", "")) if hit else str(item.get("else_breakdown", ""))
-		if broke != "" and add_breakdown(broke, false):
+		if broke != "" and Repairs.add(broke, false):
 			text += "  Awaria: %s. %s" % [Breakdowns.label(broke), Breakdowns.ALL[broke].get("note", "")]
 		if item.has("special"):
-			var msg := _apply_special(str(item["special"]))
+			var msg := EventFlow._apply_special(str(item["special"]))
 			if msg != "":
 				text = (text + " " + msg).strip_edges()
 		if item.has("invest"):
@@ -946,7 +723,7 @@ func _start_new_day(new_energy: float, extra_lines: Array[String], wake_minutes:
 				built.append(item["invest"])
 			world_changed.emit()
 		if item.has("repair"):
-			_clear_breakdown(str(item["repair"]))
+			Repairs.clear(str(item["repair"]))
 			world_changed.emit()
 		# list, który miał przyjść po kilku dniach - ląduje w telefonie, nie w oknie.
 		# Skrót "curia_about" składa prośbę kurii o wyjaśnienie danej decyzji.
@@ -963,15 +740,15 @@ func _start_new_day(new_energy: float, extra_lines: Array[String], wake_minutes:
 
 	if missed_holy_day:
 		# święto nakazane bez mszy zauważą wszyscy, łącznie z kurią
-		apply_effects({"trad": -6, "reputation": -3, "curia": -3})
+		Parish.apply_effects({"trad": -6, "reputation": -3, "curia": -3})
 		lines.append("Wczoraj było święto nakazane (%s), a mszy nie było. Tradycjonaliści -6, reputacja -3, kuria -3." % missed_name)
 	# rozliczenie tygodnia w poniedziałek rano, według prawdziwego kalendarza
 	if Calendar.is_monday(day):
 		lines.append_array(Finance.weekly_settlement())
 	lines.append_array(_funeral_morning())
 	lines.append_array(Inbox.morning())
-	lines.append_array(_breakdown_morning())
-	lines.append_array(_breakdown_risk())
+	lines.append_array(Repairs.morning())
+	lines.append_array(Repairs.risk())
 	state_changed.emit()
 	save_now()
 	var feast: String = Calendar.feast_name(day)
@@ -1012,7 +789,7 @@ func _funeral_morning() -> Array[String]:
 		return lines
 	if funerals_pending > 0 and day > funeral_deadline:
 		funerals_pending = 0
-		apply_effects({"reputation": -3})
+		Parish.apply_effects({"reputation": -3})
 		respect -= 2
 		lines.append("Rodzina nie doczekała się pogrzebu i pochowała %s w sąsiedniej parafii. Reputacja -3, szacunek -2." % deceased_name)
 	if funerals_pending == 0 and randf() < 0.22:

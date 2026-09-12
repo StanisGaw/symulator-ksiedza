@@ -72,7 +72,7 @@ static func answer(index: int, option_index: int) -> void:
 		return
 	var opt: Dictionary = msg["options"][option_index]
 	if opt.has("effects"):
-		Game.apply_effects(opt["effects"], str(msg.get("title", "Telefon")))
+		Parish.apply_effects(opt["effects"], str(msg.get("title", "Telefon")))
 	if opt.has("set"):
 		for key in opt["set"]:
 			Game.set(key, opt["set"][key])
@@ -98,7 +98,7 @@ static func morning() -> Array[String]:
 		msg["read"] = true
 		var expire: Dictionary = msg.get("expire", {})
 		if expire.has("effects"):
-			Game.apply_effects(expire["effects"], str(msg.get("title", "Telefon")))
+			Parish.apply_effects(expire["effects"], str(msg.get("title", "Telefon")))
 		var text := str(expire.get("text", "Nie odpowiedziałeś na wiadomość: %s." % msg.get("title", "")))
 		lines.append(text)
 		Game.add_log(text)

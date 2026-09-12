@@ -72,14 +72,14 @@ static func invest(id: String) -> void:
 		Game.toast.emit("Nie stać parafii albo prace już trwają.")
 		return
 	var def: Dictionary = INVESTMENTS[id]
-	Game.apply_effects({"money": -def["cost"]})
+	Parish.apply_effects({"money": -def["cost"]})
 	if def["days"] == 0:
-		Game.apply_effects(def["effects"])
-		Game.toast.emit("%s: %s" % [def["label"], Game.effects_text(def["effects"])])
+		Parish.apply_effects(def["effects"])
+		Game.toast.emit("%s: %s" % [def["label"], Parish.effects_text(def["effects"])])
 		Game.add_log("%s (%d zł)." % [def["label"], def["cost"]])
 	else:
 		Game.pending_investments.append(id)
-		Game.scheduled.append({"day": Game.day + def["days"], "text": "%s: prace zakończone. %s." % [def["label"], Game.effects_text(def["effects"])],
+		Game.scheduled.append({"day": Game.day + def["days"], "text": "%s: prace zakończone. %s." % [def["label"], Parish.effects_text(def["effects"])],
 			"effects": def["effects"], "invest": id})
 		Game.toast.emit("%s: zlecone, gotowe za %d dni." % [def["label"], def["days"]])
 		Game.add_log("Zlecono: %s (%d zł)." % [def["label"], def["cost"]])
@@ -95,7 +95,7 @@ static func weekly_settlement() -> Array[String]:
 	var yield_total := weekly_yield()
 	if yield_total > 0:
 		# przez apply_effects, żeby dochód wszedł do wpływów tygodnia w raporcie i finansach
-		Game.apply_effects({"money": yield_total})
+		Parish.apply_effects({"money": yield_total})
 		lines.append("Opłaty i dochody z inwestycji: +%s zł." % Game.money_text(yield_total))
 	lines.append("Rozliczenie tygodnia: taca i ofiary %s zł, wydatki %s zł, rachunki i pensje %s zł." % [
 		Game.money_text(Game.week_income), Game.money_text(Game.week_expenses), Game.money_text(expenses)])
