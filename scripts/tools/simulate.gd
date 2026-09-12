@@ -58,8 +58,11 @@ static func run(days: int) -> void:
 	print("--- symulacja %d dni ---" % days)
 	print("Dni z wydarzeniem: %d (%d%%). Najdłuższa cisza: %s." % [
 		event_days, int(round(100.0 * event_days / float(days))), Game.days_text(longest_silence)])
+	var event_total := 0
+	for catalog in Events.catalogs():
+		event_total += catalog[1].size()
 	print("Różnych wydarzeń: %d z %d dostępnych. Kryzysów: %d." % [
-		fired.size(), Events.SCRIPTED.size() + Events.POOL.size() + Events.CRISES.size(), count["crisis"]])
+		fired.size(), event_total, count["crisis"]])
 	var ids: Array = fired.keys()
 	ids.sort_custom(func(a, b): return int(fired[a]) > int(fired[b]))
 	for id in ids:

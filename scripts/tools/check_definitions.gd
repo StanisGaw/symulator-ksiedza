@@ -9,7 +9,7 @@ class_name CheckDefinitions
 ## skutek bez wersji przeciwnej.
 
 const EFFECT_KEYS := ["money", "reputation", "condition", "trad", "young", "curia", "energy", "respect"]
-const REQUIRE_KEYS := ["min_day", "max_day", "season", "part", "built", "not_built", "breakdown", "no_breakdown", "min", "max"]
+const REQUIRE_KEYS := ["min_day", "max_day", "season", "part", "built", "not_built", "breakdown", "no_breakdown", "min", "max", "flags"]
 const SPECIALS := ["honest_report", "visitation_ready", "visitation_raw", "viral_quiet", "viral_answer"]
 const SEASONS := [Calendar.ADVENT, Calendar.CHRISTMAS, Calendar.LENT, Calendar.EASTER, Calendar.ORDINARY]
 const PARTS := ["zima", "wiosna", "lato", "jesień"]
@@ -27,8 +27,8 @@ static func run() -> Array[String]:
 	problems.append_array(CheckReleaseNotes.run())
 
 	var ids: Array[String] = []
-	var counts := {"SCRIPTED": Events.SCRIPTED.size(), "POOL": Events.POOL.size(), "CRISES": Events.CRISES.size()}
-	for entry in [["SCRIPTED", Events.SCRIPTED], ["POOL", Events.POOL], ["CRISES", Events.CRISES]]:
+	var catalogs := Events.catalogs()
+	for entry in catalogs:
 		var list_name: String = entry[0]
 		var list: Array = entry[1]
 		for ev in list:
@@ -46,9 +46,9 @@ static func run() -> Array[String]:
 				_e(problems, where, "mniej niż dwie opcje")
 			if list_name == "SCRIPTED" and not ev.has("day"):
 				_e(problems, where, "scenariusz bez dnia")
-			if list_name != "SCRIPTED" and not ev.has("cooldown"):
+			if list_name in ["POOL", "CRISES", "CHAIN_POOL"] and not ev.has("cooldown"):
 				_e(problems, where, "brak karencji, wydarzenie wejdzie tylko raz")
-			if list_name == "POOL" and not ev.has("weight"):
+			if list_name in ["POOL", "CHAIN_POOL"] and not ev.has("weight"):
 				_e(problems, where, "brak wagi")
 			if list_name == "CRISES" and not ev.get("crisis", false):
 				_e(problems, where, "kryzys bez znacznika crisis")
@@ -70,12 +70,16 @@ static func run() -> Array[String]:
 				for key in req.get(bound, {}):
 					if not STATE_KEYS.has(key):
 						_e(problems, where, "próg %s na nieznanym polu „%s”" % [bound, key])
+			if req.has("flags"):
+				_check_flags(problems, where + " warunek", req["flags"])
 			for i in options.size():
 				var opt: Dictionary = options[i]
 				var ow := "%s opcja %d" % [where, i + 1]
 				if str(opt.get("label", "")) == "":
 					_e(problems, ow, "brak etykiety")
 				_ce(problems, ow, opt.get("effects", {}))
+				if opt.has("flags"):
+					_check_flags(problems, ow, opt["flags"])
 				if opt.has("special") and not SPECIALS.has(str(opt["special"])):
 					_e(problems, ow, "nieznany special „%s”" % opt["special"])
 				for key in ["breakdown", "fix"]:
@@ -87,10 +91,18 @@ static func run() -> Array[String]:
 						_e(problems, ow, "skutek odroczony bez liczby dni")
 					_ce(problems, ow + " (odroczony)", d.get("effects", {}))
 					_ce(problems, ow + " (odroczony, else)", d.get("else_effects", {}))
-					if d.has("chance") and not d.has("else_text") and not d.has("else_breakdown"):
+					if d.has("chance") and not (d.has("else_text") or d.has("else_effects") \
+						or d.has("else_breakdown") or d.has("else_event") or d.has("else_flags")):
 						_e(problems, ow, "losowy skutek bez wersji przeciwnej")
-					if not d.has("chance") and (d.has("else_text") or d.has("else_effects")):
+					if not d.has("chance") and (d.has("else_text") or d.has("else_effects") \
+						or d.has("else_breakdown") or d.has("else_event") or d.has("else_flags")):
 						_e(problems, ow, "wersja przeciwna bez „chance”")
+					if d.has("chance") and (typeof(d["chance"]) not in [TYPE_FLOAT, TYPE_INT] \
+						or float(d["chance"]) < 0.0 or float(d["chance"]) > 1.0):
+						_e(problems, ow, "szansa musi być liczbą od 0 do 1")
+					for field in ["flags", "else_flags"]:
+						if d.has(field):
+							_check_flags(problems, ow + " (odroczony %s)" % field, d[field])
 					if d.has("special") and not SPECIALS.has(str(d["special"])):
 						_e(problems, ow, "nieznany special w skutku odroczonym")
 					for key in ["breakdown", "else_breakdown"]:
@@ -100,6 +112,16 @@ static func run() -> Array[String]:
 					for key in opt["set"]:
 						if not ["sunday_hours", "weekday_hours"].has(key):
 							_e(problems, ow, "„set” na nieobsługiwanym polu „%s”" % key)
+
+	# Referencje sprawdzamy po zebraniu całego katalogu, także gdy cel jest dalej w pliku.
+	for entry in catalogs:
+		for ev in entry[1]:
+			for opt in ev.get("options", []):
+				var delayed: Dictionary = opt.get("delayed", {})
+				for field in ["event", "else_event"]:
+					if delayed.has(field) and (str(delayed[field]) == "" or not ids.has(str(delayed[field]))):
+						_e(problems, "%s/%s" % [entry[0], ev.get("id", "?")],
+							"%s wskazuje nieznane wydarzenie „%s”" % [field, delayed[field]])
 
 	# posty w mediach chodzą tą samą drogą co wydarzenia, więc sprawdzamy je tak samo
 	var media_ids: Array[String] = []
@@ -195,8 +217,9 @@ static func _check_budget_definitions(problems: Array[String]) -> void:
 ## Wypisuje wynik i mówi, czy wszystko jest w porządku.
 static func report() -> bool:
 	var problems := run()
-	print("Wydarzenia: scenariusz %d, pula %d, kryzysy %d. Awarie: %d. Posty w mediach: %d." % [
-		Events.SCRIPTED.size(), Events.POOL.size(), Events.CRISES.size(), Breakdowns.ALL.size(), Phone.MEDIA.size()])
+	print("Wydarzenia: scenariusz %d, pula %d, łańcuchy %d, kryzysy %d. Awarie: %d. Posty w mediach: %d." % [
+		Events.SCRIPTED.size(), Events.POOL.size(), ChainEvents.POOL.size() + ChainEvents.FOLLOWUPS.size(),
+		Events.CRISES.size(), Breakdowns.ALL.size(), Phone.MEDIA.size()])
 	for p in problems:
 		printerr("BŁĄD  " + p)
 	if problems.is_empty():
@@ -216,8 +239,13 @@ static func _check_save(problems: Array[String]) -> void:
 	Game.breakdown_since = {"car": 7}
 	Game.pending_repairs = []
 	Game.event_cooldowns = {"organ_silent": 41}
+	Game.flags = {"dean_plan": "together", "mass_hours_changed": true}
+	Game.pending_events = ["dean_indulgence_together_success"]
 	Game.scheduled = [{"day": 9, "text": "próba", "effects": {"money": -100},
-		"chance": 0.5, "else_text": "druga wersja", "else_effects": {"reputation": -2}}]
+		"chance": 0.5, "event": "dean_indulgence_together_success",
+		"flags": {"dean_indulgence_result": "success"}, "else_text": "druga wersja",
+		"else_effects": {"reputation": -2}, "else_event": "dean_indulgence_together_failure",
+		"else_flags": {"dean_indulgence_result": "failure"}}]
 	Game.phone_inbox = [{"app": "poczta", "from": "Kuria", "title": "próba", "text": "próba",
 		"day": 3, "due": 6, "read": false, "answered": -1, "deadline": 3,
 		"options": [{"label": "tak", "effects": {"curia": 2}}], "expire": {"effects": {"curia": -6}}}]
@@ -244,6 +272,16 @@ static func _check_save(problems: Array[String]) -> void:
 			_e(problems, "zapis", "przeciwna wersja skutku wraca jako zmiennoprzecinkowa")
 		if not Game.breakdowns.has("car"):
 			_e(problems, "zapis", "trwająca awaria nie przeżyła zapisu")
+		if str(Game.flags.get("dean_plan", "")) != "together" or not bool(Game.flags.get("mass_hours_changed", false)):
+			_e(problems, "zapis", "flagi decyzji nie przeżyły zapisu")
+		if Game.pending_events != ["dean_indulgence_together_success"]:
+			_e(problems, "zapis", "kolejka wydarzeń nie przeżyła zapisu")
+		if str(item.get("event", "")) != "dean_indulgence_together_success" \
+			or str(item.get("else_event", "")) != "dean_indulgence_together_failure":
+			_e(problems, "zapis", "referencje odroczonych wydarzeń nie przeżyły zapisu")
+		if str(item.get("flags", {}).get("dean_indulgence_result", "")) != "success" \
+			or str(item.get("else_flags", {}).get("dean_indulgence_result", "")) != "failure":
+			_e(problems, "zapis", "flagi odroczonych gałęzi nie przeżyły zapisu")
 		# telefon: termin wiadomości i kwota operacji porównują się z numerem dnia,
 		# więc muszą wrócić jako liczby całkowite, a nie jako 6.0
 		var msg: Dictionary = Game.phone_inbox[0]
@@ -270,3 +308,14 @@ static func _ce(problems: Array[String], where: String, effects: Dictionary) -> 
 			_e(problems, where, "nieznany skutek „%s”" % key)
 		elif typeof(effects[key]) != TYPE_INT:
 			_e(problems, where, "skutek „%s” nie jest liczbą całkowitą" % key)
+
+
+static func _check_flags(problems: Array[String], where: String, value: Variant) -> void:
+	if typeof(value) != TYPE_DICTIONARY:
+		_e(problems, where, "flagi nie są słownikiem")
+		return
+	for key in value:
+		if str(key).strip_edges() == "":
+			_e(problems, where, "pusta nazwa flagi")
+		if typeof(value[key]) not in [TYPE_BOOL, TYPE_INT, TYPE_FLOAT, TYPE_STRING]:
+			_e(problems, where, "flaga „%s” ma nieobsługiwaną wartość" % key)

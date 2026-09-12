@@ -14,8 +14,8 @@ const BANK_ALERT_COOLDOWN := 7
 
 const WELCOME_MAIL := {
 	"app": "poczta", "from": "Kuria diecezjalna", "id": "welcome",
-	"title": "Objęcie parafii",
-	"text": "Ksiądz kanclerz wita w nowej parafii i przypomina, że sprawozdania finansowe składa się co kwartał, a biskup lubi, gdy w parafii coś się dzieje. Na końcu, mniejszą czcionką: poprzednik zostawił budynki w stanie, który wymaga uwagi.",
+	"title": "Nominacja na wikarego",
+	"text": "Witamy w parafii. Zaczynasz jako wikary u proboszcza Antoniego. Zmianę rozkładu mszy uzgadniasz z nim: odpowiedź trwa dwa dni i kosztuje 2 punkty relacji. Kuria oceni pracę po 13 tygodniach; przypomni o terminie tydzień wcześniej. W telefonie, w Karierze, znajdziesz zasady oceny i kronikę.",
 }
 
 

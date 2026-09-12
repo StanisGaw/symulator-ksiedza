@@ -14,6 +14,12 @@ const RELEASES := [
 		"Po aktualizacji zobaczysz wszystkie zmiany od ostatnio przeczytanej wersji, także gdy ominiesz kilka wydań.",
 		"Po potwierdzeniu zapamiętamy przeczytaną wersję w tej przeglądarce. Rozpoczęcie nowej gry nie kasuje tej informacji.",
 	]},
+	{"version": "2.4", "title": "Kuria patrzy w kalendarz", "changes": [
+		"Nową grę zaczynasz jako wikary. Zmianę godzin mszy uzgadniasz z proboszczem — odpowiedź zajmuje dwa dni i kosztuje relację. Dotychczasowe zapisy zachowują samodzielność proboszcza.",
+		"Życie religijne wynika z odprawionych mszy, spowiedzi i odwiedzin z ostatnich siedmiu dni. Samo bogactwo lub popularność go nie podnoszą.",
+		"Co 13 tygodni kuria wystawia pisemną ocenę z pięciu składowych. Dwie dobre oceny otwierają awans, a kolejne złe prowadzą do ostrzeżenia i decyzji o przeniesieniu. Sama zmiana parafii pozostaje zaplanowana na później.",
+		"W telefonie znajdziesz Karierę: termin oceny, propozycje awansu, uzgodnienia i trwałą kronikę decyzji. Sąsiedni proboszcz reaguje na twoje decyzje, a wspólny odpust ma skutki wracające po tygodniach.",
+	]},
 ]
 
 

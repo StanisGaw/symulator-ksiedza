@@ -469,6 +469,9 @@ godot --path .
 **Sterowanie:** WSAD lub strzałki to chodzenie, `E` lub spacja to działanie, `T` przyspiesza czas. Na ekranach dotykowych pojawia się wirtualny joystick po lewej i przyciski `E` oraz `T` po prawej. W przeglądarce na komputerze można je wymusić, dodając `?touch` do adresu.
 
 **Co jest w prototypie:**
+- Kariera i kuria (2.4): nowa gra zaczyna się jako wikary, zmiany godzin mszy wymagają uzgodnienia z proboszczem (2 dni, relacja −2). Stare zapisy zachowują rangę proboszcza. Co 91 dni przychodzi ocena pięciu składowych, z przypomnieniem w poczcie tydzień wcześniej; dwie dobre oceny proponują awans, dwie złe ostrzegają, trzecia zapisuje decyzję o przeniesieniu. Faktyczna zmiana parafii i nadzór dziekana pozostają w 3.3.
+- Życie religijne (2.4): wynik 0–100 wyliczany rano z ostatnich siedmiu zakończonych dni — 50% frekwencja (cel 1200 uczestnictw), 30% sakramenty (15 spowiedzi), 20% aktywność duszpasterska (5 odwiedzin). Telefon → Kariera pokazuje składniki, kalendarz, ocenę i trwałą kronikę.
+- Dziekanat i łańcuchy (2.4): sąsiedni proboszcz reaguje na zmianę godzin mszy, a odpust można przygotować wspólnie, samodzielnie albo wesprzeć sąsiada. Każda droga kosztuje; po 2–4 tygodniach wraca inny rezultat zależny od decyzji i losu. Flagi, oczekujące dalsze wydarzenia oraz kronika przeżywają zapis.
 - Informacja o aktualizacjach (2.3.1): przy starcie wersji Web pokazuje się jeden przewijany modal ze wszystkimi niepotwierdzonymi wydaniami, od najnowszego do najstarszego. Historia zaczyna się od 2.3; brak lub uszkodzenie znacznika oznacza pokazanie wszystkich wpisów od 2.3 do aktualnej wersji. Dopiero „Rozumiem, graj” zapisuje wersję w `localStorage` pod kluczem `symulator-ksiedza.release-notes.seen-version`. Znacznik jest niezależny od zapisu i nowej gry. Starsza karta nie cofa znacznika nowszego wydania.
 - Trzy lokacje z przejściami przez drzwi: plac przed kościołem z plebanią, parkingiem i cmentarzem, wnętrze kościoła, wnętrze plebanii. Wnętrza w widoku „domku dla lalek”: dwie ściany widoczne, dwie niewidoczne.
 - Czynności zużywające czas i energię: naprawa rynny, zamiatanie placu, odwiedziny chorej, msza, spowiedź, sprzątanie kościoła. Odwiedziny chorej to scena filmowa w dwóch kadrach: dojazd pod starą kamienicę pod światło, gdzie na przeszklonej klatce schodowej widać tylko sylwetkę wchodzącą płynnie zygzakiem aż na piętro chorej, a w oknie chorej stojak na kroplówkę i butelki na parapecie; potem zaniedbany pokój chorej w chłodnym świetle dziennym, ze śmieciami na podłodze, kroplówką, listkami po tabletkach, skotłowaną pościelą, obrazem Jana Pawła II, krzyżem i kineskopowym telewizorem z Telewizją Trwam. Za matową szybą drzwi przesuwa się cień wchodzącej postaci, drzwi się otwierają i ksiądz klęka przy łóżku. Msza jest krótką sceną w przyspieszeniu: parafianie wchodzą i siadają w ławkach, podchodzą do komunii i wychodzą, zegar biegnie razem ze sceną, a przycisk „Pomiń” kończy ją od razu. Taca zależy od reputacji, stanu budynków i nastrojów parafian, w niedzielę jest ponad dwukrotnie większa.
@@ -631,3 +634,11 @@ Szczegółowy plan wydań z podpunktami, audyt kryteriów akceptacji i mapowanie
 - **Historia przejścia** – kronika generowana z decyzji, do przeczytania na końcu gry i do udostępnienia.
 - **Postać księdza** – wybór imienia, pochodzenia i wady na start, które generują własne wydarzenia.
 - **Drugi rok i wyższe stanowiska** – po awansie większa parafia, dziekanat, inne skale pieniędzy i problemów.
+
+### Kontrola wydania 2.4
+
+Izolowany runner `scripts/ci/run_godot.py` obsługuje `--check-career`,
+`--check-chains` i `--check-career-ui`. Scenariusze obejmują migrację starego zapisu,
+terminy i serie ocen, przypomnienia w poczcie, uzgodnienia wykonywane raz,
+siedmiodniową wiarę, gałęzie wydarzeń i przyciski interfejsu. Parametry gry podaje się
+po `--`, np. `python3 scripts/ci/run_godot.py --log artifacts/career.log -- --check-career`.

@@ -9,8 +9,8 @@ Zasady: każde wydanie kończy się buildem na GitHub Pages i przejściem `--che
 oraz `--simulate=120`. Jedno wydanie domyka jeden system do końca zamiast dotykać pięciu
 po trochu. Kolejność jest zależnościowa, nie z sufitu – patrz uzasadnienia.
 
-Stan na 12.09.2026: wydane na GitHub Pages jest wszystko do **2.3.1**
-(informacje o wydaniach), w tym **2.3** (budżet tygodnia) i porządkowe **2.2.1** (rozbicie monolitów). Stan publikacji
+Stan na 12.09.2026: wydane na GitHub Pages jest wszystko do **2.4**
+(kuria, oceny i ranga), w tym **2.3** (budżet tygodnia) i porządkowe **2.2.1** (rozbicie monolitów). Stan publikacji
 i dowody wydania 2.3: [kontrakt i rejestr realizacji](kontrakty/2.3-budzet.md).
 
 ---
@@ -24,15 +24,15 @@ i dowody wydania 2.3: [kontrakt i rejestr realizacji](kontrakty/2.3-budzet.md).
 | 1.3 budżet ograniczony | 🔁 | zastąpione przez 1.5: widoczna prognoza i potwierdzenie deficytu |
 | 1.4 skutki poza finansami | ✅ | każda inwestycja i naprawa zmienia wskaźnik niefinansowy |
 | 2.1–2.3 zasoby niefinansowe | ✅ | reputacja, stan budynków, dwie grupy, kuria; cztery kryzysy progowe |
-| 3.1 start jako wikary | ❌ | nie ma stanowiska w stanie gry |
-| 3.2–3.5 ścieżka, ocena, zakres | ❌ | kuria jest wskaźnikiem, nie oceniającym |
+| 3.1 start jako wikary | ✅ | nowa gra jako wikary, stary zapis jako proboszcz |
+| 3.2–3.5 ścieżka, ocena, zakres | ⚠️ | oceny, nominacje i samodzielność po awansie w2.4; nowe parafie i nadzór w3.3 |
 | 4.1–4.2 specjalizacja | ❌ | jest tylko „szacunek” jako przyszła waluta |
 | 5.1–5.5 wydarzenia i kryzysy | ✅ | 35 wydarzeń, skutki odroczone i niepewne, kryzysy progowe |
-| 6.1 kuria jako aktor | ⚠️ | reaguje liczbą i kryzysem; brak oceny, przeniesienia, kariery |
+| 6.1 kuria jako aktor | ✅ | listy, oceny kwartalne, nominacje, ostrzeżenia |
 | 6.2 tłumaczenie się z decyzji | ✅ | listy z kurii w telefonie z terminem i trzema sposobami odpowiedzi |
 | 7.1 grupy parafian | ⚠️ | dwie grupy jako liczby (tradycjonaliści, młode rodziny), nie byty z wpływem |
 | 7.2 konflikty grup | ⚠️ | decyzje różnicują obie liczby; eskalacja tylko przez kryzys reputacji |
-| 8.1–8.2 emergencja | ✅ | losowanie na warunkach, moneta w skutkach, karencje; brak kroniki przejścia |
+| 8.1–8.2 emergencja | ✅ | losowanie na warunkach, moneta w skutkach, karencje; trwała kronika decyzji i ocen od2.4 |
 | 9.1–9.4 świat, rozbudowa, praca, dzień | ✅ | |
 | 9.5 drzewko rozwoju | ❌ | |
 | 9.6 postacie z rutyną | ⚠️ | parafianie istnieją tylko w scenach mszy, spowiedzi i pogrzebu |
@@ -42,12 +42,12 @@ i dowody wydania 2.3: [kontrakt i rejestr realizacji](kontrakty/2.3-budzet.md).
 | 10.3c interfejs w stylistyce | ⚠️ | font systemowy, nie pikselowy |
 | 10.4 ton | ✅ | |
 | 1.5–1.6 zadłużenie, budżet w kategoriach 🆕 | ✅ | 2.3: prognoza, potwierdzenia, odsetki, suwaki i rezerwacje remontów |
-| 2.4 życie religijne 🆕 | ❌ | wydanie 2.4 |
+| 2.4 życie religijne 🆕 | ✅ | realne uczestnictwo, spowiedzi i odwiedziny z7dni |
 | 2.5 reputacja rozłożona | ⛔ | odłożone, patrz część 5 |
-| 3.6–3.8 ocena kwartalna, przeniesienie, wikary pod proboszczem 🆕 | ❌ | wydania 2.4 i 3.3 |
+| 3.6–3.8 ocena kwartalna, przeniesienie, wikary pod proboszczem 🆕 | ⚠️ | ocena i uzgodnienia gotowe; fizyczne przeniesienie w3.3 |
 | 4.3–4.4 cechy księdza 🆕 | ❌ | wydanie 2.5 |
-| 5.6 łańcuchy wydarzeń 🆕 | ❌ | wydanie 2.4 |
-| 6.3–6.4 kalendarz kurii, dziekanat 🆕 | ❌ | wydanie 2.4 |
+| 5.6 łańcuchy wydarzeń 🆕 | ✅ | pamięć, trzy gałęzie odpustu, późne losowe następstwa |
+| 6.3–6.4 kalendarz kurii, dziekanat 🆕 | ✅ | przypomnienia, oceny, reakcja sąsiada i odpust |
 | 7.3–7.5 grupy z wpływem, działalność społeczna 🆕 | ❌ | wydanie 2.6; zastępują 7.1 i 7.2 |
 | 11.1–11.4 warianty startu, remont etapami 🆕 | ⚠️ | finansowy wybór dach/salka z11.4 gotowy w2.3; warianty, etapy i sloty w3.0–3.1 |
 | 12.1–12.3 kancelaria, sakramenty, planer 🆕 | ❌ | wydanie 2.8 |
@@ -176,7 +176,7 @@ więc 2.10 jest nowsze od 2.9. Starsza karta nie cofa nowszego potwierdzenia.
 `--check` sprawdza katalog i scenariusze pominiętych wydań. Każde kolejne wydanie
 wymaga aktualizacji wersji projektu oraz wpisu w `scripts/release_notes.gd`.
 
-### 2.4 Kuria, ocena i ranga (AC-2.4, 3.1–3.8, 5.6, 6.1, 6.3, 6.4, R4, R7, R12)
+### 2.4 Kuria, ocena i ranga (AC-2.4, 3.1–3.8, 5.6, 6.1, 6.3, 6.4, R4, R7, R12) ✅
 
 Kuria przestaje być liczbą, a staje się oceniającym z kalendarzem.
 
@@ -197,6 +197,14 @@ Kuria przestaje być liczbą, a staje się oceniającym z kalendarzem.
   (podbieranie parafian, wspólny odpust), wpływające na `reputation` i `curia`.
 - Kronika przejścia (AC-8.1): wpisy z kluczowych decyzji zbierane do jednej listy,
   do pokazania przy zmianie parafii.
+
+**Ustalenia realizacji 2.4:** nowe gry startują jako wikary, stare zapisy jako
+proboszcz, z oceną dopiero za 91 dni od migracji. Zmiana godzin mszy wymaga u wikarego
+2 dni i kosztuje relację z proboszczem −2. Wiara mierzy realne uczestnictwo w mszach,
+spowiedzi i odwiedziny; pełna aktywność sześciu grup dochodzi w 2.6. Ocena jest średnią
+pięciu wyników: dobre ≥70, złe <40. Dziekan ma na razie rangę i kronikę; jego nadzór
+oraz fizyczne przeniesienia pozostają w 3.3. Łańcuch odpustu ma trzy kosztowne wybory
+i po dwie różne wersje następstw dla każdego. [Stan i dowody](kontrakty/kolejne-wydania.md).
 
 ### 2.5 Statystyki księdza i trzy drzewka (AC-4.1–4.4, 9.5, R3)
 

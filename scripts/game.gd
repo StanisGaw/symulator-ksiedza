@@ -75,6 +75,13 @@ var condition := 55
 var trad := 55
 var young := 50
 var curia := 50
+var rank := "wikary"
+var faith := 0
+var career: Dictionary = {}
+var faith_history: Array = []
+var flags: Dictionary = {}
+var chronicle: Array = []
+var pending_events: Array = []
 var week_income := 0
 var week_expenses := 0
 var budget: Dictionary = {"biezace": 1, "remonty": 1, "infrastruktura": 1, "duszpasterstwo": 1, "ludzie": 1}
@@ -143,6 +150,7 @@ func _ready() -> void:
 		SaveGame.wipe()
 	if start_unix == 0:
 		start_unix = Calendar.today_start_unix()
+	Career.reset(self)
 	# pierwszy list czeka już na starcie, także wtedy, gdy gra rusza bez menu nowej gry
 	if phone_inbox.is_empty():
 		Inbox.send(Inbox.WELCOME_MAIL)
@@ -180,6 +188,12 @@ func _ready() -> void:
 		elif arg == "--check":
 			# kontrola definicji wydarzeń i awarii, bez uruchamiania gry
 			call_deferred("_run_check")
+		elif arg == "--check-career":
+			call_deferred("_run_career_check")
+		elif arg == "--check-chains":
+			call_deferred("_run_chains_check")
+		elif arg == "--check-career-ui":
+			call_deferred("_run_career_ui_check")
 		elif arg == "--check-budget":
 			call_deferred("_run_budget_check")
 		elif arg == "--check-budget-ui":
@@ -517,12 +531,15 @@ func _finish_activity(def: Dictionary) -> void:
 		add_log(text)
 		return
 	if def.get("visit", false):
+		Career.record("groups")
 		var person := next_visit()
 		Parish.apply_effects(person["effects"])
 		toast.emit(person["toast"])
 		add_log(person["toast"])
 		Visits.advance(self)
 		return
+	if def == ACTIVITIES["confession"]:
+		Career.record("sacraments", 3)
 	Parish.apply_effects(def["effects"])
 	toast.emit(def["toast"])
 	add_log(def["toast"])
@@ -613,6 +630,7 @@ func _mess_seen() -> Array[String]:
 
 
 func _hold_mass(attendance: int) -> void:
+	Career.record("attendance", attendance)
 	var taca := int(attendance * randf_range(3.2, 5.0) * Calendar.taca_multiplier(day, _cut_start))
 	Parish.apply_effects({"money": taca, "reputation": 1}, "Taca z mszy", "taca")
 	var respect_gain := RESPECT_PER_MASS * (2 if is_sunday() or Calendar.feast_name(day) != "" else 1)
@@ -717,6 +735,7 @@ func _start_new_day(new_energy: float, extra_lines: Array[String], wake_minutes:
 		var hit := true
 		if item.has("chance"):
 			hit = randf() < float(item["chance"])
+		EventFlow.apply_delayed_branch(item, hit)
 		var text: String = str(item.get("text", "")) if hit else str(item.get("else_text", ""))
 		Parish.apply_effects(item.get("effects", {}) if hit else item.get("else_effects", {}))
 		var broke: String = str(item.get("breakdown", "")) if hit else str(item.get("else_breakdown", ""))
@@ -742,6 +761,7 @@ func _start_new_day(new_energy: float, extra_lines: Array[String], wake_minutes:
 				Inbox.send(Phone.curia_mail(str(mail["curia_about"]), Phone.excuses()))
 			else:
 				Inbox.send(mail)
+		EventFlow.record_delayed_crisis(item)
 		if text != "":
 			lines.append(text)
 			add_log(text)
@@ -755,6 +775,7 @@ func _start_new_day(new_energy: float, extra_lines: Array[String], wake_minutes:
 	if Calendar.is_monday(day):
 		lines.append_array(Finance.weekly_settlement())
 	lines.append_array(_funeral_morning())
+	lines.append_array(Career.morning())
 	lines.append_array(Inbox.morning())
 	lines.append_array(Repairs.morning())
 	lines.append_array(Repairs.risk())
@@ -771,10 +792,11 @@ func _start_new_day(new_energy: float, extra_lines: Array[String], wake_minutes:
 ## Scenariusz pierwszego tygodnia i kryzysy wchodzą zawsze. Pula tylko wtedy, gdy dzień
 ## nie jest już nimi zajęty, i tylko z pewną szansą, która rośnie po cichych dniach.
 func _morning_events() -> void:
+	var has_pending := _queue_pending_events()
 	var forced: Array = Events.due_events(self)
 	for ev in forced:
 		request_modal("event", {"event": ev})
-	if not forced.is_empty():
+	if has_pending or not forced.is_empty():
 		quiet_days = 0
 		return
 	if randf() < Events.daily_chance(quiet_days):
@@ -784,6 +806,21 @@ func _morning_events() -> void:
 			request_modal("event", {"event": drawn})
 			return
 	quiet_days += 1
+
+
+## Kolejka jest częścią zapisu poranka; dopiero decyzja usuwa z niej wydarzenie.
+func _queue_pending_events() -> bool:
+	var queued := false
+	for id in pending_events.duplicate():
+		var ev := Events.by_id(str(id))
+		if ev.is_empty() or fired_events.has(id):
+			pending_events.erase(id)
+			continue
+		if not Events._eligible(self, ev):
+			continue
+		request_modal("event", {"event": ev})
+		queued = true
+	return queued
 
 
 const DECEASED := ["pani Genowefa Kruk", "pan Tadeusz Wrona", "pani Zofia Maj", "pan Henryk Sowa",
@@ -844,6 +881,7 @@ func continue_game() -> bool:
 	state_changed.emit()
 	world_changed.emit()
 	location_change_requested.emit("rectory", "bed")
+	_queue_pending_events()
 	return true
 
 
@@ -854,6 +892,9 @@ func start_new_game() -> void:
 	SaveGame.wipe()
 	start_unix = Calendar.today_start_unix()
 	day = 1
+	Career.reset(self)
+	flags.clear()
+	pending_events.clear()
 	minutes = float(DAY_START)
 	energy = 100.0
 	money = 12000
@@ -928,3 +969,27 @@ func _run_budget_ui_check() -> void:
 func _run_simulation() -> void:
 	Simulate.run(_simulate_days)
 	get_tree().quit()
+
+
+func _run_career_check() -> void:
+	_run_behavior_check("res://scripts/tools/check_career.gd")
+
+
+func _run_chains_check() -> void:
+	_run_behavior_check("res://scripts/tools/check_chains.gd")
+
+
+func _run_behavior_check(path: String) -> void:
+	var checks: Script = load(path)
+	var problems: Array[String] = checks.run()
+	for problem in problems:
+		printerr(problem)
+	if problems.is_empty():
+		print("BEHAVIOR CHECK OK: ", path)
+	get_tree().quit(0 if problems.is_empty() else 1)
+
+
+func _run_career_ui_check() -> void:
+	var checks: Script = load("res://scripts/tools/check_career_ui.gd")
+	var passed: bool = await checks.run()
+	get_tree().quit(0 if passed else 1)

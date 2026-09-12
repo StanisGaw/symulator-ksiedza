@@ -70,6 +70,30 @@ jobs:
           --log artifacts/godot-validation/check-budget-ui.log
           -- --check-budget-ui
 
+      - name: Check career behavior
+        run: >-
+          python3 scripts/ci/run_godot.py
+          --godot ./godot
+          --timeout 60
+          --log artifacts/godot-validation/check-career.log
+          -- --check-career
+
+      - name: Check event chains
+        run: >-
+          python3 scripts/ci/run_godot.py
+          --godot ./godot
+          --timeout 60
+          --log artifacts/godot-validation/check-chains.log
+          -- --check-chains
+
+      - name: Check career UI
+        run: >-
+          python3 scripts/ci/run_godot.py
+          --godot ./godot
+          --timeout 60
+          --log artifacts/godot-validation/check-career-ui.log
+          -- --check-career-ui
+
       - name: Simulate 120 days
         run: >-
           python3 scripts/ci/run_godot.py

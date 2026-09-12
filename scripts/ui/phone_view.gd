@@ -39,6 +39,10 @@ static func _phone_app_tabs(ui: Ui, box: VBoxContainer, app: String) -> void:
 			ui._enqueue("phone", {"app": id}))
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.disabled = id == app
+	var career_button := ui._button(tabs, "Kariera", func() -> void:
+		ui._close_modal()
+		ui._enqueue("career", {}))
+	career_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 
 static func _phone_bank(ui: Ui, box: VBoxContainer, tab: String, draft: Dictionary = {}) -> void:

@@ -271,6 +271,7 @@ func _show_next() -> void:
 	Game.modal_open = true
 	var item: Dictionary = _queue.pop_front()
 	match item["kind"]:
+		"career": CareerView.show_career(self)
 		"event": _show_event(item["data"]["event"])
 		"report": _show_report(item["data"]["title"], item["data"]["lines"])
 		"finance": FinanceView._show_finance(self)
@@ -436,6 +437,8 @@ func _show_event(ev: Dictionary) -> void:
 	for i in ev["options"].size():
 		var opt: Dictionary = ev["options"][i]
 		var label: String = opt["label"]
+		if Career.needs_approval(opt):
+			label += "\nUzgodnij z proboszczem: 2 dni, relacja -2"
 		if opt.has("effects"):
 			label += "   (" + Parish.effects_text(opt["effects"]) + ")"
 		_button(opts, label, func() -> void:

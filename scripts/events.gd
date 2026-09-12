@@ -12,6 +12,7 @@ class_name Events
 ##   built / not_built   – ukończone inwestycje
 ##   breakdown / no_breakdown – trwające awarie
 ##   min / max          – progi wskaźników, np. {"reputation": 60} albo {"condition": 30}
+##   flags              – zapamiętane decyzje, np. {"dean_plan": "together"}
 ##
 ## Opcje mogą mieć: "effects" (od ręki), "set" (zmiana stanu gry), "special" (kod),
 ## "breakdown" (awaria od ręki), "fix" (koniec awarii) oraz "delayed" – skutek odroczony,
@@ -24,11 +25,14 @@ const SCRIPTED := [
 		"text": "Po porannej mszy czekają na Ciebie dwie delegacje. W niedziele i święta odprawiasz o 7:00, 12:00 i 19:00, w dni powszednie o 7:00 i 19:00. Starsi parafianie chcą, żeby główna msza, którą po staremu nazywają sumą, wróciła na 7:00, a południową żebyś odwołał. Młode rodziny proszą o 11:00, bo dzieci nie wstaną wcześniej. Kościelny przypomina, że każda msza to godzina Twojego czasu, a opuszczonej nikt nie wybaczy. Zmiana dotyczy tylko niedziel i świąt.",
 		"options": [
 			{"label": "Niedziele i święta: 7:00 i 19:00, bez południowej", "effects": {"trad": 8, "young": -6}, "set": {"sunday_hours": [7, 19]},
+				"flags": {"mass_hours_changed": true, "mass_hours_choice": "early"},
 				"delayed": {"days": 4, "text": "Kilka młodych rodzin zaczęło jeździć na mszę do sąsiedniej parafii. Młode rodziny -5, reputacja -2.", "effects": {"young": -5, "reputation": -2}}},
 			{"label": "Niedziele i święta: 11:00 i 19:00, główna z dziećmi", "effects": {"young": 8, "trad": -6}, "set": {"sunday_hours": [11, 19]},
+				"flags": {"mass_hours_changed": true, "mass_hours_choice": "families"},
 				"delayed": {"days": 4, "text": "Tradycjonaliści napisali list do kurii w sprawie „nowinek”. Kuria -4.", "effects": {"curia": -4},
 					"mail": {"curia_about": "przeniesienie sumy na 11:00"}}},
 			{"label": "Niedziele i święta: 7:00, 11:00 i 19:00, trzy msze", "effects": {"trad": 3, "young": 3}, "set": {"sunday_hours": [7, 11, 19]},
+				"flags": {"mass_hours_changed": true, "mass_hours_choice": "three_masses"},
 				"delayed": {"days": 7, "text": "Organista upomina się o dodatek za trzecią mszę w niedzielę. -600 zł.", "effects": {"money": -600}}},
 		]
 	},
@@ -43,7 +47,7 @@ const SCRIPTED := [
 	},
 	{
 		"id": "curia_call", "day": 5, "title": "Telefon z kurii",
-		"text": "Ksiądz kanclerz pyta uprzejmie o sprawozdanie finansowe za pierwszy tydzień. Dodaje, że biskup „interesuje się młodymi proboszczami”.",
+		"text": "Ksiądz kanclerz pyta uprzejmie o sprawozdanie finansowe za pierwszy tydzień. Dodaje, że biskup „interesuje się młodymi księżmi”.",
 		"options": [
 			{"label": "Wyślę uczciwe sprawozdanie", "special": "honest_report"},
 			{"label": "Poproszę o tydzień zwłoki",
@@ -481,11 +485,12 @@ static func due_events(game: Node) -> Array:
 static func draw(game: Node) -> Dictionary:
 	var eligible: Array = []
 	var total := 0.0
-	for ev in POOL:
-		if not _eligible(game, ev):
-			continue
-		eligible.append(ev)
-		total += float(ev.get("weight", 10))
+	for pool in [POOL, ChainEvents.POOL]:
+		for ev in pool:
+			if not _eligible(game, ev):
+				continue
+			eligible.append(ev)
+			total += float(ev.get("weight", 10))
 	if eligible.is_empty():
 		return {}
 	var roll := randf() * total
@@ -531,13 +536,21 @@ static func _eligible(game: Node, ev: Dictionary) -> bool:
 	for key in req.get("max", {}):
 		if float(game.get(key)) > float(req["max"][key]):
 			return false
+	for key in req.get("flags", {}):
+		if game.flags.get(key, false) != req["flags"][key]:
+			return false
 	return true
 
 
-## Wydarzenie po identyfikatorze, ze wszystkich trzech list. Do podglądu: --event=organ_silent.
+## Wydarzenie po identyfikatorze, także z odroczonych łańcuchów.
 static func by_id(id: String) -> Dictionary:
-	for list in [SCRIPTED, POOL, CRISES]:
+	for list in [SCRIPTED, POOL, CRISES, ChainEvents.POOL, ChainEvents.FOLLOWUPS]:
 		for ev in list:
 			if ev["id"] == id:
 				return ev
 	return {}
+
+
+## Wszystkie katalogi w formacie używanym przez walidatory i narzędzia.
+static func catalogs() -> Array:
+	return [["SCRIPTED", SCRIPTED], ["POOL", POOL], ["CRISES", CRISES]] + ChainEvents.catalogs()
