@@ -74,8 +74,8 @@ func _process(_delta: float) -> void:
 	if feast != "":
 		head += "   •   " + feast
 	# telefon zawsze pod ręką; w górnej linii, bo dolna jest już pełna wskaźników
-	var unread := Game.phone_unread()
-	var waiting := Game.phone_waiting()
+	var unread := Inbox.unread()
+	var waiting := Inbox.waiting()
 	head += "   •   [P] Telefon"
 	if unread > 0:
 		head += ": %d nowe" % unread
@@ -439,7 +439,7 @@ func _show_report(title: String, lines: Array) -> void:
 func _show_finance() -> void:
 	var box := _window("Finanse i inwestycje", 940.0)
 	_text(box, "Konto: %s zł      W tym tygodniu: wpływy %s zł, wydatki %s zł      Stałe koszty tygodnia: %s zł      Stały dochód z inwestycji: %s zł" % [
-		_money(Game.money), _money(Game.week_income), _money(Game.week_expenses), _money(Game.WEEKLY_EXPENSES), _money(Game.weekly_yield())], 17)
+		_money(Game.money), _money(Game.week_income), _money(Game.week_expenses), _money(Finance.WEEKLY_EXPENSES), _money(Finance.weekly_yield())], 17)
 	var scroll := ScrollContainer.new()
 	scroll.custom_minimum_size = Vector2(0, 440)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -455,7 +455,7 @@ func _show_finance() -> void:
 		for id in Game.breakdowns:
 			_breakdown_card(list, id)
 		_text(list, "Inwestycje", 22)
-	for id in Game.INVESTMENTS:
+	for id in Finance.INVESTMENTS:
 		_investment_card(list, id)
 	_button(box, "Zamknij", _close_modal)
 
@@ -500,7 +500,7 @@ func _breakdown_card(list: Control, id: String) -> void:
 
 ## Karta inwestycji: co stanie w świecie, co się odblokuje, ile to daje i kiedy się zwróci.
 func _investment_card(list: Control, id: String) -> void:
-	var def: Dictionary = Game.INVESTMENTS[id]
+	var def: Dictionary = Finance.INVESTMENTS[id]
 	var card := PanelContainer.new()
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(0.11, 0.11, 0.14)
@@ -523,7 +523,7 @@ func _investment_card(list: Control, id: String) -> void:
 	var weekly := int(def.get("weekly", 0))
 	if weekly > 0:
 		var note := str(def.get("yield_note", "%s zł tygodniowo" % _money(weekly)))
-		_card_line(info, "Zysk", "%s. Zwrot po około %d tygodniach." % [note, Game.payback_weeks(id)])
+		_card_line(info, "Zysk", "%s. Zwrot po około %d tygodniach." % [note, Finance.payback_weeks(id)])
 	else:
 		_card_line(info, "Zysk", "bez stałego dochodu")
 	if not (def["effects"] as Dictionary).is_empty():
@@ -536,9 +536,9 @@ func _investment_card(list: Control, id: String) -> void:
 	elif Game.money < int(def["cost"]):
 		label = "Za drogo"
 	var b := _button(row, label, func() -> void:
-		Game.invest(id)
+		Finance.invest(id)
 		_close_modal()
-		_enqueue("finance", {}), Game.can_invest(id))
+		_enqueue("finance", {}), Finance.can_invest(id))
 	b.custom_minimum_size = Vector2(150, 52)
 	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 
@@ -562,7 +562,7 @@ func _hours_list(hours: Array) -> String:
 ## Telefon: trzy zakładki. Lista wiadomości z poczty i mediów, a w banku historia
 ## operacji. Wiadomość z pytaniem pokazuje przyciski odpowiedzi razem ze skutkami.
 func _show_phone(app: String) -> void:
-	var waiting := Game.phone_waiting()
+	var waiting := Inbox.waiting()
 	var title := "Telefon"
 	if waiting > 0:
 		title += "   •   %d czeka na odpowiedź" % waiting
@@ -594,8 +594,8 @@ func _show_phone(app: String) -> void:
 func _phone_bank(box: VBoxContainer) -> void:
 	_text(box, "Stan konta: %s zł" % _money(Game.money), 24)
 	_text(box, "W tym tygodniu: wpływy %s zł, wydatki %s zł. Stałe rachunki i pensje: %s zł na koniec tygodnia." % [
-		_money(Game.week_income), _money(Game.week_expenses), _money(Game.WEEKLY_EXPENSES)], 17)
-	var yield_total: int = Game.weekly_yield()
+		_money(Game.week_income), _money(Game.week_expenses), _money(Finance.WEEKLY_EXPENSES)], 17)
+	var yield_total: int = Finance.weekly_yield()
 	if yield_total > 0:
 		_text(box, "Dochód z inwestycji: %s zł tygodniowo." % _money(yield_total), 17)
 	_text(box, "Historia operacji", 22)
@@ -654,7 +654,7 @@ func _phone_message(list: VBoxContainer, index: int, msg: Dictionary) -> void:
 	body.add_theme_font_size_override("font_size", 17)
 	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	list.add_child(body)
-	Game.phone_mark_read(index)
+	Inbox.mark_read(index)
 	var answered := int(msg.get("answered", -1))
 	if bool(msg.get("expired", false)):
 		var late := Label.new()
@@ -683,7 +683,7 @@ func _phone_message(list: VBoxContainer, index: int, msg: Dictionary) -> void:
 				label += "   (" + Game.effects_text(opt["effects"]) + ")"
 			var app: String = str(msg.get("app", "poczta"))
 			_button(list, label, func() -> void:
-				Game.phone_answer(index, oi)
+				Inbox.answer(index, oi)
 				_close_modal()
 				_enqueue("phone", {"app": app}))
 	var sep := HSeparator.new()

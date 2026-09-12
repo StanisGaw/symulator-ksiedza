@@ -56,7 +56,7 @@ static func run() -> Array[String]:
 			if req.has("part") and not PARTS.has(str(req["part"])):
 				_e(problems, where, "nieznana pora roku „%s”" % req["part"])
 			for key in ["built", "not_built"]:
-				if req.has(key) and not Game.INVESTMENTS.has(str(req[key])):
+				if req.has(key) and not Finance.INVESTMENTS.has(str(req[key])):
 					_e(problems, where, "warunek %s wskazuje nieznaną inwestycję „%s”" % [key, req[key]])
 			for key in ["breakdown", "no_breakdown"]:
 				if req.has(key) and not Breakdowns.ALL.has(str(req[key])):

@@ -40,7 +40,7 @@ static func run(days: int) -> void:
 				var msg: Dictionary = Game.phone_inbox[mi]
 				if msg.has("options") and int(msg.get("answered", -1)) < 0 and not bool(msg.get("expired", false)):
 					if randf() < 0.7:
-						Game.phone_answer(mi, randi() % (msg["options"] as Array).size())
+						Inbox.answer(mi, randi() % (msg["options"] as Array).size())
 		var before: Array = Game.breakdowns.duplicate()
 		Game._start_new_day(100.0, empty)
 		for id in Game.breakdowns:

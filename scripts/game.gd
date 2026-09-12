@@ -15,7 +15,6 @@ signal world_changed
 const MINUTES_PER_SECOND := 2.0
 const FAST_MULT := 10.0
 const DAY_START := 6 * 60
-const WEEKLY_EXPENSES := 4200
 ## Msze są o stałych porach. Żeby zacząć, trzeba być w kościele najwyżej kwadrans przed
 ## i najwyżej dziesięć minut po. Opuszczona msza kosztuje szacunek i tradycjonalistów.
 const MASS_HOURS_SUNDAY := [7, 12, 19]
@@ -30,13 +29,7 @@ const RESPECT_PER_MISSED := 3
 const MESS_PENALTY := 1
 ## Telefon: ile pozycji trzymamy w historii konta i w skrzynce oraz jaka jest szansa
 ## na post w mediach każdego ranka. Powtórki blokuje karencja w Phone.MEDIA_COOLDOWN.
-const BANK_LOG_MAX := 40
-const INBOX_MAX := 30
-const MEDIA_CHANCE := 0.35
 ## Kiedy kuria sama pisze z prośbą o wyjaśnienia i jak często bank przypomina o debecie.
-const CURIA_MAIL_THRESHOLD := 35
-const CURIA_MAIL_COOLDOWN := 14
-const BANK_ALERT_COOLDOWN := 7
 
 const ACTIVITIES := {
 	"repair_gutter": {"label": "Napraw rynnę", "minutes": 60, "energy": 20, "once": true,
@@ -69,28 +62,6 @@ const ACTIVITIES := {
 
 ## Inwestycje. "builds" mówi, co stanie w świecie, "unlocks" co stanie się możliwe,
 ## "weekly" ile zł tygodniowo to daje po ukończeniu, "repeatable" czy można zlecać wielokrotnie.
-const INVESTMENTS := {
-	"roof": {"label": "Remont dachu", "cost": 8000, "days": 3, "effects": {"condition": 30},
-		"builds": "Nowa połać dachu nad nawą, bez łat i plandeki. Znika zaciek i wiadro w kościele.",
-		"unlocks": "Stan budynków +30 i koniec strat na przeciekach.", "weekly": 0},
-	"heating": {"label": "Ogrzewanie w kościele", "cost": 5000, "days": 2, "effects": {"trad": 8, "condition": 5},
-		"builds": "Grzejniki wzdłuż zachodniej ściany, komin z dymem za kościołem, cieplejsze światło.",
-		"unlocks": "Tradycjonaliści +8 i pełna frekwencja zimą.", "weekly": 0},
-	"sound": {"label": "Nagłośnienie", "cost": 3000, "days": 1, "effects": {"young": 6},
-		"builds": "Kolumny na wieży i przy prezbiterium, mikrofon przy ołtarzu.",
-		"unlocks": "Słychać kazanie w ostatniej ławce. Młode rodziny +6.", "weekly": 0},
-	"cemetery": {"label": "Cmentarz parafialny", "cost": 12000, "days": 5, "effects": {"reputation": 3, "trad": 4},
-		"builds": "Cmentarz za kościołem: mur, brama, żwirowa alejka, kwatery z nagrobkami, kaplica cmentarna.",
-		"unlocks": "Pogrzeby w parafii zamiast u sąsiada: ofiara 800–1 200 zł i szacunek za każdy. Do tego opłaty za miejsca.",
-		"weekly": 150, "expected_weekly": 1700,
-		"yield_note": "150 zł opłat tygodniowo plus około 1 000 zł za pogrzeb, średnio półtora pogrzebu w tygodniu"},
-	"festyn": {"label": "Festyn parafialny", "cost": 2500, "days": 4, "effects": {"young": 8, "reputation": 4, "trad": -3}, "repeatable": true,
-		"builds": "Na razie nic trwałego. Namioty, grill i tłum na placu dojdą razem z rozbudową terenu.",
-		"unlocks": "Młode rodziny +8, reputacja +4, tradycjonaliści -3.", "weekly": 0},
-	"curia_gift": {"label": "Przelew do kurii", "cost": 1500, "days": 0, "effects": {"curia": 6}, "repeatable": true,
-		"builds": "Nic. Pieniądze idą do diecezji.",
-		"unlocks": "Kuria +6. Kuria pamięta ofiarodawców.", "weekly": 0},
-}
 
 
 var day := 1
@@ -160,13 +131,19 @@ func _ready() -> void:
 	# debug: --wipe kasuje zapis, --condition/--rep ustawiają wskaźniki,
 	# --built=roof,heating stawia inwestycje (z --unseen kamera je pokaże)
 	var args := OS.get_cmdline_user_args()
+	for arg in args:
+		# --seed=7 ustala ziarno losowania, żeby dwa przebiegi --simulate dały ten sam
+		# wynik. Bez tego symulacji nie da się użyć jako dowodu, że zmiana w kodzie
+		# niczego nie przestawiła. Musi być przed pierwszym losowaniem, czyli tutaj.
+		if arg.begins_with("--seed="):
+			seed(int(arg.trim_prefix("--seed=")))
 	if args.has("--wipe"):
 		SaveGame.wipe()
 	if start_unix == 0:
 		start_unix = Calendar.today_start_unix()
 	# pierwszy list czeka już na starcie, także wtedy, gdy gra rusza bez menu nowej gry
 	if phone_inbox.is_empty():
-		phone_send(WELCOME_MAIL)
+		Inbox.send(Inbox.WELCOME_MAIL)
 	# po wczytaniu albo starcie o późniejszej godzinie msze, których pora minęła,
 	# muszą być od razu rozliczone, a nie dopiero przy pierwszej klatce bez okna
 	call_deferred("_check_missed_masses")
@@ -183,8 +160,8 @@ func _ready() -> void:
 		elif arg == "--mail":
 			# debug: wrzuca do telefonu list z kurii i post w mediach, żeby dało się
 			# obejrzeć wiadomość z terminem i przyciskami odpowiedzi
-			call_deferred("phone_send", Phone.curia_mail("przeniesienie sumy na 11:00", Phone.excuses()))
-			call_deferred("phone_send", Phone.MEDIA[0].duplicate(true).merged(
+			Inbox.send.call_deferred(Phone.curia_mail("przeniesienie sumy na 11:00", Phone.excuses()))
+			Inbox.send.call_deferred(Phone.MEDIA[0].duplicate(true).merged(
 				{"app": "media", "read": false, "answered": -1}, true))
 		elif arg.begins_with("--visitor="):
 			visit_index = maxi(int(arg.trim_prefix("--visitor=")), 0)
@@ -356,7 +333,7 @@ func apply_effects(effects: Dictionary, label: String = "") -> void:
 					week_income += v
 				else:
 					week_expenses += -v
-				bank_entry(label if label != "" else ("Wpływ" if v >= 0 else "Wydatek"), v)
+				Finance.bank_entry(label if label != "" else ("Wpływ" if v >= 0 else "Wydatek"), v)
 			"reputation": reputation = clampi(reputation + v, 0, 100)
 			"condition": condition = clampi(condition + v, 0, 100)
 			"trad": trad = clampi(trad + v, 0, 100)
@@ -368,118 +345,6 @@ func apply_effects(effects: Dictionary, label: String = "") -> void:
 	# świat pokazuje stan parafii progami, więc przebudowa tylko przy zmianie progu
 	if WorldState.condition() != before_condition or WorldState.life() != before_life:
 		world_changed.emit()
-
-
-## Dopisuje operację do historii konta w telefonie. Trzymamy ostatnie BANK_LOG_MAX pozycji,
-## bo to podgląd, a nie księgowość.
-func bank_entry(text: String, amount: int) -> void:
-	bank_log.push_front({"day": day, "text": text, "amount": amount})
-	if bank_log.size() > BANK_LOG_MAX:
-		bank_log.resize(BANK_LOG_MAX)
-
-
-## Nowa wiadomość w telefonie. Wiadomości z terminem dostają dzień, do którego czekają.
-func phone_send(msg: Dictionary) -> void:
-	var item: Dictionary = msg.duplicate(true)
-	item["day"] = day
-	item["read"] = false
-	item["answered"] = -1
-	if item.has("deadline"):
-		item["due"] = day + int(item["deadline"])
-	phone_inbox.push_front(item)
-	if item.get("app", "") == "media" and item.has("id"):
-		media_recent[str(item["id"])] = day
-	toast.emit("Telefon: %s - %s" % [item.get("from", "?"), item.get("title", "")])
-	state_changed.emit()
-
-
-func phone_unread() -> int:
-	var n := 0
-	for m in phone_inbox:
-		if not bool(m.get("read", true)):
-			n += 1
-	return n
-
-
-## Ile wiadomości czeka na odpowiedź; to one mają termin, więc HUD może je wyróżnić.
-func phone_waiting() -> int:
-	var n := 0
-	for m in phone_inbox:
-		if _phone_open_question(m):
-			n += 1
-	return n
-
-
-func _phone_open_question(msg: Dictionary) -> bool:
-	return msg.has("options") and int(msg.get("answered", -1)) < 0 and not bool(msg.get("expired", false))
-
-
-func phone_mark_read(index: int) -> void:
-	if index < 0 or index >= phone_inbox.size():
-		return
-	phone_inbox[index]["read"] = true
-	state_changed.emit()
-
-
-## Odpowiedź na wiadomość działa jak wybór w wydarzeniu: skutki od ręki, skutki odroczone
-## i wpis w kronice. Wiadomość zostaje w skrzynce z zaznaczoną odpowiedzią.
-func phone_answer(index: int, option_index: int) -> void:
-	if index < 0 or index >= phone_inbox.size():
-		return
-	var msg: Dictionary = phone_inbox[index]
-	if not _phone_open_question(msg):
-		return
-	var opt: Dictionary = msg["options"][option_index]
-	if opt.has("effects"):
-		apply_effects(opt["effects"], str(msg.get("title", "Telefon")))
-	if opt.has("set"):
-		for key in opt["set"]:
-			set(key, opt["set"][key])
-	if opt.has("delayed"):
-		var d: Dictionary = opt["delayed"]
-		scheduled.append({"day": day + int(d["days"]), "text": str(d.get("text", "")),
-			"effects": d.get("effects", {})})
-	msg["answered"] = option_index
-	msg["read"] = true
-	add_log("%s: %s." % [msg.get("title", "Telefon"), opt["label"]])
-	state_changed.emit()
-
-
-## Rano: wiadomości po terminie rozliczają się same, a media czasem coś wrzucają.
-func _phone_morning() -> Array[String]:
-	var lines: Array[String] = []
-	for msg in phone_inbox:
-		if not _phone_open_question(msg) or not msg.has("due"):
-			continue
-		if day <= int(msg["due"]):
-			continue
-		msg["expired"] = true
-		msg["read"] = true
-		var expire: Dictionary = msg.get("expire", {})
-		if expire.has("effects"):
-			apply_effects(expire["effects"], str(msg.get("title", "Telefon")))
-		var text := str(expire.get("text", "Nie odpowiedziałeś na wiadomość: %s." % msg.get("title", "")))
-		lines.append(text)
-		add_log(text)
-	if phone_inbox.size() > INBOX_MAX:
-		phone_inbox.resize(INBOX_MAX)
-	# kuria odzywa się sama, gdy relacje siadają - i chce wyjaśnień na piśmie
-	if curia < CURIA_MAIL_THRESHOLD and day - _last_curia_mail >= CURIA_MAIL_COOLDOWN:
-		_last_curia_mail = day
-		phone_send(Phone.curia_mail("ogólny stan relacji z kurią", Phone.excuses(), 4))
-		lines.append("Kuria pyta o stan relacji z parafią. Odpowiedź czeka w telefonie.")
-	# bank przypomina o debecie, bo to widać dopiero na wyciągu
-	if money < 0 and day - _last_bank_alert >= BANK_ALERT_COOLDOWN:
-		_last_bank_alert = day
-		phone_send(Phone.make("bank", "Bank Spółdzielczy", "Debet na koncie parafii",
-			"Saldo rachunku parafii jest ujemne (%s zł). Odsetki naliczamy od dnia dzisiejszego." % money_text(money),
-			{"id": "debet"}))
-	if randf() < MEDIA_CHANCE:
-		var post: Dictionary = Phone.draw_media(self, media_recent)
-		if not post.is_empty():
-			phone_send(post)
-			lines.append("W mediach: %s" % post["title"])
-	return lines
 
 
 ## „12 000” zamiast „12000”, w jednym miejscu dla całej gry.
@@ -809,53 +674,6 @@ func _hold_mass(attendance: int) -> void:
 	add_log(text)
 
 
-# ---------- investments ----------
-
-func can_invest(id: String) -> bool:
-	var def: Dictionary = INVESTMENTS[id]
-	if not def.get("repeatable", false) and built.has(id):
-		return false
-	return money >= def["cost"] and not pending_investments.has(id)
-
-
-## Ile tygodni zwraca się inwestycja z samego stałego dochodu. Zero, gdy nie daje pieniędzy.
-static func payback_weeks(id: String) -> int:
-	var def: Dictionary = INVESTMENTS[id]
-	# do zwrotu liczy się cały spodziewany dochód, nie tylko stała opłata
-	var weekly := int(def.get("expected_weekly", def.get("weekly", 0)))
-	if weekly <= 0:
-		return 0
-	return int(ceil(float(def["cost"]) / float(weekly)))
-
-
-## Stały dochód z ukończonych inwestycji, doliczany przy rozliczeniu tygodnia.
-func weekly_yield() -> int:
-	var total := 0
-	for id in built:
-		if INVESTMENTS.has(id):
-			total += int(INVESTMENTS[id].get("weekly", 0))
-	return total
-
-
-func invest(id: String) -> void:
-	if not can_invest(id):
-		toast.emit("Nie stać parafii albo prace już trwają.")
-		return
-	var def: Dictionary = INVESTMENTS[id]
-	apply_effects({"money": -def["cost"]})
-	if def["days"] == 0:
-		apply_effects(def["effects"])
-		toast.emit("%s: %s" % [def["label"], effects_text(def["effects"])])
-		add_log("%s (%d zł)." % [def["label"], def["cost"]])
-	else:
-		pending_investments.append(id)
-		scheduled.append({"day": day + def["days"], "text": "%s: prace zakończone. %s." % [def["label"], effects_text(def["effects"])],
-			"effects": def["effects"], "invest": id})
-		toast.emit("%s: zlecone, gotowe za %d dni." % [def["label"], def["days"]])
-		add_log("Zlecono: %s (%d zł)." % [def["label"], def["cost"]])
-	state_changed.emit()
-
-
 # ---------- events ----------
 
 const DELAYED_KEYS := ["chance", "else_text", "else_effects", "breakdown", "else_breakdown", "special", "mail"]
@@ -1135,9 +953,9 @@ func _start_new_day(new_energy: float, extra_lines: Array[String], wake_minutes:
 		if item.has("mail") and hit:
 			var mail: Dictionary = item["mail"]
 			if mail.has("curia_about"):
-				phone_send(Phone.curia_mail(str(mail["curia_about"]), Phone.excuses()))
+				Inbox.send(Phone.curia_mail(str(mail["curia_about"]), Phone.excuses()))
 			else:
-				phone_send(mail)
+				Inbox.send(mail)
 		if text != "":
 			lines.append(text)
 			add_log(text)
@@ -1149,9 +967,9 @@ func _start_new_day(new_energy: float, extra_lines: Array[String], wake_minutes:
 		lines.append("Wczoraj było święto nakazane (%s), a mszy nie było. Tradycjonaliści -6, reputacja -3, kuria -3." % missed_name)
 	# rozliczenie tygodnia w poniedziałek rano, według prawdziwego kalendarza
 	if Calendar.is_monday(day):
-		lines.append_array(_weekly_settlement())
+		lines.append_array(Finance.weekly_settlement())
 	lines.append_array(_funeral_morning())
-	lines.append_array(_phone_morning())
+	lines.append_array(Inbox.morning())
 	lines.append_array(_breakdown_morning())
 	lines.append_array(_breakdown_risk())
 	state_changed.emit()
@@ -1205,30 +1023,6 @@ func _funeral_morning() -> Array[String]:
 	return lines
 
 
-func _weekly_settlement() -> Array[String]:
-	var lines: Array[String] = []
-	var expenses := WEEKLY_EXPENSES
-	money -= expenses
-	var yield_total := weekly_yield()
-	if yield_total > 0:
-		# przez apply_effects, żeby dochód wszedł do wpływów tygodnia w raporcie i finansach
-		apply_effects({"money": yield_total})
-		lines.append("Opłaty i dochody z inwestycji: +%s zł." % money_text(yield_total))
-	lines.append("Rozliczenie tygodnia: taca i ofiary %s zł, wydatki %s zł, rachunki i pensje %s zł." % [
-		money_text(week_income), money_text(week_expenses), money_text(expenses)])
-	lines.append("Stan konta: %s zł." % money_text(money))
-	condition = clampi(condition - 2, 0, 100)
-	if money < 0:
-		curia = clampi(curia - 3, 0, 100)
-		lines.append("Konto na minusie. Kuria to widzi. Kuria -3.")
-	if condition < 30:
-		reputation = clampi(reputation - 2, 0, 100)
-		lines.append("Budynki niszczeją, parafianie to komentują. Reputacja -2.")
-	week_income = 0
-	week_expenses = 0
-	return lines
-
-
 # ---------- save ----------
 
 ## Zmiany, które gracz już zobaczył na własne oczy. Nowa rzecz w lokacji dostaje najazd kamery.
@@ -1268,11 +1062,6 @@ func continue_game() -> bool:
 
 
 ## Pierwszy list w telefonie: kuria wita nowego proboszcza i od razu ustawia ton.
-const WELCOME_MAIL := {
-	"app": "poczta", "from": "Kuria diecezjalna", "id": "welcome",
-	"title": "Objęcie parafii",
-	"text": "Ksiądz kanclerz wita w nowej parafii i przypomina, że sprawozdania finansowe składa się co kwartał, a biskup lubi, gdy w parafii coś się dzieje. Na końcu, mniejszą czcionką: poprzednik zostawił budynki w stanie, który wymaga uwagi.",
-}
 
 
 func start_new_game() -> void:
@@ -1314,7 +1103,7 @@ func start_new_game() -> void:
 	phone_inbox.clear()
 	bank_log.clear()
 	media_recent.clear()
-	phone_send(WELCOME_MAIL)
+	Inbox.send(Inbox.WELCOME_MAIL)
 	cutscene = false
 	cutscene_id = ""
 	state_changed.emit()
