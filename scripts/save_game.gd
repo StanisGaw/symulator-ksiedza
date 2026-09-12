@@ -11,7 +11,7 @@ const INTS := ["day", "start_unix", "money", "reputation", "condition", "trad", 
 	"funerals_pending", "funeral_deadline", "quiet_days", "_last_curia_mail", "_last_bank_alert"]
 const FLOATS := ["energy"]
 const STRINGS := ["deceased_name"]
-const DICTS := ["done_today", "breakdown_since", "event_cooldowns", "media_recent"]
+const DICTS := ["done_today", "breakdown_since", "event_cooldowns", "media_recent", "budget", "budget_reservations"]
 const ARRAYS := ["scheduled", "pending_investments", "fired_events", "log_lines", "built", "seen",
 	"masses_done", "masses_missed", "sunday_hours", "weekday_hours", "breakdowns", "pending_repairs",
 	"phone_inbox", "bank_log"]
@@ -66,6 +66,10 @@ static func read() -> Dictionary:
 ## Pola nieznane są pomijane, brakujące zostawiają wartość domyślną. Dzięki temu
 ## dołożenie nowego pola stanu nie unieważnia zapisów z poprzedniej wersji gry.
 static func apply(game: Node, data: Dictionary) -> void:
+	# Nowe pola muszą mieć domyślną wartość także przy wczytaniu starego slotu
+	# po rozegraniu innej partii w tej samej sesji.
+	game.budget = Finance.default_budget()
+	game.budget_reservations = {}
 	for key in INTS:
 		if data.has(key):
 			game.set(key, int(data[key]))
@@ -81,6 +85,19 @@ static func apply(game: Node, data: Dictionary) -> void:
 	for key in ARRAYS:
 		if data.has(key) and typeof(data[key]) == TYPE_ARRAY:
 			game.set(key, (data[key] as Array).duplicate(true))
+	game.budget = Finance.normalize_budget(game.budget)
+	var normalized_reservations: Dictionary = {}
+	var reservation: Variant = game.budget_reservations.get("remonty", {})
+	var investment: Dictionary = Finance.INVESTMENTS.get(str(reservation.get("investment", "")), {}) if reservation is Dictionary else {}
+	if reservation is Dictionary and bool(investment.get("reserves", false)) and investment.get("category", "") == "remonty":
+		var until_day := int(reservation.get("until_day", 0))
+		if until_day > int(game.day):
+			normalized_reservations["remonty"] = {"investment": str(reservation["investment"]),
+				"until_day": until_day, "min_level": 1}
+			game.budget["remonty"] = maxi(int(game.budget["remonty"]), 1)
+	game.budget_reservations = normalized_reservations
+	for entry in game.bank_log:
+		entry["category"] = str(entry.get("category", "inne"))
 	# JSON nie zna liczb całkowitych, więc godziny, terminy i skutki wracają jako zmiennoprzecinkowe
 	for key in INT_ARRAYS:
 		var values: Array = game.get(key)

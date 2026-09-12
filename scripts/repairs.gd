@@ -33,12 +33,17 @@ static func can_repair(id: String) -> bool:
 
 
 ## Naprawa idzie tą samą drogą co inwestycja: płacisz dziś, prace kończą się rano.
-static func repair(id: String) -> void:
+## Gdy wydatek oznacza debet przy najbliższym rozliczeniu, pierwsze wywołanie tylko
+## prosi interfejs o potwierdzenie. Do tego czasu stan gry pozostaje bez zmian.
+static func repair(id: String, confirmed: bool = false) -> bool:
 	if not can_repair(id):
 		Game.toast.emit("Nie stać parafii albo naprawa już trwa.")
-		return
+		return false
 	var def: Dictionary = Breakdowns.ALL[id]
-	Parish.apply_effects({"money": -int(def["cost"])})
+	var cost := int(def["cost"])
+	if Finance.needs_confirmation(cost) and not confirmed:
+		return false
+	Parish.apply_effects({"money": -cost}, "Naprawa: %s" % def["label"], "remonty")
 	var days := int(def["days"])
 	if days <= 0:
 		Parish.apply_effects(def.get("fixed_effects", {}))
@@ -51,8 +56,9 @@ static func repair(id: String) -> void:
 		Game.scheduled.append({"day": Game.day + days, "text": str(def["fixed_text"]),
 			"effects": def.get("fixed_effects", {}), "repair": id})
 		Game.toast.emit("%s: naprawa zlecona, gotowe za %s." % [def["label"], Game.days_text(days)])
-		Game.add_log("Zlecono naprawę: %s (%s zł)." % [def["label"], Game.money_text(int(def["cost"]))])
+		Game.add_log("Zlecono naprawę: %s (%s zł)." % [def["label"], Game.money_text(cost)])
 	Game.state_changed.emit()
+	return true
 
 
 ## Czynność odebrana przez awarię: bez samochodu nie pojedziesz do chorego.
@@ -83,6 +89,7 @@ static func morning() -> Array[String]:
 static func risk() -> Array[String]:
 	var lines: Array[String] = []
 	var chance := clampf((60.0 - float(Game.condition)) / 320.0, 0.0, 0.18)
+	chance *= Finance.natural_risk_multiplier()
 	if chance <= 0.0 or randf() >= chance:
 		return lines
 	var part := Calendar.time_of_year(Game.day)

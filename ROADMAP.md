@@ -9,9 +9,9 @@ Zasady: każde wydanie kończy się buildem na GitHub Pages i przejściem `--che
 oraz `--simulate=120`. Jedno wydanie domyka jeden system do końca zamiast dotykać pięciu
 po trochu. Kolejność jest zależnościowa, nie z sufitu – patrz uzasadnienia.
 
-Stan na 12.09.2026: wydane jest wszystko do **2.2** (telefon) plus wydanie porządkowe
-**2.2.1** (rozbicie monolitów), które nie dokłada nic w grze, ale bez którego kolejne
-wydania nie dają się prowadzić równolegle.
+Stan na 12.09.2026: zaimplementowane i sprawdzone lokalnie jest wszystko do **2.3**
+(budżet tygodnia), w tym porządkowe **2.2.1** (rozbicie monolitów). Stan publikacji
+i dowody wydania 2.3: [kontrakt i rejestr realizacji](kontrakty/2.3-budzet.md).
 
 ---
 
@@ -20,8 +20,8 @@ wydania nie dają się prowadzić równolegle.
 | AC | Stan | Co jest, czego brakuje |
 |---|---|---|
 | 1.1 przychody | ✅ | taca, ofiary pogrzebowe, dochód inwestycji – widoczne w banku |
-| 1.2 kategorie wydatków | ⚠️ | są remonty i inwestycje; **brak** bieżących, infrastruktury i duszpasterstwa jako kategorii, stałe koszty to jedna liczba `WEEKLY_EXPENSES` |
-| 1.3 budżet ograniczony | ⚠️ | inwestycji nie można kupić bez pieniędzy, ale debet z tygodnia wchodzi cicho; bank przypomina dopiero po fakcie |
+| 1.2 kategorie wydatków | ✅ | pięć kategorii budżetu z poziomami i skutkami, osobne inwestycje |
+| 1.3 budżet ograniczony | 🔁 | zastąpione przez 1.5: widoczna prognoza i potwierdzenie deficytu |
 | 1.4 skutki poza finansami | ✅ | każda inwestycja i naprawa zmienia wskaźnik niefinansowy |
 | 2.1–2.3 zasoby niefinansowe | ✅ | reputacja, stan budynków, dwie grupy, kuria; cztery kryzysy progowe |
 | 3.1 start jako wikary | ❌ | nie ma stanowiska w stanie gry |
@@ -41,7 +41,7 @@ wydania nie dają się prowadzić równolegle.
 | 10.3 a/b/d render | ✅ | |
 | 10.3c interfejs w stylistyce | ⚠️ | font systemowy, nie pikselowy |
 | 10.4 ton | ✅ | |
-| 1.5–1.6 zadłużenie, budżet w kategoriach 🆕 | ❌ | wydanie 2.3 |
+| 1.5–1.6 zadłużenie, budżet w kategoriach 🆕 | ✅ | 2.3: prognoza, potwierdzenia, odsetki, suwaki i rezerwacje remontów |
 | 2.4 życie religijne 🆕 | ❌ | wydanie 2.4 |
 | 2.5 reputacja rozłożona | ⛔ | odłożone, patrz część 5 |
 | 3.6–3.8 ocena kwartalna, przeniesienie, wikary pod proboszczem 🆕 | ❌ | wydania 2.4 i 3.3 |
@@ -133,11 +133,11 @@ poranka zostały w `game.gd`. Poranek jest miejscem, które woła wszystkie modu
 kolei, więc wyprowadzanie go tylko dokłada skok; czynności czekają na wydanie 2.8,
 które i tak je przepisze razem z planerem tygodnia.
 
-Przy okazji wyszła rzecz do naprawienia: **błąd parsowania w skrypcie nie kończy
-`--check` błędem, tylko zawiesza go bez końca**. W CI oznacza to workflow wiszący do
-limitu zamiast czerwonego krzyżyka. Do domknięcia przy najbliższym wydaniu.
+Przy okazji wyszedł błąd: parsowanie mogło zawiesić `--check` zamiast zwrócić błąd.
+W 2.3 kontrole dostają runner z limitem czasu, wykrywaniem błędów skryptów i osobnym
+zapisem testowym. Import również musi przejść; CI nie ignoruje jego błędów.
 
-### 2.3 Budżet tygodnia (AC-1.2, 1.5, 1.6, 11.4, R10)
+### 2.3 Budżet tygodnia (AC-1.2, 1.5, 1.6, finansowa część 11.4, R10) ✅
 
 Zamiast stałej `WEEKLY_EXPENSES = 4200` pięć kategorii, każda z suwakiem w telefonie
 (bank) i skutkiem poza pieniędzmi.
@@ -156,6 +156,15 @@ Zamiast stałej `WEEKLY_EXPENSES = 4200` pięć kategorii, każda z suwakiem w t
   z `remonty` przez N tygodni. Pierwszy realny dylemat „dach albo sala”.
 - `--check`: suma poziomów × koszt nie może przekraczać typowego tygodniowego
   przychodu więcej niż dwukrotnie (żeby budżetu dało się dopiąć).
+
+**Ustalenia realizacji:** pięć poziomów startuje od 1 (razem 4200 zł), maksimum
+kosztuje 7800 zł. Prognoza dotyczy najbliższego poniedziałku i uwzględnia tylko
+pewne wpływy; taca, ofiary, zdarzenia i awarie pozostają niepewne. Debet to 2%
+odsetek i kuria -3. Potwierdzenie obejmuje też naprawy, płatne odpowiedzi telefonu,
+wydatki wydarzeń i obiad. Dach (8000 zł) oraz wyposażenie salki (7000 zł) zajmują
+remonty na 14 dni, z minimum poziomu 1. Osobny budynek i slot salki pozostają w 3.1;
+AC-11.4 nie jest jeszcze w całości zamknięte. Dłuższy raport tygodnia ma przewijanie.
+Stare zapisy dostają domyślny budżet bez rezerwacji; nowe zachowują poziomy i terminy.
 
 ### 2.4 Kuria, ocena i ranga (AC-2.4, 3.1–3.8, 5.6, 6.1, 6.3, 6.4, R4, R7, R12)
 

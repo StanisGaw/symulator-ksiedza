@@ -77,6 +77,8 @@ var young := 50
 var curia := 50
 var week_income := 0
 var week_expenses := 0
+var budget: Dictionary = {"biezace": 1, "remonty": 1, "infrastruktura": 1, "duszpasterstwo": 1, "ludzie": 1}
+var budget_reservations: Dictionary = {}
 ## Rozkład mszy. Wydarzenia potrafią go zmienić, więc to stan gry, a nie stała:
 ## po sporze o godzinę sumy w niedzielę mogą być trzy msze zamiast dwóch.
 var sunday_hours: Array = MASS_HOURS_SUNDAY.duplicate()
@@ -178,6 +180,10 @@ func _ready() -> void:
 		elif arg == "--check":
 			# kontrola definicji wydarzeń i awarii, bez uruchamiania gry
 			call_deferred("_run_check")
+		elif arg == "--check-budget":
+			call_deferred("_run_budget_check")
+		elif arg == "--check-budget-ui":
+			call_deferred("_run_budget_ui_check")
 		elif arg.begins_with("--simulate="):
 			# przebieg wielu dni bez gracza, żeby zobaczyć, co pula wydarzeń robi w praktyce
 			_simulate_days = maxi(int(arg.trim_prefix("--simulate=")), 1)
@@ -340,7 +346,7 @@ func add_log(text: String) -> void:
 
 # ---------- activities ----------
 
-func do_activity(id: String) -> void:
+func do_activity(id: String, confirmed_expense: bool = false) -> void:
 	if modal_open:
 		return
 	var def: Dictionary = ACTIVITIES[id]
@@ -383,6 +389,9 @@ func do_activity(id: String) -> void:
 			return
 	if minutes + def["minutes"] > 24 * 60:
 		toast.emit("Za późno na to dzisiaj.")
+		return
+	if is_meal and not confirmed_expense and Finance.needs_confirmation(-int(def["money"])):
+		request_modal("confirm_activity_expense", {"id": id, "expense": -int(def["money"]), "label": str(def["label"])})
 		return
 	minutes += def["minutes"]
 	if not is_meal:
@@ -477,7 +486,7 @@ func _take_meal(def: Dictionary) -> void:
 	var gain := -int(def["energy"])
 	energy = clampf(energy + gain, 0.0, 100.0)
 	meals_today += 1
-	Parish.apply_effects({"money": def["money"]})
+	Parish.apply_effects({"money": def["money"]}, "Zakupy na obiad", "biezace")
 	toast.emit("%s Energia +%d." % [def["toast"], gain])
 	state_changed.emit()
 
@@ -500,7 +509,7 @@ func _finish_activity(def: Dictionary) -> void:
 		return
 	if def.get("funeral", false):
 		var offering := randi_range(800, 1200)
-		Parish.apply_effects({"money": offering, "reputation": 2, "trad": 1})
+		Parish.apply_effects({"money": offering, "reputation": 2, "trad": 1}, "Ofiara pogrzebowa", "ofiary")
 		respect += 2
 		funerals_pending = maxi(0, funerals_pending - 1)
 		var text := "Pogrzeb: %s. Rodzina złożyła %d zł. Reputacja +2, szacunek +2." % [deceased_name, offering]
@@ -605,7 +614,7 @@ func _mess_seen() -> Array[String]:
 
 func _hold_mass(attendance: int) -> void:
 	var taca := int(attendance * randf_range(3.2, 5.0) * Calendar.taca_multiplier(day, _cut_start))
-	Parish.apply_effects({"money": taca, "reputation": 1})
+	Parish.apply_effects({"money": taca, "reputation": 1}, "Taca z mszy", "taca")
 	var respect_gain := RESPECT_PER_MASS * (2 if is_sunday() or Calendar.feast_name(day) != "" else 1)
 	respect += respect_gain
 	if _mass_started_hour < 9:
@@ -855,6 +864,8 @@ func start_new_game() -> void:
 	curia = 50
 	week_income = 0
 	week_expenses = 0
+	budget = Finance.default_budget()
+	budget_reservations.clear()
 	sunday_hours = MASS_HOURS_SUNDAY.duplicate()
 	weekday_hours = MASS_HOURS_WEEKDAY.duplicate()
 	done_today.clear()
@@ -902,6 +913,16 @@ func set_prompt(text: String) -> void:
 
 func _run_check() -> void:
 	get_tree().quit(0 if CheckDefinitions.report() else 1)
+
+
+func _run_budget_check() -> void:
+	var checks: Script = load("res://scripts/tools/check_budget.gd")
+	get_tree().quit(0 if checks != null and checks.report() else 1)
+
+
+func _run_budget_ui_check() -> void:
+	var passed: bool = await CheckBudgetUI.run()
+	get_tree().quit(0 if passed else 1)
 
 
 func _run_simulation() -> void:

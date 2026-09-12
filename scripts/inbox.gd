@@ -113,7 +113,7 @@ static func morning() -> Array[String]:
 	if Game.money < 0 and Game.day - Game._last_bank_alert >= BANK_ALERT_COOLDOWN:
 		Game._last_bank_alert = Game.day
 		send(Phone.make("bank", "Bank Spółdzielczy", "Debet na koncie parafii",
-			"Saldo rachunku parafii jest ujemne (%s zł). Odsetki naliczamy od dnia dzisiejszego." % Game.money_text(Game.money),
+			"Saldo rachunku parafii jest ujemne (%s zł). Przy poniedziałkowym rozliczeniu naliczamy 2%% odsetek od debetu; kuria traci 3 punkty zaufania." % Game.money_text(Game.money),
 			{"id": "debet"}))
 	if randf() < MEDIA_CHANCE:
 		var post: Dictionary = Phone.draw_media(Game, Game.media_recent)

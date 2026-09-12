@@ -7,8 +7,8 @@ class_name FinanceView
 
 static func _show_finance(ui: Ui) -> void:
 	var box := ui._window("Finanse i inwestycje", 940.0)
-	ui._text(box, "Konto: %s zł      W tym tygodniu: wpływy %s zł, wydatki %s zł      Stałe koszty tygodnia: %s zł      Stały dochód z inwestycji: %s zł" % [
-		ui._money(Game.money), ui._money(Game.week_income), ui._money(Game.week_expenses), ui._money(Finance.WEEKLY_EXPENSES), ui._money(Finance.weekly_yield())], 17)
+	ui._text(box, "Konto: %s zł      W tym tygodniu: wpływy %s zł, wydatki %s zł      Plan tygodnia: %s zł      Stały dochód z inwestycji: %s zł" % [
+		ui._money(Game.money), ui._money(Game.week_income), ui._money(Game.week_expenses), ui._money(Finance.weekly_expenses()), ui._money(Finance.weekly_yield())], 17)
 	var scroll := ScrollContainer.new()
 	scroll.custom_minimum_size = Vector2(0, 440)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -57,12 +57,21 @@ static func _breakdown_card(ui: Ui, list: Control, id: String) -> void:
 	var label := "Napraw"
 	if Game.pending_repairs.has(id):
 		label = "W trakcie"
-	elif Game.money < int(def["cost"]):
-		label = "Za drogo"
+	elif not Repairs.can_repair(id):
+		label = "Niedostępne"
 	var b := ui._button(row, label, func() -> void:
-		Repairs.repair(id)
-		ui._close_modal()
-		ui._enqueue("finance", {}), Repairs.can_repair(id))
+		if Finance.needs_confirmation(int(def["cost"])):
+			var accept := func() -> void:
+				if Repairs.repair(id, true):
+					ui._close_modal()
+					ui._enqueue("finance", {})
+			var cancel := func() -> void:
+				_replace_finance_modal(ui)
+			confirm_expense(ui, "naprawę: " + str(def["label"]), int(def["cost"]), accept, cancel)
+			return
+		if Repairs.repair(id):
+			ui._close_modal()
+			ui._enqueue("finance", {}), Repairs.can_repair(id))
 	b.custom_minimum_size = Vector2(150, 52)
 	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 
@@ -89,6 +98,9 @@ static func _investment_card(ui: Ui, list: Control, id: String) -> void:
 	ui._text(info, "%s   —   %s zł, %s" % [def["label"], ui._money(def["cost"]), days_text], 21)
 	_card_line(ui, info, "Postawi", str(def.get("builds", "")))
 	_card_line(ui, info, "Odblokuje", str(def.get("unlocks", "")))
+	var choice_note := _investment_choice_note(id)
+	if choice_note != "":
+		_card_line(ui, info, "Wybór", choice_note)
 	var weekly := int(def.get("weekly", 0))
 	if weekly > 0:
 		var note := str(def.get("yield_note", "%s zł tygodniowo" % ui._money(weekly)))
@@ -97,17 +109,34 @@ static func _investment_card(ui: Ui, list: Control, id: String) -> void:
 		_card_line(ui, info, "Zysk", "bez stałego dochodu")
 	if not (def["effects"] as Dictionary).is_empty():
 		_card_line(ui, info, "Po ukończeniu", Parish.effects_text(def["effects"]))
+	var reservation := Finance.reservation_text("remonty")
+	if reservation != "" and (str(def.get("category", "")) == "remonty" or id == "roof" or id == "hall"):
+		_card_line(ui, info, "Rezerwacja", reservation)
+	var block_reason := Finance.investment_block_reason(id)
+	if block_reason != "":
+		_card_line(ui, info, "Niedostępne", block_reason)
 	var label := "Zleć"
 	if Game.pending_investments.has(id):
 		label = "W trakcie"
 	elif not def.get("repeatable", false) and Game.built.has(id):
 		label = "Gotowe"
-	elif Game.money < int(def["cost"]):
-		label = "Za drogo"
+	elif block_reason != "":
+		label = "Zablokowane"
+	elif not Finance.can_invest(id):
+		label = "Niedostępne"
 	var b := ui._button(row, label, func() -> void:
-		Finance.invest(id)
-		ui._close_modal()
-		ui._enqueue("finance", {}), Finance.can_invest(id))
+		if Finance.needs_confirmation(int(def["cost"])):
+			var accept := func() -> void:
+				if Finance.invest(id, true):
+					ui._close_modal()
+					ui._enqueue("finance", {})
+			var cancel := func() -> void:
+				_replace_finance_modal(ui)
+			confirm_expense(ui, "inwestycję: " + str(def["label"]), int(def["cost"]), accept, cancel)
+			return
+		if Finance.invest(id):
+			ui._close_modal()
+			ui._enqueue("finance", {}), Finance.can_invest(id))
 	b.custom_minimum_size = Vector2(150, 52)
 	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 
@@ -119,3 +148,37 @@ static func _card_line(ui: Ui, box: Control, head: String, text: String) -> void
 	l.add_theme_font_size_override("font_size", 16)
 	l.add_theme_color_override("font_color", Color(0.78, 0.75, 0.7))
 	box.add_child(l)
+
+
+static func _investment_choice_note(id: String) -> String:
+	if id == "roof":
+		return "Rezerwuje remonty na 14 dni. Salka młodzieżowa jest w tym czasie niedostępna; młode rodziny -2."
+	if id == "hall":
+		return "Rezerwuje remonty na 14 dni. Dach jest w tym czasie niedostępny; tradycjonaliści -2. Salka kończy się po 4 dniach."
+	return ""
+
+
+## Każdy wydatek, po którym poniedziałkowe rozliczenie wypadnie na minusie, wymaga
+## osobnej decyzji. Wycena nie obiecuje niepewnej tacy, ofiar ani braku awarii.
+static func confirm_expense(ui: Ui, action: String, expense: int, accept: Callable, cancel: Callable) -> void:
+	var forecast: Dictionary = Finance.forecast({}, expense)
+	for child in ui._modal_layer.get_children():
+		child.queue_free()
+	var box := ui._window("Potwierdź deficyt", 760.0)
+	ui._text(box, "Wybrane działanie: %s. Koszt: %s zł. Prognoza na najbliższy poniedziałek: %s zł." % [
+		action, ui._money(expense), ui._money(int(forecast.get("balance", 0)))], 20)
+	ui._text(box, "Odsetki: %s zł. Kuria: %d przy rozliczeniu. Prognoza nie liczy tacy, ofiar ani kosztów awarii." % [
+		ui._money(int(forecast.get("interest", 0))), int(forecast.get("curia_delta", -3))], 17)
+	var actions := HBoxContainer.new()
+	actions.add_theme_constant_override("separation", 10)
+	box.add_child(actions)
+	ui._button(actions, "Tak, potwierdzam", func() -> void:
+		accept.call())
+	ui._button(actions, "Wróć", func() -> void:
+		cancel.call())
+
+
+static func _replace_finance_modal(ui: Ui) -> void:
+	for child in ui._modal_layer.get_children():
+		child.queue_free()
+	_show_finance(ui)

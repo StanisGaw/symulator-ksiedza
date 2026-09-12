@@ -274,6 +274,12 @@ func _show_next() -> void:
 		"phone": PhoneView._show_phone(self, item["data"].get("app", "poczta"))
 		"continue": _show_continue(item["data"])
 		"confirm_new": _show_confirm_new()
+		"confirm_activity_expense":
+			var data: Dictionary = item["data"]
+			FinanceView.confirm_expense(self, str(data["label"]), int(data["expense"]), func() -> void:
+				_close_modal()
+				await get_tree().process_frame
+				Game.do_activity(str(data["id"]), true), _close_modal)
 
 
 func _close_modal() -> void:
@@ -426,14 +432,29 @@ func _show_event(ev: Dictionary) -> void:
 		if opt.has("effects"):
 			label += "   (" + Parish.effects_text(opt["effects"]) + ")"
 		_button(opts, label, func() -> void:
-			EventFlow.choose_option(ev, i)
-			_close_modal())
+			var expense := maxi(-int(opt.get("effects", {}).get("money", 0)), 0)
+			if expense > 0 and Finance.needs_confirmation(expense):
+				FinanceView.confirm_expense(self, str(opt["label"]), expense, func() -> void:
+					EventFlow.choose_option(ev, i)
+					_close_modal(), func() -> void:
+					for child in _modal_layer.get_children():
+						child.queue_free()
+					_show_event(ev))
+			else:
+				EventFlow.choose_option(ev, i)
+				_close_modal())
 
 
 func _show_report(title: String, lines: Array) -> void:
 	var box := _window(title)
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(0, 420)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	box.add_child(scroll)
+	var content := VBoxContainer.new()
+	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	content.add_theme_constant_override("separation", 12)
+	scroll.add_child(content)
 	for line in lines:
-		_text(box, "• " + str(line))
+		_text(content, "• " + str(line))
 	_button(box, "Dalej", _close_modal)
-
-

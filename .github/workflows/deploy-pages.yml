@@ -37,19 +37,66 @@ jobs:
           mv tmpl/templates/* "$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable/"
 
       - name: Import project
-        run: ./godot --headless --path . --import || true
+        run: >-
+          python3 scripts/ci/run_godot.py
+          --godot ./godot
+          --timeout 120
+          --log artifacts/godot-validation/import.log
+          --import-project
 
-      # Literówka w definicji wydarzenia albo awarii nie wywali silnika, tylko
-      # wyjdzie na Pages jako wydarzenie bez skutku. Kontrola kończy się kodem
-      # różnym od zera, więc zatrzymuje deploy.
+      # Runner pracuje na kopii projektu z osobnym user://. Pilnuje też czasu,
+      # bo błąd parsowania potrafi pozostawić Godota bez końcowego kodu wyjścia.
       - name: Check definitions
-        run: ./godot --headless --path . -- --check
+        run: >-
+          python3 scripts/ci/run_godot.py
+          --godot ./godot
+          --timeout 60
+          --log artifacts/godot-validation/check.log
+          -- --check
+
+      - name: Check budget behavior
+        run: >-
+          python3 scripts/ci/run_godot.py
+          --godot ./godot
+          --timeout 60
+          --log artifacts/godot-validation/check-budget.log
+          -- --check-budget
+
+      - name: Check budget UI
+        run: >-
+          python3 scripts/ci/run_godot.py
+          --godot ./godot
+          --timeout 60
+          --log artifacts/godot-validation/check-budget-ui.log
+          -- --check-budget-ui
+
+      - name: Simulate 120 days
+        run: >-
+          python3 scripts/ci/run_godot.py
+          --godot ./godot
+          --timeout 120
+          --log artifacts/godot-validation/simulate-120.log
+          -- --simulate=120 --seed=7 --start=2026-09-12 --wipe
 
       - name: Export web build
-        run: |
-          mkdir -p build/web
-          ./godot --headless --path . --export-release Web build/web/index.html
-          ls -la build/web
+        run: >-
+          python3 scripts/ci/run_godot.py
+          --godot ./godot
+          --timeout 180
+          --log artifacts/godot-validation/export-web.log
+          --export-release Web
+          --output build/web/index.html
+
+      - name: List web build
+        run: ls -la build/web
+
+      - name: Upload validation logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: godot-validation-logs
+          path: artifacts/godot-validation/*.log
+          if-no-files-found: warn
 
       - uses: actions/upload-pages-artifact@v3
         with:

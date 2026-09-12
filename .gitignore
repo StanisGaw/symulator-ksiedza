@@ -1,5 +1,6 @@
 .godot/
 build/
+artifacts/
 .DS_Store
 
 # Pythonowe cache podglądów blenderowych

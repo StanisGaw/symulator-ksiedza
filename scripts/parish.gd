@@ -5,7 +5,7 @@ class_name Parish
 ## To jest jedyne miejsce, przez które wskaźniki się zmieniają, więc sześć grup interesów
 ## (wydanie 2.6) wchodzi tutaj, a nie w dwudziestu miejscach naraz.
 
-static func apply_effects(effects: Dictionary, label: String = "") -> void:
+static func apply_effects(effects: Dictionary, label: String = "", category: String = "inne") -> void:
 	var before_condition := WorldState.condition()
 	var before_life := WorldState.life()
 	for key in effects:
@@ -17,7 +17,7 @@ static func apply_effects(effects: Dictionary, label: String = "") -> void:
 					Game.week_income += v
 				else:
 					Game.week_expenses += -v
-				Finance.bank_entry(label if label != "" else ("Wpływ" if v >= 0 else "Wydatek"), v)
+				Finance.bank_entry(label if label != "" else ("Wpływ" if v >= 0 else "Wydatek"), v, category)
 			"reputation": Game.reputation = clampi(Game.reputation + v, 0, 100)
 			"condition": Game.condition = clampi(Game.condition + v, 0, 100)
 			"trad": Game.trad = clampi(Game.trad + v, 0, 100)

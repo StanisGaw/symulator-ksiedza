@@ -471,7 +471,8 @@ godot --path .
 **Co jest w prototypie:**
 - Trzy lokacje z przejściami przez drzwi: plac przed kościołem z plebanią, parkingiem i cmentarzem, wnętrze kościoła, wnętrze plebanii. Wnętrza w widoku „domku dla lalek”: dwie ściany widoczne, dwie niewidoczne.
 - Czynności zużywające czas i energię: naprawa rynny, zamiatanie placu, odwiedziny chorej, msza, spowiedź, sprzątanie kościoła. Odwiedziny chorej to scena filmowa w dwóch kadrach: dojazd pod starą kamienicę pod światło, gdzie na przeszklonej klatce schodowej widać tylko sylwetkę wchodzącą płynnie zygzakiem aż na piętro chorej, a w oknie chorej stojak na kroplówkę i butelki na parapecie; potem zaniedbany pokój chorej w chłodnym świetle dziennym, ze śmieciami na podłodze, kroplówką, listkami po tabletkach, skotłowaną pościelą, obrazem Jana Pawła II, krzyżem i kineskopowym telewizorem z Telewizją Trwam. Za matową szybą drzwi przesuwa się cień wchodzącej postaci, drzwi się otwierają i ksiądz klęka przy łóżku. Msza jest krótką sceną w przyspieszeniu: parafianie wchodzą i siadają w ławkach, podchodzą do komunii i wychodzą, zegar biegnie razem ze sceną, a przycisk „Pomiń” kończy ją od razu. Taca zależy od reputacji, stanu budynków i nastrojów parafian, w niedzielę jest ponad dwukrotnie większa.
-- Finanse: konto, wpływy i wydatki tygodnia, stałe koszty rozliczane w poniedziałek rano. Inwestycje mają karty, które mówią, co stanie w świecie, co się odblokuje, ile to daje tygodniowo i po ilu tygodniach się zwróci. Ukończone inwestycje doliczają stały dochód do rozliczenia tygodnia.
+- Finanse (2.3): bank ma budżet pięciu kategorii — bieżące, remonty, infrastruktura, duszpasterstwo i ludzie — z poziomami 0–3 i opisem skutków. Domyślne 4200 zł rozlicza się w poniedziałek. Prognoza pokazuje saldo po najbliższych rachunkach i pewnych dochodach z inwestycji; nie zakłada niepewnej tacy, ofiar ani zdarzeń i kosztów awarii. Zmiana budżetu, inwestycja lub naprawa prowadząca do prognozowanego deficytu wymaga potwierdzenia. Debet kosztuje 2% odsetek tygodniowo (zaokrąglone w górę) i -3 relacji z kurią. Historia konta rozróżnia kategorie.
+- Dach (8000 zł) albo salka młodzieżowa (7000 zł): obie inwestycje rezerwują remonty na 14 dni i wymagają utrzymania co najmniej poziomu 1 tej kategorii. W tym czasie drugi projekt czeka, nawet gdy pojawi się gotówka; awaryjne naprawy pozostają dostępne. Dach rozczarowuje młode rodziny (-2), salka tradycjonalistów (-2). Salka daje po ukończeniu +10 młodym rodzinom i +2 reputacji; osobny budynek i slot terenu dojdą w 3.1. Pozostałe inwestycje zachowują opis kosztów, skutków i dochodów.
 - Cmentarz parafialny (12 000 zł, 5 dni) to pierwsza inwestycja z powtarzalnym zyskiem. Za kościołem staje mur z bramą, żwirowa alejka, kwatery z nagrobkami, cyprysy i kaplica cmentarna. Od tej pory co kilka dni ktoś w parafii umiera, a rodzina czeka najwyżej dwa dni na pogrzeb: odprawiony daje 800–1 200 zł ofiary, reputację i szacunek, zaniedbany oznacza pochówek u sąsiada i utratę reputacji. Pogrzeb to scena z trumną nad grobem i żałobnikami w półkolu. Do tego 150 zł tygodniowo z opłat za miejsca.
 - Zasoby niefinansowe: reputacja, stan budynków, tradycjonaliści, młode rodziny, kuria. Zły stan budynków obniża reputację co tydzień, minus na koncie psuje relacje z kurią.
 - Wydarzenia: trzydzieści pięć definicji w trzech rodzajach. Pierwszy tydzień prowadzi scenariusz (spór o godzinę mszy, pogrzeb sołtysa, telefon z kurii), potem rano losuje się jedno wydarzenie z puli dwudziestu ośmiu, ale tylko spośród tych, których warunki są spełnione: zakres dni, pora roku, okres liturgiczny, ukończone inwestycje, trwające awarie i progi wskaźników. Szansa na wydarzenie rośnie po cichych dniach, więc gra nie potrafi zamilknąć na tydzień, i nigdy nie jest pewna. Wydarzenie z puli wraca po karencji, zwykle po miesiącu, więc rok gry nie powtarza tych samych scen.
@@ -499,7 +500,7 @@ godot --path .
 **Pliki:**
 - `project.godot` – okno 1280×720 ze skalowaniem interfejsu, scena 3D w `SubViewport` 320×180 skalowanym bez wygładzania.
 - `scripts/game.gd` – autoload ze stanem gry, zegarem, czynnościami i pętlą dnia. Trzyma **stan**, bo to on się zapisuje; reguły siedzą w modułach obok i sięgają po `Game.pole`.
-- `scripts/finance.gd` – pieniądze parafii: stałe koszty, karty inwestycji, rozliczenie tygodnia i historia konta.
+- `scripts/finance.gd` – budżet kategorii, prognoza, potwierdzenia długu, odsetki, rezerwacje inwestycji, rozliczenie tygodnia i historia konta.
 - `scripts/parish.gd` – jedyne przejście przez wskaźniki: `apply_effects` i opis skutku dla gracza. Nic nie zmienia reputacji ani relacji z pominięciem tego pliku.
 - `scripts/inbox.gd` – mechanika skrzynki w telefonie: jak wiadomość wchodzi, jak się odpowiada i co poranek robi z tymi po terminie.
 - `scripts/event_flow.gd` – wykonanie wyboru w wydarzeniu: skutki od ręki, skutki odroczone, karencje i skutki specjalne liczone ze stanu parafii.
@@ -510,6 +511,8 @@ godot --path .
 - `scripts/events.gd` – definicje wydarzeń w trzech listach (scenariusz, pula, kryzysy), warunki wejścia i losowanie z wagami.
 - `scripts/breakdowns.gd` – definicje awarii: co kosztują każdego dnia, ile trwa naprawa, którą czynność odbierają.
 - `scripts/tools/check_definitions.gd` – kontrola spójności definicji i przejścia stanu przez JSON (`--check`).
+- `scripts/tools/check_budget.gd` – scenariusze budżetu, długu, rezerwacji, migracji zapisu i przychodów z odprawionych mszy (`--check-budget`).
+- `scripts/ci/run_godot.py` – uruchamianie kontroli z limitem czasu, wykrywaniem błędów silnika i odseparowanym zapisem testowym.
 - `scripts/tools/simulate.gd` – przebieg wielu dni bez gracza, do podglądu rozkładu wydarzeń (`--simulate=N`). Z `--seed=N` przebieg jest powtarzalny, więc nadaje się na dowód, że zmiana w kodzie niczego nie przestawiła.
 - `scripts/location_manager.gd` – ładowanie lokacji, trwały gracz i kamera, punkty pojawienia.
 - `scripts/location_base.gd` i `scripts/locations/*.gd` – lokacje budowane z brył, z kolizjami, drzwiami i obiektami interakcji.
@@ -542,29 +545,38 @@ godot --path . -- --loc=church
 godot --headless --path . --import && godot --headless --path . --quit-after 120
 ```
 
-**Kontrola definicji** (wyłapuje to, czego silnik nie zgłosi: literówkę w kluczu skutku, warunek na nieistniejącym polu, awarię o nieznanym identyfikatorze, losowy skutek bez wersji przeciwnej, a także pole stanu, które wraca z zapisu jako zmiennoprzecinkowe). Kończy się kodem różnym od zera, gdy coś jest nie tak, więc nadaje się do CI:
+**Kontrola definicji** (wyłapuje literówki w kluczach, błędne warunki, nieznane awarie, niepełne skutki losowe, niespójny budżet i migrację JSON). Runner tworzy świeżą kopię projektu z osobnym zapisem, importuje ją i kończy błędem przy błędzie skryptu albo przekroczeniu limitu czasu:
 
 ```bash
-godot --headless --path . -- --check
+python3 scripts/ci/run_godot.py --log artifacts/check.log -- --check
+```
+
+**Scenariusze budżetu oraz obsługi interfejsu:**
+
+```bash
+python3 scripts/ci/run_godot.py --log artifacts/budget.log -- --check-budget
+python3 scripts/ci/run_godot.py --log artifacts/budget-ui.log -- --check-budget-ui
 ```
 
 **Podgląd rozkładu wydarzeń** (przebieg wielu dni bez gracza, z losowym wyborem opcji; każdy przebieg jest inny). Pokazuje, na ilu dniach coś się wydarzyło, jaka była najdłuższa cisza, ile różnych wydarzeń weszło i jakie awarie się pojawiły:
 
 ```bash
-godot --headless --path . -- --simulate=120
+python3 scripts/ci/run_godot.py --timeout 120 --log artifacts/simulate.log -- --simulate=120
 ```
 
 Z ziarnem przebieg jest powtarzalny, więc porównanie wydruku sprzed zmiany i po zmianie
 jest dowodem, że przenoszenie kodu między plikami niczego nie przestawiło w rozgrywce:
 
 ```bash
-godot --headless --path . -- --simulate=120 --seed=7 --start=2026-09-12 --wipe
+python3 scripts/ci/run_godot.py --timeout 120 --log artifacts/simulate.log -- --simulate=120 --seed=7 --start=2026-09-12 --wipe
 ```
 
-Uwaga: błąd parsowania w skrypcie nie kończy `--check` błędem, tylko zawiesza go bez
-końca. Każde uruchomienie w tle pilnuj zegarem i brak wyniku traktuj jak porażkę.
+Symulacja bez gracza bada zdarzenia i awarie, a nie opłacalność zwykłej gry: nie
+odprawia regularnych mszy. Przychody z nich sprawdza osobny scenariusz budżetu.
+Runner izoluje także `--wipe`; bezpośrednie uruchomienie Godota z tym argumentem
+kasuje zwykły slot gracza.
 
-**Wersja w przeglądarce:** każdy push na gałąź `main` uruchamia workflow w `.github/workflows/deploy-pages.yml`, który pobiera Godota i szablony eksportu, uruchamia kontrolę definicji (`--check`), buduje wersję webową (preset `Web` z wyłączonymi wątkami, żeby działała na GitHub Pages bez specjalnych nagłówków) i publikuje ją na GitHub Pages. Kontrola idzie przed eksportem, więc literówka w definicji wydarzenia zatrzymuje deploy zamiast wyjechać na Pages jako wydarzenie bez skutku. Renderer to Compatibility, bo tylko on działa w przeglądarce.
+**Wersja w przeglądarce:** każdy push na `main` uruchamia `.github/workflows/deploy-pages.yml`: import, kontrolę definicji, testy budżetu i UI, symulację 120 dni, eksport Web i publikację na GitHub Pages. Etapy Godota mają limit czasu i zapisują logi jako artefakt workflow. Web korzysta z renderera Compatibility i wyłączonych wątków, więc działa na Pages bez specjalnych nagłówków.
 
 **Zrzut klatek do PNG** (wymaga okna, zapisuje do wskazanego katalogu):
 

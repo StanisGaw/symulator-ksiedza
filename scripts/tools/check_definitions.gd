@@ -14,12 +14,15 @@ const SPECIALS := ["honest_report", "visitation_ready", "visitation_raw", "viral
 const SEASONS := [Calendar.ADVENT, Calendar.CHRISTMAS, Calendar.LENT, Calendar.EASTER, Calendar.ORDINARY]
 const PARTS := ["zima", "wiosna", "lato", "jesień"]
 const STATE_KEYS := ["money", "reputation", "condition", "trad", "young", "curia", "respect", "day"]
+const BUDGET_KEYS := ["biezace", "remonty", "infrastruktura", "duszpasterstwo", "ludzie"]
+const TYPICAL_WEEKLY_INCOME := 6000
 
 
 ## Lista problemów. Pusta, gdy definicje są spójne.
 static func run() -> Array[String]:
 	var problems: Array[String] = []
 	_check_save(problems)
+	_check_budget_definitions(problems)
 
 	var ids: Array[String] = []
 	var counts := {"SCRIPTED": Events.SCRIPTED.size(), "POOL": Events.POOL.size(), "CRISES": Events.CRISES.size()}
@@ -140,6 +143,51 @@ static func run() -> Array[String]:
 		if def.has("blocks") and not Game.ACTIVITIES.has(str(def["blocks"])):
 			_e(problems, where, "blokuje nieznaną czynność „%s”" % def["blocks"])
 	return problems
+
+
+static func _check_budget_definitions(problems: Array[String]) -> void:
+	var maximum_cost := 0
+	if Finance.BUDGET_CATEGORIES.size() != BUDGET_KEYS.size():
+		_e(problems, "budżet", "musi zawierać dokładnie pięć kategorii")
+	for id in Finance.BUDGET_CATEGORIES:
+		if not BUDGET_KEYS.has(id):
+			_e(problems, "budżet/%s" % id, "nieznana kategoria")
+	for id in BUDGET_KEYS:
+		var where := "budżet/%s" % id
+		if not Finance.BUDGET_CATEGORIES.has(id):
+			_e(problems, where, "brak kategorii")
+			continue
+		if typeof(Finance.BUDGET_CATEGORIES[id]) != TYPE_DICTIONARY:
+			_e(problems, where, "definicja kategorii nie jest słownikiem")
+			continue
+		var def: Dictionary = Finance.BUDGET_CATEGORIES[id]
+		if str(def.get("label", "")) == "":
+			_e(problems, where, "brak etykiety")
+		for field in ["costs", "effects", "notes"]:
+			if typeof(def.get(field)) != TYPE_ARRAY or (def[field] as Array).size() != 4:
+				_e(problems, where, "pole „%s” musi mieć cztery poziomy" % field)
+		if typeof(def.get("costs")) == TYPE_ARRAY:
+			var category_maximum := 0
+			for level in (def["costs"] as Array).size():
+				var cost: Variant = def["costs"][level]
+				if typeof(cost) != TYPE_INT or int(cost) < 0:
+					_e(problems, "%s poziom %d" % [where, level], "koszt nie jest nieujemną liczbą całkowitą")
+				else:
+					category_maximum = maxi(category_maximum, int(cost))
+			maximum_cost += category_maximum
+		if typeof(def.get("effects")) == TYPE_ARRAY:
+			for level in (def["effects"] as Array).size():
+				var effects: Variant = def["effects"][level]
+				if typeof(effects) != TYPE_DICTIONARY:
+					_e(problems, "%s poziom %d" % [where, level], "skutki nie są słownikiem")
+				else:
+					_ce(problems, "%s poziom %d" % [where, level], effects as Dictionary)
+		if typeof(def.get("notes")) == TYPE_ARRAY:
+			for level in (def["notes"] as Array).size():
+				if str(def["notes"][level]).strip_edges() == "":
+					_e(problems, "%s poziom %d" % [where, level], "brak opisu skutku")
+	if maximum_cost > 2 * TYPICAL_WEEKLY_INCOME:
+		_e(problems, "budżet", "maksymalny koszt %d zł przekracza dwukrotność typowego przychodu" % maximum_cost)
 
 
 ## Wypisuje wynik i mówi, czy wszystko jest w porządku.

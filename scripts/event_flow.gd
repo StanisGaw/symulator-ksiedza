@@ -16,7 +16,7 @@ static func choose_option(event: Dictionary, index: int) -> void:
 			Game.toast.emit(msg)
 			Game.add_log(msg)
 	if opt.has("effects"):
-		Parish.apply_effects(opt["effects"])
+		Parish.apply_effects(opt["effects"], str(event.get("title", "Wydarzenie")), "wydarzenia")
 	if opt.has("set"):
 		for key in opt["set"]:
 			Game.set(key, opt["set"][key])
