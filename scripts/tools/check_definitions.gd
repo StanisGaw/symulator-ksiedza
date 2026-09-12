@@ -23,6 +23,8 @@ static func run() -> Array[String]:
 	var problems: Array[String] = []
 	_check_save(problems)
 	_check_budget_definitions(problems)
+	problems.append_array(ReleaseNotes.validate())
+	problems.append_array(CheckReleaseNotes.run())
 
 	var ids: Array[String] = []
 	var counts := {"SCRIPTED": Events.SCRIPTED.size(), "POOL": Events.POOL.size(), "CRISES": Events.CRISES.size()}

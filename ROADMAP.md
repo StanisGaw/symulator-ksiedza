@@ -9,8 +9,8 @@ Zasady: każde wydanie kończy się buildem na GitHub Pages i przejściem `--che
 oraz `--simulate=120`. Jedno wydanie domyka jeden system do końca zamiast dotykać pięciu
 po trochu. Kolejność jest zależnościowa, nie z sufitu – patrz uzasadnienia.
 
-Stan na 12.09.2026: wydane na GitHub Pages jest wszystko do **2.3**
-(budżet tygodnia), w tym porządkowe **2.2.1** (rozbicie monolitów). Stan publikacji
+Stan na 12.09.2026: wydane na GitHub Pages jest wszystko do **2.3.1**
+(informacje o wydaniach), w tym **2.3** (budżet tygodnia) i porządkowe **2.2.1** (rozbicie monolitów). Stan publikacji
 i dowody wydania 2.3: [kontrakt i rejestr realizacji](kontrakty/2.3-budzet.md).
 
 ---
@@ -165,6 +165,16 @@ wydatki wydarzeń i obiad. Dach (8000 zł) oraz wyposażenie salki (7000 zł) za
 remonty na 14 dni, z minimum poziomu 1. Osobny budynek i slot salki pozostają w 3.1;
 AC-11.4 nie jest jeszcze w całości zamknięte. Dłuższy raport tygodnia ma przewijanie.
 Stare zapisy dostają domyślny budżet bez rezerwacji; nowe zachowują poziomy i terminy.
+
+### 2.3.1 Informacje o wydaniach ✅
+
+Przy uruchomieniu wersji Web modal pokazuje wszystkie nieprzeczytane wydania,
+od najnowszego. Historia zaczyna się od 2.3: brak lub uszkodzony wpis w localStorage
+pokazuje wszystkie zmiany od tej wersji. Dopiero „Rozumiem, graj” zapisuje bieżącą
+wersję; nowa gra nie usuwa potwierdzenia. Porównanie numerów jest numeryczne,
+więc 2.10 jest nowsze od 2.9. Starsza karta nie cofa nowszego potwierdzenia.
+`--check` sprawdza katalog i scenariusze pominiętych wydań. Każde kolejne wydanie
+wymaga aktualizacji wersji projektu oraz wpisu w `scripts/release_notes.gd`.
 
 ### 2.4 Kuria, ocena i ranga (AC-2.4, 3.1–3.8, 5.6, 6.1, 6.3, 6.4, R4, R7, R12)
 

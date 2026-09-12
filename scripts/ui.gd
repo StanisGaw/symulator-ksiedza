@@ -24,6 +24,11 @@ func _ready() -> void:
 	Game.modal_requested.connect(_enqueue)
 	Game.cutscene_started.connect(_on_cutscene_started)
 	Game.cutscene_ended.connect(_on_cutscene_ended)
+	# Od razu zajmujemy kolejkę modali, zanim pojawi się odroczone Kontynuuj/Nowa gra.
+	if OS.has_feature("web"):
+		var pending := ReleaseNotes.pending_since(ReleaseNotes.read_seen())
+		if not pending.is_empty():
+			_enqueue("release_notes", {"releases": pending})
 	# debug: godot --path . -- --modal=finance|status|event|report
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--modal="):
@@ -53,6 +58,7 @@ func _ready() -> void:
 
 func _debug_modal(kind: String) -> void:
 	match kind:
+		"release_notes": _enqueue("release_notes", {"releases": ReleaseNotes.pending_since("")})
 		"event": _enqueue("event", {"event": Events.POOL[0]})
 		"report": _enqueue("report", {"title": "Poniedziałek, 8 grudnia   Adwent", "lines": ["Rozliczenie tygodnia: taca i ofiary 3 420 zł, wydatki 2 500 zł, rachunki i pensje 4 200 zł.", "Stan konta: 8 720 zł.", "Festyn parafialny: prace zakończone. młode rodziny +8, reputacja +4, tradycjonaliści -3."]})
 		_: _enqueue(kind, {})
@@ -268,6 +274,7 @@ func _show_next() -> void:
 		"event": _show_event(item["data"]["event"])
 		"report": _show_report(item["data"]["title"], item["data"]["lines"])
 		"finance": FinanceView._show_finance(self)
+		"release_notes": ReleaseNotesView.show_notes(self, item["data"]["releases"])
 		"status": StatusView._show_status(self)
 		"sleep": _show_sleep()
 		"bench": _show_bench()
