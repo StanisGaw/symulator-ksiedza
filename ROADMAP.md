@@ -9,7 +9,7 @@ Zasady: każde wydanie kończy się buildem na GitHub Pages i przejściem `--che
 oraz `--simulate=120`. Jedno wydanie domyka jeden system do końca zamiast dotykać pięciu
 po trochu. Kolejność jest zależnościowa, nie z sufitu – patrz uzasadnienia.
 
-Stan na 12.09.2026: zaimplementowane i sprawdzone lokalnie jest wszystko do **2.3**
+Stan na 12.09.2026: wydane na GitHub Pages jest wszystko do **2.3**
 (budżet tygodnia), w tym porządkowe **2.2.1** (rozbicie monolitów). Stan publikacji
 i dowody wydania 2.3: [kontrakt i rejestr realizacji](kontrakty/2.3-budzet.md).
 
@@ -49,7 +49,7 @@ i dowody wydania 2.3: [kontrakt i rejestr realizacji](kontrakty/2.3-budzet.md).
 | 5.6 łańcuchy wydarzeń 🆕 | ❌ | wydanie 2.4 |
 | 6.3–6.4 kalendarz kurii, dziekanat 🆕 | ❌ | wydanie 2.4 |
 | 7.3–7.5 grupy z wpływem, działalność społeczna 🆕 | ❌ | wydanie 2.6; zastępują 7.1 i 7.2 |
-| 11.1–11.4 warianty startu, remont etapami 🆕 | ❌ | wydania 2.3, 3.0, 3.1 |
+| 11.1–11.4 warianty startu, remont etapami 🆕 | ⚠️ | finansowy wybór dach/salka z11.4 gotowy w2.3; warianty, etapy i sloty w3.0–3.1 |
 | 12.1–12.3 kancelaria, sakramenty, planer 🆕 | ❌ | wydanie 2.8 |
 | 13.1–13.3 pracownicy, wikary 🆕 | ❌ | wydanie 2.9 |
 
