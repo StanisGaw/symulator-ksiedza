@@ -423,6 +423,8 @@ godot --path . --quit-after 40 --fixed-fps 30 --write-movie /tmp/frames/f.png
 
 Gra nie ma końca: rok liturgiczny wraca co roku, a rozwój idzie przez pieniądze, punkty i poziomy parafii. Każdy etap kończy się wersją na GitHub Pages.
 
+Szczegółowy plan wydań z podpunktami, audyt kryteriów akceptacji i mapowanie zasobów na pierwotny zamysł gry są w [ROADMAP.md](ROADMAP.md). Poniżej zostaje przegląd etapów.
+
 ### Etap 1. Pętla bez końca (rdzeń)
 - **Zapis i wczytanie gry** ✅ – jeden slot, zapis przy przejściu do nowego dnia.
 - **Widoczne efekty działań** ✅ – świat czyta stan parafii i listę ukończonych prac, nowa rzecz dostaje najazd kamery.
