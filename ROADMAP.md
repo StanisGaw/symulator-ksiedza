@@ -39,11 +39,26 @@ Stan na 12.09.2026: wydane jest wszystko do **2.2** (telefon).
 | 10.3 a/b/d render | ✅ | |
 | 10.3c interfejs w stylistyce | ⚠️ | font systemowy, nie pikselowy |
 | 10.4 ton | ✅ | |
+| 1.5–1.6 zadłużenie, budżet w kategoriach 🆕 | ❌ | wydanie 2.3 |
+| 2.4 życie religijne 🆕 | ❌ | wydanie 2.4 |
+| 2.5 reputacja rozłożona | ⛔ | odłożone, patrz część 5 |
+| 3.6–3.8 ocena kwartalna, przeniesienie, wikary pod proboszczem 🆕 | ❌ | wydania 2.4 i 3.3 |
+| 4.3–4.4 cechy księdza 🆕 | ❌ | wydanie 2.5 |
+| 5.6 łańcuchy wydarzeń 🆕 | ❌ | wydanie 2.4 |
+| 6.3–6.4 kalendarz kurii, dziekanat 🆕 | ❌ | wydanie 2.4 |
+| 7.3–7.5 grupy z wpływem, działalność społeczna 🆕 | ❌ | wydanie 2.6; zastępują 7.1 i 7.2 |
+| 11.1–11.4 warianty startu, remont etapami 🆕 | ❌ | wydania 2.3, 3.0, 3.1 |
+| 12.1–12.3 kancelaria, sakramenty, planer 🆕 | ❌ | wydanie 2.8 |
+| 13.1–13.3 pracownicy, wikary 🆕 | ❌ | wydanie 2.9 |
 
-## 2. Rozmowa projektowa: co AC nie pokrywają
+Kryteria 1.3, 7.1 i 7.2 są w README oznaczone jako 🔁 zastąpione – dzisiejszy kod spełnia
+ich literę, ale od wskazanego wydania liczy się kryterium następcze.
 
-Rzeczy z pierwotnego zamysłu, których w AC nie ma albo są słabsze. Każda ma numer,
-żeby dało się ją odnaleźć w planie wydań.
+## 2. Rozmowa projektowa: co AC nie pokrywały
+
+Rzeczy z pierwotnego zamysłu, których w AC nie było albo były słabsze. Od 12.09.2026
+każda ma swoje kryterium w README (AC-1.5 i dalej, oznaczone 🆕); numery R zostają jako
+odsyłacz do źródła.
 
 - **R1 Warianty startu** – duże miasto / małe miasto oraz stary kościół do remontu /
   nowa parafia od salki. Dziś jest jeden start: mała parafia, stary kościół.
@@ -94,7 +109,7 @@ Rzeczy z pierwotnego zamysłu, których w AC nie ma albo są słabsze. Każda ma
 Numeracja ciągnie dotychczasową (2.1 wydarzenia, 2.2 telefon). Każde wydanie ma:
 co się zmienia w stanie gry, w świecie i w interfejsie, oraz które AC / R domyka.
 
-### 2.3 Budżet tygodnia (AC-1.2, 1.3, R10)
+### 2.3 Budżet tygodnia (AC-1.2, 1.5, 1.6, 11.4, R10)
 
 Zamiast stałej `WEEKLY_EXPENSES = 4200` pięć kategorii, każda z suwakiem w telefonie
 (bank) i skutkiem poza pieniędzmi.
@@ -114,7 +129,7 @@ Zamiast stałej `WEEKLY_EXPENSES = 4200` pięć kategorii, każda z suwakiem w t
 - `--check`: suma poziomów × koszt nie może przekraczać typowego tygodniowego
   przychodu więcej niż dwukrotnie (żeby budżetu dało się dopiąć).
 
-### 2.4 Kuria, ocena i ranga (AC-3.1–3.5, 6.1, R4, R7, R12)
+### 2.4 Kuria, ocena i ranga (AC-2.4, 3.1–3.8, 5.6, 6.1, 6.3, 6.4, R4, R7, R12)
 
 Kuria przestaje być liczbą, a staje się oceniającym z kalendarzem.
 
@@ -136,7 +151,7 @@ Kuria przestaje być liczbą, a staje się oceniającym z kalendarzem.
 - Kronika przejścia (AC-8.1): wpisy z kluczowych decyzji zbierane do jednej listy,
   do pokazania przy zmianie parafii.
 
-### 2.5 Statystyki księdza i trzy drzewka (AC-4, AC-9.5, R3)
+### 2.5 Statystyki księdza i trzy drzewka (AC-4.1–4.4, 9.5, R3)
 
 - Stan gry: `stats` – charyzma, wiarygodność, zarządzanie, wpływy, odporność, 1–10.
   Rosną z tego, co ksiądz robi: msze i spowiedź → charyzma, uczciwe odpowiedzi kurii
@@ -149,7 +164,7 @@ Kuria przestaje być liczbą, a staje się oceniającym z kalendarzem.
   albo skrócenie czynności. Okno drzewek w telefonie albo na biurku.
 - Profil widoczny w kronice: „duszpasterz o słabym zarządzaniu” z liczbami.
 
-### 2.6 Grupy parafian jako byty (AC-7, R2, R8, R9)
+### 2.6 Grupy parafian jako byty (AC-7.3–7.5, R2, R8, R9)
 
 - Stan gry: `groups` – sześć grup, każda z `satisfaction`, `influence`, `size`.
   Migracja zapisu: `trad` → seniorzy, `young` → młode rodziny; reszta od 50.
@@ -173,7 +188,7 @@ Kuria przestaje być liczbą, a staje się oceniającym z kalendarzem.
 - Świat czyta grupy: przy zadowolonej młodzieży rowery pod salką, przy niezadowolonych
   seniorach puste pierwsze ławki.
 
-### 2.8 Kalendarz tygodnia, kancelaria i sakramenty (R5)
+### 2.8 Kalendarz tygodnia, kancelaria i sakramenty (AC-12, R5)
 
 - Kancelaria na plebanii: kolejka spraw (chrzest, ślub, pogrzeb, zaświadczenie),
   każda z terminem i grupą, której zależy. Zaległości kosztują zadowolenie grupy.
@@ -182,7 +197,7 @@ Kuria przestaje być liczbą, a staje się oceniającym z kalendarzem.
 - Planer tygodnia: tabela dni × pory dnia z tym, co jest zaplanowane; konflikt
   terminów widać z wyprzedzeniem. Im większa parafia (2.9), tym więcej wpisów.
 
-### 2.9 Pracownicy i wikary (R6, R12)
+### 2.9 Pracownicy i wikary (AC-13, R6, R12)
 
 - Pracownicy: kościelny, gosposia, organista, katechetka – zatrudnianie, pensje
   w `ludzie`, morale, delegowanie czynności (delegowana czynność dzieje się sama,
@@ -195,7 +210,7 @@ Kuria przestaje być liczbą, a staje się oceniającym z kalendarzem.
   i mówi, że go kryłeś. Każda gałąź z monetą, żadna bez kosztu. Wzorzec dla
   kolejnych łańcuchów.
 
-### 3.0 Warianty startu (R1, R11, R10)
+### 3.0 Warianty startu (AC-11.1–11.3, R1, R11, R10)
 
 - Ekran nowej gry: wielkość (małe miasto / duże miasto) × typ (stary kościół /
   nowa parafia). Cztery kombinacje, różne startowe `money`, `groups`, `condition`,
@@ -208,7 +223,7 @@ Kuria przestaje być liczbą, a staje się oceniającym z kalendarzem.
   frekwencja. Osobna lokacja startowa zamiast dzisiejszego placu.
 - Duże miasto: dwa razy więcej grup w grze naraz, media częstsze, kuria bliżej.
 
-### 3.1 Rozbudowa terenu i sloty (AC-9.2 dalej, R10)
+### 3.1 Rozbudowa terenu i sloty (AC-9.2, 11.4, R10)
 
 - Sloty na placu i przy plebanii: ogród, zakrystia, kaplica boczna, salka, dzwonnica,
   plac zabaw, pokoje na plebanii warunkujące zatrudnienie.
@@ -224,7 +239,7 @@ Kuria przestaje być liczbą, a staje się oceniającym z kalendarzem.
 - Kolęda w styczniu jako seria scen w mieszkaniach z ofiarą i rozmową (używa 2.7).
 - Raport roku: wykres tacy, zmiany wskaźników, statystyki grup, kronika lat.
 
-### 3.3 Druga parafia i awans (AC-3.5, R7)
+### 3.3 Druga parafia i awans (AC-3.5, 3.7, R7)
 
 - Po awansie albo przeniesieniu: nowa parafia generowana z parametrów rangi
   (większa lub gorsza), przeniesienie stanu księdza (statystyki, drzewka, kronika),
@@ -242,8 +257,9 @@ Kuria przestaje być liczbą, a staje się oceniającym z kalendarzem.
 
 ## 5. Co świadomie odkładamy
 
-- Reputacja rozbita na cztery liczby (R8) – zamiast tego grupy (2.6) i dziekanat (2.4)
-  dają ten sam efekt bez czwartego paska w HUD.
+- Reputacja rozbita na cztery liczby (R8, w README jako AC-2.5 ⛔) – zamiast tego grupy
+  (2.6) i dziekanat (2.4) dają ten sam efekt bez czwartego paska w HUD. Wracamy, jeśli po
+  2.6 gracze nie odróżniają tych źródeł.
 - Pełna symulacja miasta w dużej parafii – „duże miasto” to więcej grup i częstsze
   media, nie nowa mapa.
 - Multiplayer, mody, tryb nieskończonej kariery poza kurią.

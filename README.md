@@ -76,6 +76,12 @@ Każde przejście ma tworzyć emergentną historię. Decyzja „Na co wydam 20 0
 
 Poniższe kryteria opisują minimalny zakres, który musi spełniać gra, aby była zgodna z ustaloną koncepcją. Zapisane są w formacie *Given / When / Then*.
 
+Kryteria mają dwa źródła: pierwotną listę oraz punkty z rozmowy projektowej (R1–R12 w [ROADMAP.md](ROADMAP.md)), które w liście nie występowały albo były słabsze. Oznaczenia:
+
+- 🆕 **dopisane** – kryterium dodane z rozmowy projektowej, z numerem R w nawiasie;
+- 🔁 **zastąpione** – kryterium, którego minimalna wersja przestała wystarczać; zostaje w tekście, ale spełnienie liczy się dopiero przez kryterium wskazane strzałką. Kod, który spełnia tylko starą wersję, jest do przebudowy w wydaniu podanym w roadmapie;
+- ⛔ **poza zakresem** – świadomie odłożone, żeby nie zgubić powodu.
+
 ### AC-1. Ekonomia parafii
 
 **AC-1.1 – Źródła przychodów**
@@ -88,10 +94,21 @@ Poniższe kryteria opisują minimalny zakres, który musi spełniać gra, aby by
 - When: gracz otwiera panel finansów
 - Then: może przeznaczyć pieniądze na co najmniej: bieżące wydatki, remonty, inwestycje, infrastrukturę parafii oraz działalność duszpasterską
 
-**AC-1.3 – Budżet jest ograniczony**
+**AC-1.3 – Budżet jest ograniczony** 🔁 → AC-1.5
 - Given: gracz próbuje wydać więcej, niż posiada
 - When: zatwierdza wydatek
 - Then: gra nie pozwala na wydatek ponad stan (lub jasno komunikuje konsekwencje zadłużenia, jeśli taka mechanika zostanie dodana)
+- *Zastąpione:* wybraliśmy zadłużenie z konsekwencjami, nie blokadę. Inwestycje dalej wymagają pieniędzy, ale koszty tygodnia mogą wpędzić parafię w debet – i to ma być widoczne wcześniej, nie po fakcie.
+
+**AC-1.5 – Zadłużenie jest widoczne przed faktem** 🆕 (R10, wydanie 2.3)
+- Given: zaplanowane koszty tygodnia przekraczają stan konta
+- When: gracz otwiera bank albo zatwierdza wydatek, który to powoduje
+- Then: widzi prognozę salda na koniec tygodnia i skutki debetu (odsetki, relacje z kurią), a wydatek ponad stan wymaga potwierdzenia
+
+**AC-1.6 – Budżet w kategoriach z poziomami** 🆕 (R10, wydanie 2.3)
+- Given: gracz ustawia budżet tygodnia
+- When: zmienia poziom kategorii (bieżące, remonty, infrastruktura, duszpasterstwo, ludzie)
+- Then: zmienia się koszt tygodniowy i co najmniej jeden skutek poza pieniędzmi (tempo niszczenia budynków, ryzyko awarii, nastroje grupy), a inwestycje mogą wykluczać się przez zajęcie tej samej kategorii
 
 **AC-1.4 – Wydatki mają skutki poza finansami**
 - Given: gracz wydaje środki na dowolną kategorię
@@ -114,6 +131,15 @@ Poniższe kryteria opisują minimalny zakres, który musi spełniać gra, aby by
 - Given: reputacja lub relacje z parafianami spadną poniżej progu krytycznego
 - When: mija kolejna tura / okres
 - Then: gra uruchamia kryzys (np. bunt parafian, interwencję kurii), który gracz musi rozwiązać
+
+**AC-2.4 – Życie religijne parafii jest osobnym zasobem** 🆕 (R4, wydanie 2.4)
+- Given: gra trwa
+- When: mija poranek
+- Then: wskaźnik życia religijnego jest liczony z frekwencji na mszach, udzielonych sakramentów i aktywności grup, a nie ustawiany wprost; parafia bogata i popularna może mieć niskie życie religijne, i odwrotnie
+
+**AC-2.5 – Reputacja rozłożona na aktorów** ⛔ (R8)
+- Zamysł: osobna reputacja u parafian, mieszkańców, innych księży i biskupa.
+- Odłożone: parafianie dostają zaufanie przez grupy (AC-7.3), inni księża przez dziekanat (AC-6.4), biskup przez relacje z kurią. Jedna liczba `reputacja` zostaje reputacją u mieszkańców. Wracamy, jeśli po 2.6 gracze nie odróżniają tych źródeł.
 
 ### AC-3. Kariera i awans
 
@@ -142,6 +168,21 @@ Poniższe kryteria opisują minimalny zakres, który musi spełniać gra, aby by
 - When: kontynuuje grę
 - Then: ma dostęp do nowych decyzji lub odpowiedzialności niedostępnych na niższym stanowisku
 
+**AC-3.6 – Ocena kwartalna jest jawna** 🆕 (R7, wydanie 2.4)
+- Given: mija kwartał gry
+- When: kuria wystawia ocenę
+- Then: gracz dostaje ją na piśmie z rozbiciem na finanse, życie religijne, stan budynków, reputację i rozwiązane kryzysy, a dwie kolejne oceny decydują o awansie, ostrzeżeniu albo przeniesieniu
+
+**AC-3.7 – Przeniesienie jest stratą, nie końcem** 🆕 (R7, wydania 2.4 i 3.3)
+- Given: gracz dostał trzecią złą ocenę albo skandal uderzył w kurię
+- When: kuria decyduje o przeniesieniu
+- Then: gra trwa dalej w gorszej parafii; statystyki, drzewka i kronika księdza zostają, stan parafii startuje od nowa
+
+**AC-3.8 – Wikary ma nad sobą proboszcza** 🆕 (R7, wydanie 2.4)
+- Given: gracz jest wikarym
+- When: podejmuje decyzję zastrzeżoną dla proboszcza
+- Then: ta sama opcja jest dostępna „do uzgodnienia”, z opóźnieniem i kosztem relacji, a po awansie ograniczenie znika
+
 ### AC-4. Specjalizacja księdza
 
 **AC-4.1 – Dostępne style kariery**
@@ -153,6 +194,16 @@ Poniższe kryteria opisują minimalny zakres, który musi spełniać gra, aby by
 - Given: gracz ma wyraźną specjalizację
 - When: pojawia się wydarzenie lub decyzja
 - Then: specjalizacja zmienia dostępne opcje, ich koszt lub skuteczność
+
+**AC-4.3 – Ksiądz ma własne cechy** 🆕 (R3, wydanie 2.5)
+- Given: gra trwa
+- When: gracz otwiera profil księdza
+- Then: widzi co najmniej pięć cech (charyzma, wiarygodność, zarządzanie, wpływy, odporność) w skali 1–10, które rosną z tego, co ksiądz naprawdę robi, a nie z przydzielanych punktów
+
+**AC-4.4 – Cechy otwierają i skalują decyzje** 🆕 (R3, wydanie 2.5)
+- Given: wydarzenie ma opcję z wymaganiem cechy
+- When: cecha jest poniżej progu
+- Then: opcja jest widoczna, ale niedostępna, z podanym progiem; opcje skalowane cechą pokazują skutek policzony dla aktualnej wartości
 
 ### AC-5. Wydarzenia, konflikty i kryzysy
 
@@ -181,6 +232,11 @@ Poniższe kryteria opisują minimalny zakres, który musi spełniać gra, aby by
 - When: warunek kryzysu zostaje spełniony
 - Then: gra uruchamia kryzys zarządzania (w tym możliwy bunt parafian), który może zakończyć karierę gracza lub cofnąć jego pozycję
 
+**AC-5.6 – Wydarzenia pamiętają decyzje** 🆕 (R12, wydanie 2.4)
+- Given: gracz podjął decyzję w wydarzeniu
+- When: mijają tygodnie
+- Then: decyzja może wrócić jako inne wydarzenie w innej postaci (łańcuch), a jego gałąź zależy od wcześniejszego wyboru i od losu; co najmniej jeden łańcuch ma trzy rozgałęzienia z różnymi kosztami i żadne nie jest bezkosztowe
+
 ### AC-6. Hierarchia i kuria
 
 **AC-6.1 – Kuria jako aktor gry**
@@ -193,17 +249,44 @@ Poniższe kryteria opisują minimalny zakres, który musi spełniać gra, aby by
 - When: kuria się o niej dowiaduje
 - Then: gracz musi wybrać sposób jej uzasadnienia, a wybór wpływa na relacje z kurią i dalszą karierę
 
+**AC-6.3 – Kuria ma kalendarz** 🆕 (R7, wydanie 2.4)
+- Given: gra trwa
+- When: mija termin oceny albo relacje spadają poniżej progu
+- Then: kuria odzywa się sama, z wyprzedzeniem i na piśmie, a nie tylko jako liczba w pasku
+
+**AC-6.4 – Inni księża są aktorami** 🆕 (R8, wydanie 2.4)
+- Given: w okolicy jest sąsiednia parafia
+- When: decyzja gracza dotyka jej interesów (godziny mszy, odpust, parafianie)
+- Then: sąsiedni proboszcz reaguje wydarzeniem, które zmienia reputację albo relacje z kurią
+
 ### AC-7. Grupy interesów w parafii
 
-**AC-7.1 – Parafianie nie są jednolici**
+**AC-7.1 – Parafianie nie są jednolici** 🔁 → AC-7.3
 - Given: gra jest uruchomiona
 - When: gracz przegląda parafię
 - Then: widzi co najmniej dwie grupy parafian o różnych oczekiwaniach
+- *Zastąpione:* dwie grupy jako dwie liczby (tradycjonaliści, młode rodziny) spełniają ten zapis, ale nie zamysł. Zapis zostaje jako minimum do 2.6; potem liczy się AC-7.3.
 
-**AC-7.2 – Konflikty między grupami**
+**AC-7.2 – Konflikty między grupami** 🔁 → AC-7.4
 - Given: grupy mają sprzeczne interesy
 - When: gracz podejmuje decyzję faworyzującą jedną z nich
 - Then: zadowolenie drugiej grupy spada, a konflikt może eskalować do wydarzenia
+- *Zastąpione:* eskalacja przez ogólny kryzys reputacji nie pokazuje, kto z kim. AC-7.4 wymaga, żeby konflikt miał strony.
+
+**AC-7.3 – Sześć grup z zadowoleniem i wpływem** 🆕 (R2, wydanie 2.6)
+- Given: gra jest uruchomiona
+- When: gracz otwiera widok parafii
+- Then: widzi młodzież, młode rodziny, pracujących, seniorów, przedsiębiorców i potrzebujących, każdą z zadowoleniem, wpływem i ostatnią zmianą; każda decyzja w wydarzeniu różnicuje co najmniej dwie grupy
+
+**AC-7.4 – Wpływ grupy przekłada się na działanie** 🆕 (R2, wydanie 2.6)
+- Given: grupa ma wysoki wpływ
+- When: mija tydzień
+- Then: grupa robi coś sama (daje tacę, organizuje wydarzenie, składa skargę do kurii, tworzy frakcję), a dwie niezadowolone i wpływowe grupy uruchamiają kryzys z nazwanymi stronami
+
+**AC-7.5 – Działalność społeczna buduje grupy** 🆕 (R9, wydanie 2.6)
+- Given: gracz uruchamia działalność (Caritas, świetlica, katecheza, festyn)
+- When: działalność trwa
+- Then: kosztuje czas w kalendarzu i pieniądze z duszpasterstwa, a podnosi zadowolenie i rozmiar konkretnych grup, nie ogólną reputację
 
 ### AC-8. Emergentna historia
 
@@ -295,6 +378,62 @@ Poniższe kryteria opisują minimalny zakres, który musi spełniać gra, aby by
 - Given: gra prezentuje dialogi i opisy wydarzeń
 - When: gracz je czyta
 - Then: ton jest lekko satyryczny i z mrocznym humorem, ale nie wyśmiewa wiary jako takiej
+
+### AC-11. Warianty startu i rozwój fizyczny parafii 🆕
+
+**AC-11.1 – Wybór parafii na start** (R1, wydanie 3.0)
+- Given: gracz zaczyna nową grę
+- When: wybiera wielkość (małe / duże miasto) i typ (stary kościół / nowa parafia)
+- Then: cztery kombinacje różnią się startowym budżetem, liczbą i składem grup, stanem budynków i częstością wydarzeń, a różnica jest odczuwalna w pierwszym tygodniu
+
+**AC-11.2 – Stary kościół remontuje się etapami** (R11, wydanie 3.0)
+- Given: gracz gra starym kościołem
+- When: przegląda stan budynków
+- Then: widzi osobne stany dachu, wnętrza, ogrzewania, plebanii i domu parafialnego, a remont jest sekwencją inwestycji, po których świat pokazuje kolejny etap
+
+**AC-11.3 – Nowa parafia rośnie od salki** (R1, wydanie 3.0)
+- Given: gracz gra nową parafią
+- When: kończy inwestycję w kolejny stopień
+- Then: lokacja przebudowuje się fizycznie po ścieżce salka → kaplica → kościół → kompleks, a frekwencja i taca rosną z każdym stopniem
+
+**AC-11.4 – Budynki są wykluczającym się wyborem** (R10, wydania 2.3 i 3.1)
+- Given: gracz ma pieniądze na jedną z dwóch inwestycji
+- When: wybiera jedną
+- Then: druga jest odsunięta o czas zajęcia budżetu, a grupy zainteresowane odsuniętą reagują spadkiem zadowolenia
+
+### AC-12. Kalendarz tygodnia i sakramenty 🆕
+
+**AC-12.1 – Kancelaria ma kolejkę** (R5, wydanie 2.8)
+- Given: parafianie zgłaszają sprawy (chrzest, ślub, pogrzeb, zaświadczenie)
+- When: gracz otwiera kancelarię
+- Then: widzi sprawy z terminem i grupą, której zależy, a zaległości kosztują zadowolenie tej grupy
+
+**AC-12.2 – Sakramenty są czynnościami ze sceną** (R5, wydanie 2.8)
+- Given: w kolejce jest ślub albo chrzest
+- When: gracz go udziela
+- Then: czynność zużywa czas i energię, ma scenę, daje ofiarę i zmienia zadowolenie grupy oraz życie religijne
+
+**AC-12.3 – Tydzień da się zaplanować i przeładować** (R5, wydanie 2.8)
+- Given: gracz ma zaplanowane msze, spowiedź, kancelarię i spotkania
+- When: otwiera planer tygodnia
+- Then: widzi konflikty terminów z wyprzedzeniem, a im większa parafia, tym więcej wpisów walczy o te same pory
+
+### AC-13. Pracownicy i wikary 🆕
+
+**AC-13.1 – Zatrudnianie i delegowanie** (R6, wydanie 2.9)
+- Given: gracz zatrudnił pracownika
+- When: deleguje mu czynność
+- Then: czynność dzieje się bez udziału gracza, jej jakość zależy od morale, a pensja wchodzi do kategorii „ludzie” w budżecie
+
+**AC-13.2 – Wikary ma charakter** (R6, wydanie 2.9)
+- Given: gracz jest proboszczem i dostał wikarego
+- When: przegląda jego profil
+- Then: widzi jego cechy (te same pięć co u księdza) i relacje z grupami, a delegowane mu msze i spowiedzi dają skutki zależne od jego cech
+
+**AC-13.3 – Błędy podwładnych obciążają księdza** (R6, R12, wydanie 2.9)
+- Given: wikary albo pracownik popełnił błąd lub wywołał skandal
+- When: sprawa dociera do parafian albo kurii
+- Then: skutki spadają na reputację i relacje z kurią gracza, a co najmniej jeden łańcuch (kobieta wikarego) ma trzy drogi: zignorować, porozmawiać, zgłosić – każda z późnymi, niepewnymi skutkami
 
 ---
 
