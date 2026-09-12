@@ -113,10 +113,10 @@ trzy dwupoziomowe drzewka, opcje zależne od cech, profil, migracja, release not
 
 | ID | Właściciel / żądany model | Pliki | Warunek | Stan |
 |---|---|---|---|---|
-| P25 | career / gpt-5.6-sol high | progression.gd, tools/check_progression.gd | publikacja2.4 + kontrakt | verified (kod) |
-| E25 | events24 / gpt-5.6-sol high | event_flow.gd, inbox.gd, events.gd, phone.gd, tools/check_definitions.gd | jak P25 | verified (kod) |
-| U25 | career_ui / gpt-5.6-terra medium | ui.gd, ui/progression_view.gd, phone_view.gd, finance_view.gd, status_view.gd, career_view.gd, tools/check_progression_ui.gd | jak P25 | verified (kod) |
-| K25/I25 | rodzic / bieżąca sesja | game.gd, save_game.gd, finance.gd, repairs.gd, reszta integracji/docs/CI | kontrakt; integracja po P/E/U | verified (kod) |
+| P25 | career / gpt-5.6-sol high | progression.gd, tools/check_progression.gd | publikacja2.4 + kontrakt | verified |
+| E25 | events24 / gpt-5.6-sol high | event_flow.gd, inbox.gd, events.gd, phone.gd, tools/check_definitions.gd | jak P25 | verified |
+| U25 | career_ui / gpt-5.6-terra medium | ui.gd, ui/progression_view.gd, phone_view.gd, finance_view.gd, status_view.gd, career_view.gd, tools/check_progression_ui.gd | jak P25 | verified |
+| K25/I25 | rodzic / bieżąca sesja | game.gd, save_game.gd, finance.gd, repairs.gd, reszta integracji/docs/CI | kontrakt; integracja po P/E/U | verified |
 
 P25 || E25 || U25 po kontrakcie API; I25 po wspólnych testach. Jeden autor pliku.
 Pola Game: stats Dictionary (charyzma, wiarygodnosc, zarzadzanie, wplywy, odpornosc,
@@ -183,10 +183,10 @@ zużywa faktyczny czas i energię. UI jawnie oddziela finansowanie od spotkania.
 
 | ID | Właściciel / żądany model | Pliki | Zależności | Stan |
 |---|---|---|---|---|
-| G26 | career / gpt-5.6-sol high | groups.gd, tools/check_groups.gd + uid | Pages2.5, kontrakt | verified (kod) |
-| E26 | events24 / gpt-5.6-sol high | group_events.gd, events.gd, event_flow.gd, phone.gd, inbox.gd, tools/check_definitions.gd, tools/check_group_events.gd + uid | jak G26 | verified (kod) |
-| U26 | career_ui / gpt-5.6-terra medium | ui.gd, ui/group_view.gd, ui/phone_view.gd, ui/status_view.gd, tools/check_groups_ui.gd + uid | jak G26 | verified (kod) |
-| K26/I26 | rodzic / bieżąca sesja | game.gd, save_game.gd, parish.gd, finance.gd, docs/CI/release | kontrakt; integracja po G/E/U | verified (kod) |
+| G26 | career / gpt-5.6-sol high | groups.gd, tools/check_groups.gd + uid | Pages2.5, kontrakt | verified |
+| E26 | events24 / gpt-5.6-sol high | group_events.gd, events.gd, event_flow.gd, phone.gd, inbox.gd, tools/check_definitions.gd, tools/check_group_events.gd + uid | jak G26 | verified |
+| U26 | career_ui / gpt-5.6-terra medium | ui.gd, ui/group_view.gd, ui/phone_view.gd, ui/status_view.gd, tools/check_groups_ui.gd + uid | jak G26 | verified |
+| K26/I26 | rodzic / bieżąca sesja | game.gd, save_game.gd, parish.gd, finance.gd, docs/CI/release | kontrakt; integracja po G/E/U | verified |
 
 DAG: kontrakt -> G26 || E26 || U26 || K26 -> wspólne testy I26 -> eksport -> Pages.
 Jeden autor pliku, testy w odizolowanych kopiach runnera. Git i publikacja rodzica.
@@ -290,8 +290,11 @@ mlodziez+6,seniorzy-3, bez ogólnej reputacji; zakończenie zwiększa młodzież
   Symulacja120dni seed7:75dni z wydarzeniem,33typy, maksymalna cisza3dni, bez błędów.
   Symulacja nie wykonuje codziennych czynności, więc nie stanowi testu balansu gracza.
 - Dowody integracyjne w `artifacts/release-2.6/`; katalog jest ignorowany przez Git.
-  Import bez błędów i eksport Web zakończone poprawnie. Publikacja Pages: w toku.
+  Import bez błędów i eksport Web zakończone poprawnie. Publikacja Pages c192551:
+  [workflow34719775358](https://github.com/StanisGaw/symulator-ksiedza/actions/runs/34719775358)
+  success; wszystkie kontrole, symulacja, eksport i wdrożenie zielone. Live HTTP200,
+  last-modified12.09.2026 21:24:22UTC.
 
-Punkt wznowienia: ukończony zakres2.4–2.6 po zielonym Pages2.6. Następne pozycje
+Punkt wznowienia: zakres2.4–2.6 ukończony i opublikowany, bez otwartych blokad. Następne pozycje
 roadmapy to2.7(parafianie z rutyną),2.8(kancelaria/planer),2.9(pracownicy).
 Nie zostały włączone do tej serii.
