@@ -94,6 +94,30 @@ jobs:
           --log artifacts/godot-validation/check-career-ui.log
           -- --check-career-ui
 
+      - name: Check progression behavior
+        run: >-
+          python3 scripts/ci/run_godot.py
+          --godot ./godot
+          --timeout 60
+          --log artifacts/godot-validation/check-progression.log
+          -- --check-progression
+
+      - name: Check progression events
+        run: >-
+          python3 scripts/ci/run_godot.py
+          --godot ./godot
+          --timeout 60
+          --log artifacts/godot-validation/check-progression-events.log
+          -- --check-progression-events
+
+      - name: Check progression UI
+        run: >-
+          python3 scripts/ci/run_godot.py
+          --godot ./godot
+          --timeout 60
+          --log artifacts/godot-validation/check-progression-ui.log
+          -- --check-progression-ui
+
       - name: Simulate 120 days
         run: >-
           python3 scripts/ci/run_godot.py

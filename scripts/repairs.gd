@@ -29,7 +29,7 @@ static func clear(id: String) -> void:
 static func can_repair(id: String) -> bool:
 	if not Game.breakdowns.has(id) or Game.pending_repairs.has(id):
 		return false
-	return Game.money >= int(Breakdowns.ALL[id]["cost"])
+	return Game.money >= repair_cost(id)
 
 
 ## Naprawa idzie tą samą drogą co inwestycja: płacisz dziś, prace kończą się rano.
@@ -40,7 +40,7 @@ static func repair(id: String, confirmed: bool = false) -> bool:
 		Game.toast.emit("Nie stać parafii albo naprawa już trwa.")
 		return false
 	var def: Dictionary = Breakdowns.ALL[id]
-	var cost := int(def["cost"])
+	var cost := repair_cost(id)
 	if Finance.needs_confirmation(cost) and not confirmed:
 		return false
 	Parish.apply_effects({"money": -cost}, "Naprawa: %s" % def["label"], "remonty")
@@ -114,3 +114,7 @@ static func risk() -> Array[String]:
 				lines.append("Awaria: %s. %s" % [Breakdowns.label(id), Breakdowns.ALL[id].get("note", "")])
 			break
 	return lines
+
+
+static func repair_cost(id: String) -> int:
+	return Progression.investment_cost(int(Breakdowns.ALL[id]["cost"])) if Breakdowns.has(id) else 0

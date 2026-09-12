@@ -49,7 +49,7 @@ const SCRIPTED := [
 		"id": "curia_call", "day": 5, "title": "Telefon z kurii",
 		"text": "Ksiądz kanclerz pyta uprzejmie o sprawozdanie finansowe za pierwszy tydzień. Dodaje, że biskup „interesuje się młodymi księżmi”.",
 		"options": [
-			{"label": "Wyślę uczciwe sprawozdanie", "special": "honest_report"},
+			{"label": "Wyślę uczciwe sprawozdanie", "special": "honest_report", "honest": true},
 			{"label": "Poproszę o tydzień zwłoki",
 				"delayed": {"days": 3, "text": "Kuria przypomina o zaległym sprawozdaniu, tym razem mniej uprzejmie. Kuria -5.", "effects": {"curia": -5}}},
 			{"label": "Dołączę 1 500 zł „na cele diecezji”", "effects": {"money": -1500, "curia": 6},
@@ -65,7 +65,8 @@ const POOL := [
 		"title": "Organy zamilkły",
 		"text": "W środku pieśni na wejście organy zacharczały i ucichły. Organista twierdzi, że to dmuchawa i że on tego nie ruszy, bo instrument jest z lat pięćdziesiątych. Do niedzieli zostały cztery dni.",
 		"options": [
-			{"label": "Wezwij firmę od organów, 2 500 zł", "effects": {"money": -2500, "trad": 3}},
+			{"label": "Wezwij firmę od organów, 2 500 zł", "effects": {"money": -2500, "trad": 3},
+				"scale": "zarzadzanie"},
 			{"label": "Na razie puszczaj pieśni z odtwarzacza", "effects": {"young": 2, "trad": -5},
 				"delayed": {"days": 5, "text": "W parafii mówi się, że „u nas teraz gra radio”. Reputacja -3.", "effects": {"reputation": -3}}},
 			{"label": "Śpiewamy bez organów, jak na misjach", "effects": {"trad": 2, "reputation": -1, "respect": 2}},
@@ -299,6 +300,8 @@ const POOL := [
 		"options": [
 			{"label": "Stań po stronie starych", "effects": {"trad": 6, "young": -5}},
 			{"label": "Stań po stronie nowych", "effects": {"young": 6, "trad": -5}},
+			{"label": "Posadź obie strony przy jednym stole", "needs": {"charyzma": 6},
+				"effects": {"energy": -10, "trad": 4, "young": 4, "reputation": 3}},
 			{"label": "Dwa chóry, dwie msze", "effects": {"energy": -10, "money": -400, "trad": 2, "young": 2},
 				"delayed": {"days": 6, "chance": 0.55,
 					"text": "Oba chóry śpiewają i udają, że drugiego nie ma. Działa. Reputacja +3.", "effects": {"reputation": 3},

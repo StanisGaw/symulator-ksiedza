@@ -26,12 +26,14 @@ static func _show_finance(ui: Ui) -> void:
 		ui._text(list, "Inwestycje", 22)
 	for id in Finance.INVESTMENTS:
 		_investment_card(ui, list, id)
+	_inspection_action(ui, list)
 	ui._button(box, "Zamknij", ui._close_modal)
 
 
 ## Karta awarii: co się psuje każdego dnia, ile kosztuje naprawa i jak długo potrwa.
 static func _breakdown_card(ui: Ui, list: Control, id: String) -> void:
 	var def: Dictionary = Breakdowns.ALL[id]
+	var cost := Repairs.repair_cost(id)
 	var card := PanelContainer.new()
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(0.16, 0.1, 0.1)
@@ -49,7 +51,7 @@ static func _breakdown_card(ui: Ui, list: Control, id: String) -> void:
 	row.add_child(info)
 	var open_days: int = Game.day - int(Game.breakdown_since.get(id, Game.day))
 	var since := "od dziś" if open_days <= 0 else "trwa %s" % Game.days_text(open_days)
-	ui._text(info, "%s   —   %s zł, %s naprawy" % [def["label"], ui._money(def["cost"]), Game.days_text(int(def["days"]))], 21)
+	ui._text(info, "%s   —   %s zł, %s naprawy" % [def["label"], ui._money(cost), Game.days_text(int(def["days"]))], 21)
 	_card_line(ui, info, "Stan", "%s. %s" % [since, def.get("note", "")])
 	_card_line(ui, info, "Kosztuje co dzień", Parish.effects_text(def.get("daily", {})))
 	if def.has("blocks"):
@@ -60,14 +62,14 @@ static func _breakdown_card(ui: Ui, list: Control, id: String) -> void:
 	elif not Repairs.can_repair(id):
 		label = "Niedostępne"
 	var b := ui._button(row, label, func() -> void:
-		if Finance.needs_confirmation(int(def["cost"])):
+		if Finance.needs_confirmation(cost):
 			var accept := func() -> void:
 				if Repairs.repair(id, true):
 					ui._close_modal()
 					ui._enqueue("finance", {})
 			var cancel := func() -> void:
 				_replace_finance_modal(ui)
-			confirm_expense(ui, "naprawę: " + str(def["label"]), int(def["cost"]), accept, cancel)
+			confirm_expense(ui, "naprawę: " + str(def["label"]), cost, accept, cancel)
 			return
 		if Repairs.repair(id):
 			ui._close_modal()
@@ -79,6 +81,7 @@ static func _breakdown_card(ui: Ui, list: Control, id: String) -> void:
 ## Karta inwestycji: co stanie w świecie, co się odblokuje, ile to daje i kiedy się zwróci.
 static func _investment_card(ui: Ui, list: Control, id: String) -> void:
 	var def: Dictionary = Finance.INVESTMENTS[id]
+	var cost := Finance.investment_cost(id)
 	var card := PanelContainer.new()
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(0.11, 0.11, 0.14)
@@ -95,7 +98,7 @@ static func _investment_card(ui: Ui, list: Control, id: String) -> void:
 	info.add_theme_constant_override("separation", 4)
 	row.add_child(info)
 	var days_text := "od ręki" if int(def["days"]) == 0 else "%s prac" % Game.days_text(int(def["days"]))
-	ui._text(info, "%s   —   %s zł, %s" % [def["label"], ui._money(def["cost"]), days_text], 21)
+	ui._text(info, "%s   —   %s zł, %s" % [def["label"], ui._money(cost), days_text], 21)
 	_card_line(ui, info, "Postawi", str(def.get("builds", "")))
 	_card_line(ui, info, "Odblokuje", str(def.get("unlocks", "")))
 	var choice_note := _investment_choice_note(id)
@@ -125,20 +128,32 @@ static func _investment_card(ui: Ui, list: Control, id: String) -> void:
 	elif not Finance.can_invest(id):
 		label = "Niedostępne"
 	var b := ui._button(row, label, func() -> void:
-		if Finance.needs_confirmation(int(def["cost"])):
+		if Finance.needs_confirmation(cost):
 			var accept := func() -> void:
 				if Finance.invest(id, true):
 					ui._close_modal()
 					ui._enqueue("finance", {})
 			var cancel := func() -> void:
 				_replace_finance_modal(ui)
-			confirm_expense(ui, "inwestycję: " + str(def["label"]), int(def["cost"]), accept, cancel)
+			confirm_expense(ui, "inwestycję: " + str(def["label"]), cost, accept, cancel)
 			return
 		if Finance.invest(id):
 			ui._close_modal()
 			ui._enqueue("finance", {}), Finance.can_invest(id))
 	b.custom_minimum_size = Vector2(150, 52)
 	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+
+
+static func _inspection_action(ui: Ui, list: Control) -> void:
+	if not Progression.has_talent("admin_inspection"):
+		return
+	ui._text(list, "Przegląd plebanii", 22)
+	var at_rectory := Game.location == "rectory"
+	ui._text(list, "45 minut, 10 energii, raz dziennie. Dostępny przy biurku na plebanii; poprawia stan budynków o 3.", 16)
+	var label := "Wykonaj przegląd" if at_rectory else "Przegląd jest dostępny przy biurku na plebanii"
+	ui._button(list, label, func() -> void:
+		ui._close_modal()
+		Game.call_deferred("do_activity", "inspection"), at_rectory)
 
 
 static func _card_line(ui: Ui, box: Control, head: String, text: String) -> void:

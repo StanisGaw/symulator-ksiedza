@@ -32,6 +32,8 @@ const MESS_PENALTY := 1
 ## Kiedy kuria sama pisze z prośbą o wyjaśnienia i jak często bank przypomina o debecie.
 
 const ACTIVITIES := {
+	"inspection": {"label": "Przegląd budynków", "minutes": 45, "energy": 10, "once": true,
+		"effects": {"condition": 3}, "toast": "Przegląd wykonany, drobne usterki usunięte. Stan budynków +3."},
 	"repair_gutter": {"label": "Napraw rynnę", "minutes": 60, "energy": 20, "once": true,
 		"effects": {"condition": 6}, "toast": "Rynna naprawiona. Stan budynków +6.", "builds": "gutter"},
 	"sweep": {"label": "Zamieć plac", "minutes": 30, "energy": 10, "once": true,
@@ -75,6 +77,9 @@ var condition := 55
 var trad := 55
 var young := 50
 var curia := 50
+var stats: Dictionary = {}
+var stat_xp: Dictionary = {}
+var talents: Array = []
 var rank := "wikary"
 var faith := 0
 var career: Dictionary = {}
@@ -150,6 +155,7 @@ func _ready() -> void:
 		SaveGame.wipe()
 	if start_unix == 0:
 		start_unix = Calendar.today_start_unix()
+	Progression.reset(self)
 	Career.reset(self)
 	# pierwszy list czeka już na starcie, także wtedy, gdy gra rusza bez menu nowej gry
 	if phone_inbox.is_empty():
@@ -188,6 +194,12 @@ func _ready() -> void:
 		elif arg == "--check":
 			# kontrola definicji wydarzeń i awarii, bez uruchamiania gry
 			call_deferred("_run_check")
+		elif arg == "--check-progression":
+			call_deferred("_run_behavior_check", "res://scripts/tools/check_progression.gd")
+		elif arg == "--check-progression-events":
+			call_deferred("_run_behavior_check", "res://scripts/tools/check_progression_events.gd")
+		elif arg == "--check-progression-ui":
+			call_deferred("_run_progression_ui_check")
 		elif arg == "--check-career":
 			call_deferred("_run_career_check")
 		elif arg == "--check-chains":
@@ -363,7 +375,11 @@ func add_log(text: String) -> void:
 func do_activity(id: String, confirmed_expense: bool = false) -> void:
 	if modal_open:
 		return
-	var def: Dictionary = ACTIVITIES[id]
+	if id == "inspection" and (not Progression.has_talent("admin_inspection") or location != "rectory"):
+		toast.emit("Przegląd wymaga talentu „%s” i wizyty przy biurku na plebanii." % Progression.TALENTS["admin_inspection"]["label"])
+		return
+	var def: Dictionary = ACTIVITIES[id].duplicate(true)
+	def["minutes"] = activity_minutes(id)
 	if def.get("apple", false):
 		_pick_apple(def)
 		return
@@ -540,6 +556,7 @@ func _finish_activity(def: Dictionary) -> void:
 		return
 	if def == ACTIVITIES["confession"]:
 		Career.record("sacraments", 3)
+		Progression.record("confession")
 	Parish.apply_effects(def["effects"])
 	toast.emit(def["toast"])
 	add_log(def["toast"])
@@ -563,7 +580,7 @@ func _attendance(start_minutes: float) -> int:
 	if Calendar.is_roraty(day, start_minutes):
 		attendance = int(attendance * 1.4)
 	# w kościele jest tyle miejsca, ile jest; reszta stoi na zewnątrz i tacy nie wrzuca
-	return mini(attendance, 500)
+	return Progression.attendance(mini(attendance, 500))
 
 
 func _begin_cutscene(id: String, def: Dictionary) -> void:
@@ -631,6 +648,7 @@ func _mess_seen() -> Array[String]:
 
 func _hold_mass(attendance: int) -> void:
 	Career.record("attendance", attendance)
+	Progression.record("mass")
 	var taca := int(attendance * randf_range(3.2, 5.0) * Calendar.taca_multiplier(day, _cut_start))
 	Parish.apply_effects({"money": taca, "reputation": 1}, "Taca z mszy", "taca")
 	var respect_gain := RESPECT_PER_MASS * (2 if is_sunday() or Calendar.feast_name(day) != "" else 1)
@@ -700,6 +718,8 @@ func _wake_up() -> void:
 	var target := minutes + _sleep_minutes
 	var gained := _sleep_minutes / 60.0 * ENERGY_PER_HOUR
 	if target >= 24.0 * 60.0:
+		if _sleep_minutes >= 180 and _sleep_minutes < 360 and energy + gained >= 40:
+			Progression.record("short_sleep")
 		_start_new_day(energy + gained, [], target - 24.0 * 60.0)
 	else:
 		minutes = target
@@ -746,6 +766,8 @@ func _start_new_day(new_energy: float, extra_lines: Array[String], wake_minutes:
 			if msg != "":
 				text = (text + " " + msg).strip_edges()
 		if item.has("invest"):
+			if item["invest"] == "festyn":
+				Progression.record("festyn")
 			pending_investments.erase(item["invest"])
 			if not built.has(item["invest"]):
 				built.append(item["invest"])
@@ -892,6 +914,7 @@ func start_new_game() -> void:
 	SaveGame.wipe()
 	start_unix = Calendar.today_start_unix()
 	day = 1
+	Progression.reset(self)
 	Career.reset(self)
 	flags.clear()
 	pending_events.clear()
@@ -991,5 +1014,15 @@ func _run_behavior_check(path: String) -> void:
 
 func _run_career_ui_check() -> void:
 	var checks: Script = load("res://scripts/tools/check_career_ui.gd")
+	var passed: bool = await checks.run()
+	get_tree().quit(0 if passed else 1)
+
+
+func activity_minutes(id: String) -> int:
+	return Progression.activity_minutes(id, int(ACTIVITIES[id]["minutes"]))
+
+
+func _run_progression_ui_check() -> void:
+	var checks: Script = load("res://scripts/tools/check_progression_ui.gd")
 	var passed: bool = await checks.run()
 	get_tree().quit(0 if passed else 1)

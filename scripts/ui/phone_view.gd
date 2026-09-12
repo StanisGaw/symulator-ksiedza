@@ -43,6 +43,10 @@ static func _phone_app_tabs(ui: Ui, box: VBoxContainer, app: String) -> void:
 		ui._close_modal()
 		ui._enqueue("career", {}))
 	career_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var progression_button := ui._button(tabs, "Rozwój", func() -> void:
+		ui._close_modal()
+		ui._enqueue("progression", {}))
+	progression_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 
 static func _phone_bank(ui: Ui, box: VBoxContainer, tab: String, draft: Dictionary = {}) -> void:
@@ -297,12 +301,17 @@ static func _phone_message(ui: Ui, list: VBoxContainer, index: int, msg: Diction
 			list.add_child(due)
 		for oi in msg["options"].size():
 			var opt: Dictionary = msg["options"][oi]
+			var context := str(msg.get("context", "media" if msg.get("app", "") == "media" else "event"))
+			var state: Dictionary = Progression.option_state(opt, context)
+			var resolved: Dictionary = Progression.resolve_option(opt, context)
 			var label: String = opt["label"]
-			if opt.has("effects"):
-				label += "   (" + Parish.effects_text(opt["effects"]) + ")"
+			if not bool(state.get("enabled", true)):
+				label += "\n" + str(state.get("reason", "Ta odpowiedź nie jest jeszcze dostępna."))
+			if resolved.has("effects"):
+				label += "   (" + Parish.effects_text(resolved["effects"]) + ")"
 			var app: String = str(msg.get("app", "poczta"))
 			ui._button(list, label, func() -> void:
-				var effects: Dictionary = opt.get("effects", {})
+				var effects: Dictionary = resolved.get("effects", {})
 				var expense := maxi(0, -int(effects.get("money", 0)))
 				if expense > 0 and Finance.needs_confirmation(expense):
 					var accept := func() -> void:
@@ -316,6 +325,6 @@ static func _phone_message(ui: Ui, list: VBoxContainer, index: int, msg: Diction
 					return
 				Inbox.answer(index, oi)
 				ui._close_modal()
-				ui._enqueue("phone", {"app": app}))
+				ui._enqueue("phone", {"app": app}), bool(state.get("enabled", true)))
 	var sep := HSeparator.new()
 	list.add_child(sep)

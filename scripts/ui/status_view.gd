@@ -16,6 +16,7 @@ static func _show_status(ui: Ui) -> void:
 	scroll.add_child(content)
 	ui._text(content, "Reputacja %d   Stan budynków %d   Tradycjonaliści %d   Młode rodziny %d   Kuria %d   Szacunek %d" % [
 		Game.reputation, Game.condition, Game.trad, Game.young, Game.curia, Game.respect], 18)
+	ui._text(content, Progression.profile_text(), 17)
 	ui._text(content, "Rozkład mszy", 22)
 	ui._text(content, "Dziś (%s): %s" % [Game.day_name().to_lower(), Game.schedule_text()], 17)
 	ui._text(content, "Niedziele i święta nakazane: %s      Dni powszednie: %s" % [
@@ -29,7 +30,7 @@ static func _show_status(ui: Ui) -> void:
 		ui._text(content, "Awarie:", 22)
 		for id in Game.breakdowns:
 			var def: Dictionary = Breakdowns.ALL[id]
-			var state := "naprawa w toku" if Game.pending_repairs.has(id) else "naprawa %s zł" % ui._money(def["cost"])
+			var state := "naprawa w toku" if Game.pending_repairs.has(id) else "naprawa %s zł" % ui._money(Repairs.repair_cost(str(id)))
 			ui._text(content, "• %s — %s" % [def["label"], state], 17)
 	if not Game.scheduled.is_empty():
 		ui._text(content, "W toku:", 22)
@@ -45,9 +46,17 @@ static func _show_status(ui: Ui) -> void:
 		l.add_theme_font_size_override("font_size", 17)
 		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		content.add_child(l)
-	ui._button(box, "Kariera i kuria", func() -> void:
+	var actions := HBoxContainer.new()
+	actions.add_theme_constant_override("separation", 10)
+	box.add_child(actions)
+	var career_button := ui._button(actions, "Kariera i kuria", func() -> void:
 		ui._close_modal()
 		ui._enqueue("career", {}))
+	career_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var progression_button := ui._button(actions, "Rozwój", func() -> void:
+		ui._close_modal()
+		ui._enqueue("progression", {}))
+	progression_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	ui._button(box, "Zamknij", ui._close_modal)
 
 

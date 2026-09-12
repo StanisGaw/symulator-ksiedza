@@ -26,6 +26,7 @@ static func show_career(ui: Ui) -> void:
 static func _show_rank(ui: Ui, content: VBoxContainer) -> void:
 	var rank := Career.rank_label()
 	ui._text(content, "Stanowisko: %s" % rank, 23)
+	ui._text(content, Progression.profile_text(), 17)
 	if Game.rank == "wikary":
 		var relation := int(Game.career.get("pastor_relation", 100))
 		ui._text(content, "Jako wikary uzgadniasz zastrzeżone decyzje z proboszczem. Relacja z nim: %d/100." % relation, 17)

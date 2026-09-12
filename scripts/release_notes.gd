@@ -20,6 +20,12 @@ const RELEASES := [
 		"Co 13 tygodni kuria wystawia pisemną ocenę z pięciu składowych. Dwie dobre oceny otwierają awans, a kolejne złe prowadzą do ostrzeżenia i decyzji o przeniesieniu. Sama zmiana parafii pozostaje zaplanowana na później.",
 		"W telefonie znajdziesz Karierę: termin oceny, propozycje awansu, uzgodnienia i trwałą kronikę decyzji. Sąsiedni proboszcz reaguje na twoje decyzje, a wspólny odpust ma skutki wracające po tygodniach.",
 	]},
+	{"version": "2.5", "title": "Ksiądz nabiera doświadczenia", "changes": [
+		"Charyzma, wiarygodność, zarządzanie, wpływy i odporność rosną z wykonywanych czynności. Profil i postępy znajdziesz w telefonie, w zakładce Rozwój.",
+		"Wydawaj szacunek na trzy drzewka: administratora, duszpasterza i gospodarza. Odblokujesz zniżki, przegląd budynków, większą frekwencję, krótsze odwiedziny oraz skuteczniejsze odpowiedzi w mediach i kurii.",
+		"Niektóre wydarzenia mają nowe opcje wymagające odpowiedniej cechy. Wymagania są widoczne, a przy decyzjach finansowych zobaczysz kwotę wynikającą z twojego zarządzania.",
+		"Dotychczasowe zapisy otrzymują profil z cechami na poziomie 3/10; dalszy rozwój wynika z nowo zdobywanego doświadczenia.",
+	]},
 ]
 
 

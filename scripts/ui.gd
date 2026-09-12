@@ -272,6 +272,7 @@ func _show_next() -> void:
 	var item: Dictionary = _queue.pop_front()
 	match item["kind"]:
 		"career": CareerView.show_career(self)
+		"progression": ProgressionView.show_progression(self)
 		"event": _show_event(item["data"]["event"])
 		"report": _show_report(item["data"]["title"], item["data"]["lines"])
 		"finance": FinanceView._show_finance(self)
@@ -426,23 +427,35 @@ func _show_confirm_new() -> void:
 
 
 func _show_event(ev: Dictionary) -> void:
-	var box := _window(ev["title"])
+	var box := _window(ev["title"], 900.0)
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(0, 475)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	box.add_child(scroll)
+	var content := VBoxContainer.new()
+	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	content.add_theme_constant_override("separation", 12)
+	scroll.add_child(content)
 	if ev.get("crisis", false):
-		var warn := _text(box, "To jest kryzys. Nie da się go odłożyć i każde wyjście coś kosztuje.", 18)
+		var warn := _text(content, "To jest kryzys. Nie da się go odłożyć i każde wyjście coś kosztuje.", 18)
 		warn.add_theme_color_override("font_color", Color(0.92, 0.45, 0.35))
-	_text(box, ev["text"])
+	_text(content, ev["text"])
 	var opts := VBoxContainer.new()
 	opts.add_theme_constant_override("separation", 8)
-	box.add_child(opts)
+	content.add_child(opts)
 	for i in ev["options"].size():
 		var opt: Dictionary = ev["options"][i]
+		var state: Dictionary = Progression.option_state(opt, "event")
+		var resolved: Dictionary = Progression.resolve_option(opt, "event")
 		var label: String = opt["label"]
 		if Career.needs_approval(opt):
 			label += "\nUzgodnij z proboszczem: 2 dni, relacja -2"
-		if opt.has("effects"):
-			label += "   (" + Parish.effects_text(opt["effects"]) + ")"
-		_button(opts, label, func() -> void:
-			var expense := maxi(-int(opt.get("effects", {}).get("money", 0)), 0)
+		if not bool(state.get("enabled", true)):
+			label += "\n" + str(state.get("reason", "Ta decyzja nie jest jeszcze dostępna."))
+		if resolved.has("effects"):
+			label += "   (" + Parish.effects_text(resolved["effects"]) + ")"
+		var choice := _button(opts, label, func() -> void:
+			var expense := maxi(-int(resolved.get("effects", {}).get("money", 0)), 0)
 			if expense > 0 and Finance.needs_confirmation(expense):
 				FinanceView.confirm_expense(self, str(opt["label"]), expense, func() -> void:
 					EventFlow.choose_option(ev, i)
@@ -452,7 +465,8 @@ func _show_event(ev: Dictionary) -> void:
 					_show_event(ev))
 			else:
 				EventFlow.choose_option(ev, i)
-				_close_modal())
+				_close_modal(), bool(state.get("enabled", true)))
+		choice.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
 
 func _show_report(title: String, lines: Array) -> void:

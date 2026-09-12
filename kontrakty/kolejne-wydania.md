@@ -13,7 +13,7 @@ Pierwsze: 2.4. Każde kolejne dopiero po publikacji poprzedniego.
 | C24 | reguły kariery, wiara, oceny, testy | career / gpt-5.6-sol high | kontrakt poniżej | verified |
 | E24 | łańcuchy, dziekanat, testy definicji | events / gpt-5.6-sol high | kontrakt poniżej | verified |
 | U24 | ekran kariery i kroniki | career_ui / gpt-5.6-terra medium | kontrakt poniżej | verified |
-| I24 | testy wspólne, dokumentacja, notes, Web, Pages | rodzic | C24/E24/U24 sprawdzone | running: publikacja |
+| I24 | testy wspólne, dokumentacja, notes, Web, Pages | rodzic | C24/E24/U24 sprawdzone | verified |
 
 Wspólny checkout, jeden autor każdego pliku. Git, import głównego projektu i
 publikacja należą do rodzica. Agenci testują runnerem w izolowanych kopiach.
@@ -103,4 +103,72 @@ Kontrakt gotowy; następne: dispatch C24/E24/U24 oraz implementacja K24.
   w raporcie, wielokrotne zgody, zaliczanie pogorszenia kryzysu jako rozwiązania,
   zbyt szerokie etykiety uzgodnień. Wiara bez aktywności pozostaje0.
 
-Stan wznowienia: I24 publikuje; po zielonym Pages rozpocząć plan2.5.
+Publikacja2.4 zakończona: commit aabbc2ffaf8a40317b2e546cef29619a6546eba1, workflow34718246771 success. LiveHTTP200. StartP25/E25/U25/K25 zatwierdzony kontynuacją serii.
+
+## Plan 2.5 — kontrakt rewizja 1
+
+Źródło: ROADMAP2.5, AC4.1–4.4/9.5/R3. Kontynuacja zgody na serię2.4–2.6.
+Start implementacji dopiero po zielonym Pages2.4. Zakres: pięć rozwijanych cech,
+trzy dwupoziomowe drzewka, opcje zależne od cech, profil, migracja, release notes.
+
+| ID | Właściciel / żądany model | Pliki | Warunek | Stan |
+|---|---|---|---|---|
+| P25 | career / gpt-5.6-sol high | progression.gd, tools/check_progression.gd | publikacja2.4 + kontrakt | verified (kod) |
+| E25 | events24 / gpt-5.6-sol high | event_flow.gd, inbox.gd, events.gd, phone.gd, tools/check_definitions.gd | jak P25 | verified (kod) |
+| U25 | career_ui / gpt-5.6-terra medium | ui.gd, ui/progression_view.gd, phone_view.gd, finance_view.gd, status_view.gd, career_view.gd, tools/check_progression_ui.gd | jak P25 | verified (kod) |
+| K25/I25 | rodzic / bieżąca sesja | game.gd, save_game.gd, finance.gd, repairs.gd, reszta integracji/docs/CI | kontrakt; integracja po P/E/U | verified (kod) |
+
+P25 || E25 || U25 po kontrakcie API; I25 po wspólnych testach. Jeden autor pliku.
+Pola Game: stats Dictionary (charyzma, wiarygodnosc, zarzadzanie, wplywy, odpornosc,
+start3, min1 max10), stat_xp Dictionary, talents Array. Reset i migracja przez
+Progression.reset(game) / normalize(game) — rodzic podłącza do Game/SaveGame.
+
+API Progression:
+- STAT_LABELS: Dictionary; TALENTS: Dictionary klucz->{label,tree,cost,requires,description}.
+- reset(game), normalize(game), record(kind:String), profile_text()->String.
+- has_talent(id)->bool, unlock_reason(id)->String (puste=dostępne), unlock(id)->bool.
+- option_state(option:Dictionary, context:String="event")->Dictionary {enabled:bool,reason:String}.
+- resolve_option(option:Dictionary, context:String="event")->Dictionary: kopia opcji
+  ze skutkami końcowymi, usunięte scale i znaczniki premii, bez mutowania definicji.
+  Idempotencja kolejnych resolve. Te same końcowe skutki w UI i wykonaniu.
+- investment_cost(base:int)->int (także naprawy), attendance(base:int)->int,
+  activity_minutes(id:String,base:int)->int.
+
+8XP na punkt cechy; msza/spowiedź ->charyzma+1XP; honest_report ->wiarygodnosc+3XP;
+balanced_week ->zarzadzanie+3XP; media ->wplywy+1XP; festyn ->wplywy+3XP;
+short_sleep ->odpornosc+1XP. Rekord po wykonaniu, nie po podglądzie/odmowie.
+Rodzic: msze, spowiedź, rozliczenie (saldo>=0), ukończony festyn i sen3–6h
+przez północ zakończony energią>=40. E25: uczciwe odpowiedzi i media, po wyborze.
+
+Talenty, koszt20 pierwszy /35 drugi, drugi wymaga pierwszego:
+- admin_accounts (Administrator): naprawy i inwestycje -10%.
+- admin_inspection: odblokowuje przegląd przy biurku (inspection,45min,10energii,
+  raz/dzień, stan+3). Rodzic dodaje Game.ACTIVITIES i kontrolę talentu/lokacji rectory;
+  U25 przycisk w finansach, dostępny na plebanii, opis ograniczeń.
+- pastor_presence (Duszpasterz): frekwencja +10% z limitem500.
+- pastor_visits: odwiedziny chorego krótsze o15min.
+- host_media (Gospodarz): odpowiedź w mediach dostaje reputację+2.
+- host_curia: uczciwa odpowiedź kurii dostaje kuria+2 (honest:true lub special honest_report).
+
+Opcje needs:{cecha:próg}: niedostępne z wyjaśnieniem, także guard w wykonaniu.
+Scale:"zarzadzanie" skaluje tylko money: dodatnie ×(1+0.1*(cecha-3)), ujemne
+×(1-0.05*(cecha-3)), zaokrąglone. E25 dodaje sensowne opcje z needs oraz scale do
+istniejącej puli, walidator zna klucze/progi. Nie usuwać wszystkich prostych opcji.
+Przy uzgodnieniu wikarego utrwalić rozliczoną opcję (premie i kwoty nie liczone drugi raz).
+Poczta dostaje context media/event, jawne honest w pierwszej Phone.excuses().
+Statystyki i profil widoczne w telefonie Rozwój oraz podsumowanie w kronice.
+
+Parent API dla kosztów: Finance.investment_cost(id), Repairs.repair_cost(id).
+U25 używa ich w cenach i potwierdzeniach; rodzic używa ich także w can/invest/repair.
+Żadne benefity nie występują bez odblokowanego talentu.
+Weryfikacja P25: XP/range, unlock/prereq/cost/duplicate, needs/scale/idempotence,
+wszystkie sześć efektów/migracja. U25: przyciski, progi, koszty, przewijanie1280×720.
+CLI --check-progression / --check-progression-ui; wszystkie wcześniejsze kontrole
+oraz120dni, eksport i Pages muszą zostać zielone przed rozpoczęciem2.6.
+
+### Weryfikacja 2.5
+
+Integracja: definicje, rozwój, wydarzenia, budżet i UI oraz symulacja 120 dni przechodzą.
+Poprawiono wysokość okna statusu wykrytą przez regresję kariery. Zrzuty natywne
+1280×720 sprawdzone: Rozwój i blokada opcji cechy. Dowody w `artifacts/release-2.5/`.
+Eksport i publikacja: w toku.

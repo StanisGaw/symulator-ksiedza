@@ -9,8 +9,8 @@ Zasady: każde wydanie kończy się buildem na GitHub Pages i przejściem `--che
 oraz `--simulate=120`. Jedno wydanie domyka jeden system do końca zamiast dotykać pięciu
 po trochu. Kolejność jest zależnościowa, nie z sufitu – patrz uzasadnienia.
 
-Stan na 12.09.2026: wydane na GitHub Pages jest wszystko do **2.4**
-(kuria, oceny i ranga), w tym **2.3** (budżet tygodnia) i porządkowe **2.2.1** (rozbicie monolitów). Stan publikacji
+Stan na 12.09.2026: wydane na GitHub Pages jest wszystko do **2.5**
+(rozwój księdza i talenty), w tym **2.3** (budżet tygodnia) i porządkowe **2.2.1** (rozbicie monolitów). Stan publikacji
 i dowody wydania 2.3: [kontrakt i rejestr realizacji](kontrakty/2.3-budzet.md).
 
 ---
@@ -26,7 +26,7 @@ i dowody wydania 2.3: [kontrakt i rejestr realizacji](kontrakty/2.3-budzet.md).
 | 2.1–2.3 zasoby niefinansowe | ✅ | reputacja, stan budynków, dwie grupy, kuria; cztery kryzysy progowe |
 | 3.1 start jako wikary | ✅ | nowa gra jako wikary, stary zapis jako proboszcz |
 | 3.2–3.5 ścieżka, ocena, zakres | ⚠️ | oceny, nominacje i samodzielność po awansie w2.4; nowe parafie i nadzór w3.3 |
-| 4.1–4.2 specjalizacja | ❌ | jest tylko „szacunek” jako przyszła waluta |
+| 4.1–4.2 specjalizacja | ✅ | pięć cech, trzy drzewka i sześć talentów |
 | 5.1–5.5 wydarzenia i kryzysy | ✅ | 35 wydarzeń, skutki odroczone i niepewne, kryzysy progowe |
 | 6.1 kuria jako aktor | ✅ | listy, oceny kwartalne, nominacje, ostrzeżenia |
 | 6.2 tłumaczenie się z decyzji | ✅ | listy z kurii w telefonie z terminem i trzema sposobami odpowiedzi |
@@ -34,7 +34,7 @@ i dowody wydania 2.3: [kontrakt i rejestr realizacji](kontrakty/2.3-budzet.md).
 | 7.2 konflikty grup | ⚠️ | decyzje różnicują obie liczby; eskalacja tylko przez kryzys reputacji |
 | 8.1–8.2 emergencja | ✅ | losowanie na warunkach, moneta w skutkach, karencje; trwała kronika decyzji i ocen od2.4 |
 | 9.1–9.4 świat, rozbudowa, praca, dzień | ✅ | |
-| 9.5 drzewko rozwoju | ❌ | |
+| 9.5 drzewko rozwoju | ✅ | telefon Rozwój, koszty i wymagania talentów |
 | 9.6 postacie z rutyną | ⚠️ | parafianie istnieją tylko w scenach mszy, spowiedzi i pogrzebu |
 | 9.7 warstwa strategiczna | ✅ | |
 | 10.1–10.2 współczesność | ✅ | telefon: poczta, bank, media |
@@ -45,7 +45,7 @@ i dowody wydania 2.3: [kontrakt i rejestr realizacji](kontrakty/2.3-budzet.md).
 | 2.4 życie religijne 🆕 | ✅ | realne uczestnictwo, spowiedzi i odwiedziny z7dni |
 | 2.5 reputacja rozłożona | ⛔ | odłożone, patrz część 5 |
 | 3.6–3.8 ocena kwartalna, przeniesienie, wikary pod proboszczem 🆕 | ⚠️ | ocena i uzgodnienia gotowe; fizyczne przeniesienie w3.3 |
-| 4.3–4.4 cechy księdza 🆕 | ❌ | wydanie 2.5 |
+| 4.3–4.4 cechy księdza 🆕 | ✅ | doświadczenie z czynności, wymagania i skalowanie decyzji |
 | 5.6 łańcuchy wydarzeń 🆕 | ✅ | pamięć, trzy gałęzie odpustu, późne losowe następstwa |
 | 6.3–6.4 kalendarz kurii, dziekanat 🆕 | ✅ | przypomnienia, oceny, reakcja sąsiada i odpust |
 | 7.3–7.5 grupy z wpływem, działalność społeczna 🆕 | ❌ | wydanie 2.6; zastępują 7.1 i 7.2 |
@@ -206,7 +206,7 @@ pięciu wyników: dobre ≥70, złe <40. Dziekan ma na razie rangę i kronikę; 
 oraz fizyczne przeniesienia pozostają w 3.3. Łańcuch odpustu ma trzy kosztowne wybory
 i po dwie różne wersje następstw dla każdego. [Stan i dowody](kontrakty/kolejne-wydania.md).
 
-### 2.5 Statystyki księdza i trzy drzewka (AC-4.1–4.4, 9.5, R3)
+### 2.5 Statystyki księdza i trzy drzewka (AC-4.1–4.4, 9.5, R3) — wykonane
 
 - Stan gry: `stats` – charyzma, wiarygodność, zarządzanie, wpływy, odporność, 1–10.
   Rosną z tego, co ksiądz robi: msze i spowiedź → charyzma, uczciwe odpowiedzi kurii

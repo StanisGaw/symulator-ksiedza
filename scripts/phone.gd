@@ -17,6 +17,7 @@ const APPS := ["poczta", "bank", "media"]
 ## co drugi dzień, bo pasujących tematów jest zwykle dwa albo trzy.
 const MEDIA_COOLDOWN := 12
 const APP_LABELS := {"poczta": "Poczta", "bank": "Bank", "media": "Media"}
+const CONTEXTS := ["event", "media"]
 
 
 static func make(app: String, sender: String, title: String, text: String,
@@ -38,6 +39,8 @@ const MEDIA := [
 		"text": "Czytelnik przysłał zdjęcia elewacji. „Ile można patrzeć na taki dach” - pisze. W komentarzach dyskusja o tym, na co idą pieniądze z tacy.",
 		"options": [
 			{"label": "Odpisz: trwa zbiórka na remont", "effects": {"reputation": 2, "young": 1}},
+			{"label": "Pokaż kosztorys i odpowiedz rzeczowo", "needs": {"wplywy": 6},
+				"effects": {"reputation": 5, "young": 2, "energy": -5}},
 			{"label": "Nie komentuj", "effects": {"reputation": -2}},
 		],
 		"deadline": 2,
@@ -97,7 +100,7 @@ static func curia_mail(decision: String, options: Array, deadline: int = 3) -> D
 		"Prośba o wyjaśnienie: " + decision,
 		"Ksiądz kanclerz pisze krótko i uprzejmie. Do kurii dotarła wiadomość o twojej decyzji (%s). "
 		% decision + "Biskup prosi o wyjaśnienie na piśmie. Ton listu jest łagodny, ale pytanie jest konkretne.",
-		{"options": options, "deadline": deadline,
+		{"options": options, "deadline": deadline, "context": "event",
 			"expire": {"text": "Nie odpisałeś kurii w sprawie: %s. Kuria -6." % decision,
 				"effects": {"curia": -6}}})
 
@@ -106,7 +109,7 @@ static func curia_mail(decision: String, options: Array, deadline: int = 3) -> D
 ## Każdy kosztuje co innego: prawda bywa droga, wykręt tani do czasu.
 static func excuses() -> Array:
 	return [
-		{"label": "Napisz prawdę, z liczbami", "effects": {"curia": 5, "energy": -10}},
+		{"label": "Napisz prawdę, z liczbami", "effects": {"curia": 5, "energy": -10}, "honest": true},
 		{"label": "Zwal na poprzednika i stan budynków", "effects": {"curia": 2, "reputation": -2}},
 		{"label": "Odpisz zdawkowo, że sprawa jest zamknięta", "effects": {"curia": -3}},
 	]
@@ -125,7 +128,7 @@ static func draw_media(game: Node, recent: Dictionary) -> Dictionary:
 	if pool.is_empty():
 		return {}
 	var picked: Dictionary = pool[randi() % pool.size()]
-	var extra := {"id": picked["id"]}
+	var extra := {"id": picked["id"], "context": "media"}
 	for key in ["options", "deadline", "expire"]:
 		if picked.has(key):
 			extra[key] = picked[key]

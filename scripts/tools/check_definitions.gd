@@ -78,6 +78,7 @@ static func run() -> Array[String]:
 				if str(opt.get("label", "")) == "":
 					_e(problems, ow, "brak etykiety")
 				_ce(problems, ow, opt.get("effects", {}))
+				_check_progression_option(problems, ow, opt)
 				if opt.has("flags"):
 					_check_flags(problems, ow, opt["flags"])
 				if opt.has("special") and not SPECIALS.has(str(opt["special"])):
@@ -147,6 +148,7 @@ static func run() -> Array[String]:
 					_e(problems, mwhere, "warunek na nieistniejącym polu „%s”" % key)
 		for opt in post.get("options", []):
 			_ce(problems, mwhere + "/" + str(opt.get("label", "?")), opt.get("effects", {}))
+			_check_progression_option(problems, mwhere + "/" + str(opt.get("label", "?")), opt)
 		if post.has("expire"):
 			if not post.has("deadline"):
 				_e(problems, mwhere, "skutek po terminie bez terminu")
@@ -155,6 +157,10 @@ static func run() -> Array[String]:
 			_e(problems, mwhere, "termin bez skutku po jego minięciu")
 	for opt in Phone.excuses():
 		_ce(problems, "kuria/wyjaśnienie/" + str(opt.get("label", "?")), opt.get("effects", {}))
+		_check_progression_option(problems, "kuria/wyjaśnienie/" + str(opt.get("label", "?")), opt)
+	var curia_context := str(Phone.curia_mail("kontrola", Phone.excuses()).get("context", ""))
+	if not Phone.CONTEXTS.has(curia_context):
+		_e(problems, "kuria/wiadomość", "nieznany kontekst „%s”" % curia_context)
 
 	for id in Breakdowns.ALL:
 		var def: Dictionary = Breakdowns.ALL[id]
@@ -166,6 +172,11 @@ static func run() -> Array[String]:
 		_ce(problems, where + " (po naprawie)", def.get("fixed_effects", {}))
 		if def.has("blocks") and not Game.ACTIVITIES.has(str(def["blocks"])):
 			_e(problems, where, "blokuje nieznaną czynność „%s”" % def["blocks"])
+	var progression_counts := _progression_option_counts()
+	if progression_counts.x < 1:
+		_e(problems, "opcje cech", "brak opcji wymagającej cechy")
+	if progression_counts.y < 1:
+		_e(problems, "opcje cech", "brak opcji skalowanej cechą")
 	return problems
 
 
@@ -217,9 +228,11 @@ static func _check_budget_definitions(problems: Array[String]) -> void:
 ## Wypisuje wynik i mówi, czy wszystko jest w porządku.
 static func report() -> bool:
 	var problems := run()
+	var caps := _progression_option_counts()
 	print("Wydarzenia: scenariusz %d, pula %d, łańcuchy %d, kryzysy %d. Awarie: %d. Posty w mediach: %d." % [
 		Events.SCRIPTED.size(), Events.POOL.size(), ChainEvents.POOL.size() + ChainEvents.FOLLOWUPS.size(),
 		Events.CRISES.size(), Breakdowns.ALL.size(), Phone.MEDIA.size()])
+	print("Opcje cech: wymagania %d, skalowanie %d." % [caps.x, caps.y])
 	for p in problems:
 		printerr("BŁĄD  " + p)
 	if problems.is_empty():
@@ -319,3 +332,42 @@ static func _check_flags(problems: Array[String], where: String, value: Variant)
 			_e(problems, where, "pusta nazwa flagi")
 		if typeof(value[key]) not in [TYPE_BOOL, TYPE_INT, TYPE_FLOAT, TYPE_STRING]:
 			_e(problems, where, "flaga „%s” ma nieobsługiwaną wartość" % key)
+
+
+static func _check_progression_option(problems: Array[String], where: String, option: Dictionary) -> void:
+	if option.has("needs"):
+		if typeof(option["needs"]) != TYPE_DICTIONARY:
+			_e(problems, where, "needs nie jest słownikiem")
+		else:
+			for key in option["needs"]:
+				if not Progression.STAT_LABELS.has(str(key)):
+					_e(problems, where, "needs wskazuje nieznaną cechę „%s”" % key)
+				var threshold: Variant = option["needs"][key]
+				if typeof(threshold) != TYPE_INT or int(threshold) < 1 or int(threshold) > 10:
+					_e(problems, where, "próg cechy „%s” musi być liczbą całkowitą 1–10" % key)
+	if option.has("scale"):
+		if typeof(option["scale"]) != TYPE_STRING or not Progression.STAT_LABELS.has(str(option["scale"])):
+			_e(problems, where, "scale wskazuje nieznaną cechę „%s”" % option["scale"])
+		if str(option["scale"]) != "zarzadzanie":
+			_e(problems, where, "scale obsługuje obecnie tylko zarządzanie")
+		if typeof(option.get("effects", {})) != TYPE_DICTIONARY \
+			or not (option.get("effects", {}) as Dictionary).has("money"):
+			_e(problems, where, "skalowana opcja nie ma skutku money")
+	if option.has("honest") and typeof(option["honest"]) != TYPE_BOOL:
+		_e(problems, where, "honest nie jest wartością logiczną")
+	if option.has("_progression_resolved"):
+		_e(problems, where, "wewnętrzny znacznik rozliczenia nie może być w definicji")
+
+
+static func _progression_option_counts() -> Vector2i:
+	var counts := Vector2i.ZERO
+	for entry in Events.catalogs():
+		for event in entry[1]:
+			for option in event.get("options", []):
+				counts.x += 1 if option.has("needs") else 0
+				counts.y += 1 if option.has("scale") else 0
+	for post in Phone.MEDIA:
+		for option in post.get("options", []):
+			counts.x += 1 if option.has("needs") else 0
+			counts.y += 1 if option.has("scale") else 0
+	return counts

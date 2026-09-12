@@ -228,7 +228,7 @@ static func investment_block_reason(id: String) -> String:
 		var reservation := _active_reservation(category)
 		if not reservation.is_empty() and str(reservation.get("investment", "")) != id:
 			return reservation_text(category)
-	if Game.money < int(def["cost"]):
+	if Game.money < investment_cost(id):
 		return "Na koncie brakuje pieniędzy na tę inwestycję."
 	return ""
 
@@ -244,7 +244,7 @@ static func payback_weeks(id: String) -> int:
 	var weekly := int(def.get("expected_weekly", def.get("weekly", 0)))
 	if weekly <= 0:
 		return 0
-	return int(ceil(float(def["cost"]) / float(weekly)))
+	return int(ceil(float(investment_cost(id)) / float(weekly)))
 
 
 static func weekly_yield() -> int:
@@ -261,7 +261,7 @@ static func invest(id: String, confirmed: bool = false) -> bool:
 		Game.toast.emit(reason)
 		return false
 	var def: Dictionary = INVESTMENTS[id]
-	var cost := int(def["cost"])
+	var cost := investment_cost(id)
 	if needs_confirmation(cost) and not confirmed:
 		return false
 	var category := str(def.get("category", "inne"))
@@ -334,6 +334,12 @@ static func weekly_settlement() -> Array[String]:
 	lines.push_front("Rozliczenie tygodnia: wpływy %s zł, pozostałe wydatki %s zł, budżet %s zł." % [
 		Game.money_text(income_before), Game.money_text(expenses_before), Game.money_text(budget_total)])
 	lines.append("Stan konta po rozliczeniu: %s zł." % Game.money_text(Game.money))
+	if Game.money >= 0:
+		Progression.record("balanced_week")
 	Game.week_income = 0
 	Game.week_expenses = 0
 	return lines
+
+
+static func investment_cost(id: String) -> int:
+	return Progression.investment_cost(int(INVESTMENTS[id]["cost"])) if INVESTMENTS.has(id) else 0

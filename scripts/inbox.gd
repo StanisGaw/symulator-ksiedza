@@ -22,6 +22,7 @@ const WELCOME_MAIL := {
 ## Nowa wiadomość w telefonie. Wiadomości z terminem dostają dzień, do którego czekają.
 static func send(msg: Dictionary) -> void:
 	var item: Dictionary = msg.duplicate(true)
+	item["context"] = str(item.get("context", "media" if item.get("app", "") == "media" else "event"))
 	item["day"] = Game.day
 	item["read"] = false
 	item["answered"] = -1
@@ -64,26 +65,47 @@ static func mark_read(index: int) -> void:
 
 ## Odpowiedź na wiadomość działa jak wybór w wydarzeniu: skutki od ręki, skutki odroczone
 ## i wpis w kronice. Wiadomość zostaje w skrzynce z zaznaczoną odpowiedzią.
-static func answer(index: int, option_index: int) -> void:
+static func answer(index: int, option_index: int) -> bool:
 	if index < 0 or index >= Game.phone_inbox.size():
-		return
+		return false
 	var msg: Dictionary = Game.phone_inbox[index]
 	if not is_open_question(msg):
-		return
-	var opt: Dictionary = msg["options"][option_index]
+		return false
+	var options: Array = msg.get("options", [])
+	if option_index < 0 or option_index >= options.size():
+		return false
+	var source: Dictionary = options[option_index]
+	var context := str(msg.get("context", "media" if msg.get("app", "") == "media" else "event"))
+	if not Phone.CONTEXTS.has(context):
+		return false
+	var state: Dictionary = Progression.option_state(source, context)
+	if not bool(state.get("enabled", false)):
+		return false
+	var opt: Dictionary = Progression.resolve_option(source, context)
 	if opt.has("effects"):
 		Parish.apply_effects(opt["effects"], str(msg.get("title", "Telefon")))
 	if opt.has("set"):
 		for key in opt["set"]:
-			Game.set(key, opt["set"][key])
+			Game.set(key, EventFlow._copy_value(opt["set"][key]))
+	if opt.has("flags"):
+		EventFlow._apply_flags(opt["flags"])
+	if opt.has("special"):
+		var special_text := EventFlow._apply_special(str(opt["special"]))
+		if special_text != "":
+			Game.toast.emit(special_text)
+			Game.add_log(special_text)
+	if opt.has("breakdown"):
+		Repairs.add(str(opt["breakdown"]))
+	if opt.has("fix"):
+		Repairs.clear(str(opt["fix"]))
 	if opt.has("delayed"):
-		var d: Dictionary = opt["delayed"]
-		Game.scheduled.append({"day": Game.day + int(d["days"]), "text": str(d.get("text", "")),
-			"effects": d.get("effects", {})})
+		EventFlow._schedule(opt["delayed"])
 	msg["answered"] = option_index
 	msg["read"] = true
 	Game.add_log("%s: %s." % [msg.get("title", "Telefon"), opt["label"]])
+	EventFlow.record_progression(opt, context)
 	Game.state_changed.emit()
+	return true
 
 
 ## Rano: wiadomości po terminie rozliczają się same, a media czasem coś wrzucają.

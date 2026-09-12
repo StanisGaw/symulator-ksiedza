@@ -19,7 +19,8 @@ func prompt_text() -> String:
 		"door":
 			return label
 		"activity":
-			var def: Dictionary = Game.ACTIVITIES[params["id"]]
+			var def: Dictionary = Game.ACTIVITIES[params["id"]].duplicate(true)
+			def["minutes"] = Game.activity_minutes(str(params["id"]))
 			if def.get("apple", false):
 				if Game.apples_left() <= 0:
 					return "Jabłoń (na dziś nic już nie zostało)"

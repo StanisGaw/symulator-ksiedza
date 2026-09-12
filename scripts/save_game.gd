@@ -11,10 +11,10 @@ const INTS := ["day", "start_unix", "money", "reputation", "condition", "trad", 
 	"funerals_pending", "funeral_deadline", "quiet_days", "_last_curia_mail", "_last_bank_alert"]
 const FLOATS := ["energy"]
 const STRINGS := ["deceased_name", "rank"]
-const DICTS := ["done_today", "breakdown_since", "event_cooldowns", "media_recent", "budget", "budget_reservations", "career", "flags"]
+const DICTS := ["done_today", "breakdown_since", "event_cooldowns", "media_recent", "budget", "budget_reservations", "career", "flags", "stats", "stat_xp"]
 const ARRAYS := ["scheduled", "pending_investments", "fired_events", "log_lines", "built", "seen",
 	"masses_done", "masses_missed", "sunday_hours", "weekday_hours", "breakdowns", "pending_repairs",
-	"phone_inbox", "bank_log", "faith_history", "chronicle", "pending_events"]
+	"phone_inbox", "bank_log", "faith_history", "chronicle", "pending_events", "talents"]
 ## Tablice, w których muszą siedzieć liczby całkowite: JSON oddaje wszystko jako zmiennoprzecinkowe.
 const INT_ARRAYS := ["masses_done", "masses_missed", "sunday_hours", "weekday_hours"]
 ## To samo dla słowników: dzień początku awarii i dzień końca karencji wydarzenia.
@@ -69,6 +69,7 @@ static func apply(game: Node, data: Dictionary) -> void:
 	# Nowe pola muszą mieć domyślną wartość także przy wczytaniu starego slotu
 	# po rozegraniu innej partii w tej samej sesji.
 	game.day = maxi(1, int(data.get("day", 1)))
+	Progression.reset(game)
 	Career.reset(game, not data.has("rank"))
 	game.flags = {}
 	game.pending_events = []
@@ -126,6 +127,7 @@ static func apply(game: Node, data: Dictionary) -> void:
 			for key in effects:
 				effects[key] = int(effects[key])
 
+	Progression.normalize(game)
 	Career.normalize(game)
 
 

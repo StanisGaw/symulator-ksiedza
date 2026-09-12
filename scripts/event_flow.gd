@@ -11,9 +11,14 @@ static func choose_option(event: Dictionary, index: int) -> void:
 	var options: Array = event.get("options", [])
 	if index < 0 or index >= options.size():
 		return
+	var source: Dictionary = options[index]
+	var state: Dictionary = Progression.option_state(source, "event")
+	if not bool(state.get("enabled", false)):
+		return
+	# Kwota i premie są zamrażane przed ewentualnym dwudniowym uzgodnieniem.
+	var opt: Dictionary = Progression.resolve_option(source, "event")
 	if not _mark_decision(event):
 		return
-	var opt: Dictionary = options[index]
 	if Career.needs_approval(opt):
 		Career.request_approval(event, opt)
 		Game.state_changed.emit()
@@ -24,33 +29,36 @@ static func choose_option(event: Dictionary, index: int) -> void:
 ## Wykonuje cały zatwierdzony wybór. Career wywołuje tę funkcję dla zgody, która
 ## dojrzała; nie pyta ona ponownie o zgodę i nie oznacza wydarzenia drugi raz.
 static func apply_option(event: Dictionary, opt: Dictionary) -> void:
-	if opt.has("special"):
-		var msg := EventFlow._apply_special(str(opt["special"]))
+	# Opcja oczekująca na zgodę ma znacznik rozliczenia i wraca bez zmian.
+	var resolved: Dictionary = Progression.resolve_option(opt, "event")
+	if resolved.has("special"):
+		var msg := EventFlow._apply_special(str(resolved["special"]))
 		if msg != "":
 			Game.toast.emit(msg)
 			Game.add_log(msg)
-	if opt.has("effects"):
-		Parish.apply_effects(opt["effects"], str(event.get("title", "Wydarzenie")), "wydarzenia")
-	if opt.has("flags"):
-		_apply_flags(opt["flags"])
+	if resolved.has("effects"):
+		Parish.apply_effects(resolved["effects"], str(event.get("title", "Wydarzenie")), "wydarzenia")
+	if resolved.has("flags"):
+		_apply_flags(resolved["flags"])
 	var mass_hours_changed := false
-	if opt.has("set"):
-		for key in opt["set"]:
-			Game.set(key, _copy_value(opt["set"][key]))
+	if resolved.has("set"):
+		for key in resolved["set"]:
+			Game.set(key, _copy_value(resolved["set"][key]))
 			if key == "sunday_hours" or key == "weekday_hours":
 				mass_hours_changed = true
 	if mass_hours_changed:
 		_queue_event(MASS_HOURS_REACTION)
-	if opt.has("breakdown"):
-		Repairs.add(str(opt["breakdown"]))
-	if opt.has("fix"):
-		Repairs.clear(str(opt["fix"]))
-	if opt.has("delayed"):
-		_schedule(opt["delayed"], event)
+	if resolved.has("breakdown"):
+		Repairs.add(str(resolved["breakdown"]))
+	if resolved.has("fix"):
+		Repairs.clear(str(resolved["fix"]))
+	if resolved.has("delayed"):
+		_schedule(resolved["delayed"], event)
 	var title := str(event.get("title", "Wydarzenie"))
-	var label := str(opt.get("label", "decyzja"))
+	var label := str(resolved.get("label", "decyzja"))
 	Game.add_log("%s: %s." % [title, label])
 	Career.add_chronicle("%s — %s" % [title, label])
+	record_progression(resolved, "event")
 	if bool(event.get("crisis", false)) and _crisis_threshold_cleared(event):
 		Career.record_crisis(str(event.get("id", "")))
 	Game.state_changed.emit()
@@ -137,6 +145,14 @@ static func _crisis_threshold_cleared(event: Dictionary) -> bool:
 		if float(Game.get(key)) > float(require["max"][key]):
 			return true
 	return false
+
+
+## XP jest przyznawane dopiero po wykonaniu opcji, nigdy przy podglądzie ani odmowie.
+static func record_progression(option: Dictionary, context: String) -> void:
+	if bool(option.get("honest", false)) or str(option.get("special", "")) == "honest_report":
+		Progression.record("honest_report")
+	if context == "media":
+		Progression.record("media")
 
 
 ## Skutki, których nie da się zapisać liczbami, bo zależą od stanu parafii.
