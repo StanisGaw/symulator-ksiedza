@@ -14,8 +14,8 @@ static func _show_status(ui: Ui) -> void:
 	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	content.add_theme_constant_override("separation", 10)
 	scroll.add_child(content)
-	ui._text(content, "Reputacja %d   Stan budynków %d   Tradycjonaliści %d   Młode rodziny %d   Kuria %d   Szacunek %d" % [
-		Game.reputation, Game.condition, Game.trad, Game.young, Game.curia, Game.respect], 18)
+	ui._text(content, "Reputacja %d   Stan budynków %d   Nastroje grup %d/100   Kuria %d   Szacunek %d" % [
+		Game.reputation, Game.condition, int(round(Groups.support())), Game.curia, Game.respect], 18)
 	ui._text(content, Progression.profile_text(), 17)
 	ui._text(content, "Rozkład mszy", 22)
 	ui._text(content, "Dziś (%s): %s" % [Game.day_name().to_lower(), Game.schedule_text()], 17)
@@ -57,6 +57,10 @@ static func _show_status(ui: Ui) -> void:
 		ui._close_modal()
 		ui._enqueue("progression", {}))
 	progression_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var groups_button := ui._button(actions, "Parafia", func() -> void:
+		ui._close_modal()
+		ui._enqueue("groups", {}))
+	groups_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	ui._button(box, "Zamknij", ui._close_modal)
 
 

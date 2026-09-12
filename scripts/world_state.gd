@@ -37,7 +37,7 @@ static func condition() -> int:
 
 ## Jak żywa jest parafia: ilu ludzi kręci się po placu, ile aut na parkingu.
 static func life() -> int:
-	return tier(int(round((Game.reputation + Game.trad + Game.young) / 3.0)))
+	return tier(int(round((Game.reputation + 2.0 * Groups.support()) / 3.0)))
 
 
 ## Czy dana inwestycja albo trwała naprawa jest już zrobiona.

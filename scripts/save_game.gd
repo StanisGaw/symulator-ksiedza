@@ -11,7 +11,7 @@ const INTS := ["day", "start_unix", "money", "reputation", "condition", "trad", 
 	"funerals_pending", "funeral_deadline", "quiet_days", "_last_curia_mail", "_last_bank_alert"]
 const FLOATS := ["energy"]
 const STRINGS := ["deceased_name", "rank"]
-const DICTS := ["done_today", "breakdown_since", "event_cooldowns", "media_recent", "budget", "budget_reservations", "career", "flags", "stats", "stat_xp"]
+const DICTS := ["done_today", "breakdown_since", "event_cooldowns", "media_recent", "budget", "budget_reservations", "career", "flags", "stats", "stat_xp", "groups", "community", "group_state"]
 const ARRAYS := ["scheduled", "pending_investments", "fired_events", "log_lines", "built", "seen",
 	"masses_done", "masses_missed", "sunday_hours", "weekday_hours", "breakdowns", "pending_repairs",
 	"phone_inbox", "bank_log", "faith_history", "chronicle", "pending_events", "talents"]
@@ -71,6 +71,7 @@ static func apply(game: Node, data: Dictionary) -> void:
 	game.day = maxi(1, int(data.get("day", 1)))
 	Progression.reset(game)
 	Career.reset(game, not data.has("rank"))
+	Groups.reset(game, int(data.get("trad", 55)), int(data.get("young", 50)))
 	game.flags = {}
 	game.pending_events = []
 	game.budget = Finance.default_budget()
@@ -125,8 +126,13 @@ static func apply(game: Node, data: Dictionary) -> void:
 		for field in ["effects", "else_effects"]:
 			var effects: Dictionary = item.get(field, {})
 			for key in effects:
-				effects[key] = int(effects[key])
+				if key == "groups" and effects[key] is Dictionary:
+					for group_id in effects[key]:
+						effects[key][group_id] = int(effects[key][group_id])
+				else:
+					effects[key] = int(effects[key])
 
+	Groups.normalize(game)
 	Progression.normalize(game)
 	Career.normalize(game)
 

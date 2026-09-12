@@ -26,6 +26,12 @@ const RELEASES := [
 		"Niektóre wydarzenia mają nowe opcje wymagające odpowiedniej cechy. Wymagania są widoczne, a przy decyzjach finansowych zobaczysz kwotę wynikającą z twojego zarządzania.",
 		"Dotychczasowe zapisy otrzymują profil z cechami na poziomie 3/10; dalszy rozwój wynika z nowo zdobywanego doświadczenia.",
 	]},
+	{"version": "2.6", "title": "Parafia ma wiele głosów", "changes": [
+		"W telefonie pojawiła się Parafia: sześć grup z własnym zadowoleniem, liczebnością, wpływem i historią ostatniej zmiany. Dotychczasowe nastroje przechodzą na seniorów i młode rodziny.",
+		"Decyzje w wydarzeniach pokazują reakcje konkretnych grup. Wpływowe środowiska organizują zbiórki i wydarzenia albo skarżą się kurii. Dwie silne, niezadowolone grupy mogą stworzyć frakcję w radzie parafialnej.",
+		"Uruchom Caritas, świetlicę lub katechezę. Finansowanie jest tygodniowe, a każde prowadzone spotkanie zajmuje czas i energię oraz zwiększa zadowolenie i liczebność wskazanych grup.",
+		"Koszty wspólnot są widoczne w prognozie banku; włączenie programu przy deficycie wymaga potwierdzenia. Spotkania prowadzisz z widoku Parafia na plebanii, raz w tygodniu.",
+	]},
 ]
 
 

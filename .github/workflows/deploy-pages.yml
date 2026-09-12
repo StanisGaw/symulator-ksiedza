@@ -118,6 +118,30 @@ jobs:
           --log artifacts/godot-validation/check-progression-ui.log
           -- --check-progression-ui
 
+      - name: Check groups behavior
+        run: >-
+          python3 scripts/ci/run_godot.py
+          --godot ./godot
+          --timeout 60
+          --log artifacts/godot-validation/check-groups.log
+          -- --check-groups
+
+      - name: Check group events
+        run: >-
+          python3 scripts/ci/run_godot.py
+          --godot ./godot
+          --timeout 60
+          --log artifacts/godot-validation/check-group-events.log
+          -- --check-group-events
+
+      - name: Check groups UI
+        run: >-
+          python3 scripts/ci/run_godot.py
+          --godot ./godot
+          --timeout 60
+          --log artifacts/godot-validation/check-groups-ui.log
+          -- --check-groups-ui
+
       - name: Simulate 120 days
         run: >-
           python3 scripts/ci/run_godot.py

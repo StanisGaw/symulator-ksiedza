@@ -144,6 +144,9 @@ static func _crisis_threshold_cleared(event: Dictionary) -> bool:
 	for key in require.get("max", {}):
 		if float(Game.get(key)) > float(require["max"][key]):
 			return true
+	for key in require.get("flags", {}):
+		if Game.flags.get(key, false) != require["flags"][key]:
+			return true
 	return false
 
 

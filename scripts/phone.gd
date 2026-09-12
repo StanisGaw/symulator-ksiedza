@@ -96,13 +96,13 @@ const MEDIA := [
 ## Wiadomość z kurii, w której trzeba uzasadnić decyzję. Treść zależy od tego,
 ## co gracz wybrał, dlatego składamy ją z opisu decyzji.
 static func curia_mail(decision: String, options: Array, deadline: int = 3) -> Dictionary:
-	return make("poczta", "Kuria diecezjalna",
+	return GroupEvents.decorate_message(make("poczta", "Kuria diecezjalna",
 		"Prośba o wyjaśnienie: " + decision,
 		"Ksiądz kanclerz pisze krótko i uprzejmie. Do kurii dotarła wiadomość o twojej decyzji (%s). "
 		% decision + "Biskup prosi o wyjaśnienie na piśmie. Ton listu jest łagodny, ale pytanie jest konkretne.",
-		{"options": options, "deadline": deadline, "context": "event",
+		{"group_event_id": "phone_curia", "options": options, "deadline": deadline, "context": "event",
 			"expire": {"text": "Nie odpisałeś kurii w sprawie: %s. Kuria -6." % decision,
-				"effects": {"curia": -6}}})
+				"effects": {"curia": -6}}}))
 
 
 ## Standardowe sposoby tłumaczenia się, wspólne dla większości decyzji.
@@ -115,10 +115,18 @@ static func excuses() -> Array:
 	]
 
 
+## Katalog używany przez UI i walidację ma te same wzbogacone opcje co wiadomość.
+static func media_catalog() -> Array:
+	var out: Array = []
+	for post in MEDIA:
+		out.append(GroupEvents.decorate_message(post))
+	return out
+
+
 ## Losuje post pasujący do stanu parafii; pusty słownik, gdy nic nie pasuje.
 static func draw_media(game: Node, recent: Dictionary) -> Dictionary:
 	var pool: Array = []
-	for post in MEDIA:
+	for post in media_catalog():
 		if int(game.day) - int(recent.get(post["id"], -MEDIA_COOLDOWN)) < MEDIA_COOLDOWN:
 			continue
 		if not _fits(post.get("require", {}), game):
@@ -128,11 +136,11 @@ static func draw_media(game: Node, recent: Dictionary) -> Dictionary:
 	if pool.is_empty():
 		return {}
 	var picked: Dictionary = pool[randi() % pool.size()]
-	var extra := {"id": picked["id"], "context": "media"}
+	var extra := {"id": picked["id"], "context": "media", "_groups_decorated": true}
 	for key in ["options", "deadline", "expire"]:
 		if picked.has(key):
 			extra[key] = picked[key]
-	return make("media", picked["from"], picked["title"], picked["text"], extra)
+	return GroupEvents.decorate_message(make("media", picked["from"], picked["title"], picked["text"], extra))
 
 
 static func _fits(require: Dictionary, game: Node) -> bool:

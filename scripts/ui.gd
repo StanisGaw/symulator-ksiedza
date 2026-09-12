@@ -88,9 +88,9 @@ func _process(_delta: float) -> void:
 		head += ": %d nowe" % unread
 	if waiting > 0:
 		head += ", %d czeka" % waiting
-	var line := "%s      Energia %d%%      %s zł      Reputacja %d   Budynki %d   Tradycjonaliści %d   Młode rodziny %d   Kuria %d   Szacunek %d" % [
+	var line := "%s      Energia %d%%      %s zł      Reputacja %d   Budynki %d   Nastroje grup %d/100   Kuria %d   Szacunek %d" % [
 		Game.clock_text(), int(Game.energy), _money(Game.money),
-		Game.reputation, Game.condition, Game.trad, Game.young, Game.curia, Game.respect]
+		Game.reputation, Game.condition, int(round(Groups.support())), Game.curia, Game.respect]
 	# awaria kosztuje codziennie, więc musi być widoczna bez otwierania okna
 	if not Game.breakdowns.is_empty():
 		line += "   •   Awarie: %d" % Game.breakdowns.size()
@@ -272,6 +272,7 @@ func _show_next() -> void:
 	var item: Dictionary = _queue.pop_front()
 	match item["kind"]:
 		"career": CareerView.show_career(self)
+		"groups": GroupView.show_groups(self)
 		"progression": ProgressionView.show_progression(self)
 		"event": _show_event(item["data"]["event"])
 		"report": _show_report(item["data"]["title"], item["data"]["lines"])
@@ -295,6 +296,10 @@ func _close_modal() -> void:
 	for c in _modal_layer.get_children():
 		c.queue_free()
 	call_deferred("_show_next")
+
+
+func _run_group_initiative(id: String) -> void:
+	Groups.run_initiative(id)
 
 
 func _window(title: String, width: float = 760.0) -> VBoxContainer:

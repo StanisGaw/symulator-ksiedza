@@ -9,8 +9,8 @@ Zasady: każde wydanie kończy się buildem na GitHub Pages i przejściem `--che
 oraz `--simulate=120`. Jedno wydanie domyka jeden system do końca zamiast dotykać pięciu
 po trochu. Kolejność jest zależnościowa, nie z sufitu – patrz uzasadnienia.
 
-Stan na 12.09.2026: wydane na GitHub Pages jest wszystko do **2.5**
-(rozwój księdza i talenty), w tym **2.3** (budżet tygodnia) i porządkowe **2.2.1** (rozbicie monolitów). Stan publikacji
+Stan na 12.09.2026: wydane na GitHub Pages jest wszystko do **2.6**
+(grupy parafialne i wspólnoty), w tym **2.3** (budżet tygodnia) i porządkowe **2.2.1** (rozbicie monolitów). Stan publikacji
 i dowody wydania 2.3: [kontrakt i rejestr realizacji](kontrakty/2.3-budzet.md).
 
 ---
@@ -23,15 +23,15 @@ i dowody wydania 2.3: [kontrakt i rejestr realizacji](kontrakty/2.3-budzet.md).
 | 1.2 kategorie wydatków | ✅ | pięć kategorii budżetu z poziomami i skutkami, osobne inwestycje |
 | 1.3 budżet ograniczony | 🔁 | zastąpione przez 1.5: widoczna prognoza i potwierdzenie deficytu |
 | 1.4 skutki poza finansami | ✅ | każda inwestycja i naprawa zmienia wskaźnik niefinansowy |
-| 2.1–2.3 zasoby niefinansowe | ✅ | reputacja, stan budynków, dwie grupy, kuria; cztery kryzysy progowe |
+| 2.1–2.3 zasoby niefinansowe | ✅ | reputacja mieszkańców, stan budynków, sześć grup, kuria; kryzysy progowe |
 | 3.1 start jako wikary | ✅ | nowa gra jako wikary, stary zapis jako proboszcz |
 | 3.2–3.5 ścieżka, ocena, zakres | ⚠️ | oceny, nominacje i samodzielność po awansie w2.4; nowe parafie i nadzór w3.3 |
 | 4.1–4.2 specjalizacja | ✅ | pięć cech, trzy drzewka i sześć talentów |
 | 5.1–5.5 wydarzenia i kryzysy | ✅ | 35 wydarzeń, skutki odroczone i niepewne, kryzysy progowe |
 | 6.1 kuria jako aktor | ✅ | listy, oceny kwartalne, nominacje, ostrzeżenia |
 | 6.2 tłumaczenie się z decyzji | ✅ | listy z kurii w telefonie z terminem i trzema sposobami odpowiedzi |
-| 7.1 grupy parafian | ⚠️ | dwie grupy jako liczby (tradycjonaliści, młode rodziny), nie byty z wpływem |
-| 7.2 konflikty grup | ⚠️ | decyzje różnicują obie liczby; eskalacja tylko przez kryzys reputacji |
+| 7.1 grupy parafian | 🔁 | zastąpione przez sześć bytów w7.3 |
+| 7.2 konflikty grup | 🔁 | zastąpione przez kryzys z nazwanymi stronami w7.4 |
 | 8.1–8.2 emergencja | ✅ | losowanie na warunkach, moneta w skutkach, karencje; trwała kronika decyzji i ocen od2.4 |
 | 9.1–9.4 świat, rozbudowa, praca, dzień | ✅ | |
 | 9.5 drzewko rozwoju | ✅ | telefon Rozwój, koszty i wymagania talentów |
@@ -48,7 +48,7 @@ i dowody wydania 2.3: [kontrakt i rejestr realizacji](kontrakty/2.3-budzet.md).
 | 4.3–4.4 cechy księdza 🆕 | ✅ | doświadczenie z czynności, wymagania i skalowanie decyzji |
 | 5.6 łańcuchy wydarzeń 🆕 | ✅ | pamięć, trzy gałęzie odpustu, późne losowe następstwa |
 | 6.3–6.4 kalendarz kurii, dziekanat 🆕 | ✅ | przypomnienia, oceny, reakcja sąsiada i odpust |
-| 7.3–7.5 grupy z wpływem, działalność społeczna 🆕 | ❌ | wydanie 2.6; zastępują 7.1 i 7.2 |
+| 7.3–7.5 grupy z wpływem, działalność społeczna 🆕 | ✅ | sześć grup, reakcje tygodniowe, frakcja, finansowanie i spotkania wspólnot |
 | 11.1–11.4 warianty startu, remont etapami 🆕 | ⚠️ | finansowy wybór dach/salka z11.4 gotowy w2.3; warianty, etapy i sloty w3.0–3.1 |
 | 12.1–12.3 kancelaria, sakramenty, planer 🆕 | ❌ | wydanie 2.8 |
 | 13.1–13.3 pracownicy, wikary 🆕 | ❌ | wydanie 2.9 |
@@ -219,7 +219,7 @@ i po dwie różne wersje następstw dla każdego. [Stan i dowody](kontrakty/kole
   albo skrócenie czynności. Okno drzewek w telefonie albo na biurku.
 - Profil widoczny w kronice: „duszpasterz o słabym zarządzaniu” z liczbami.
 
-### 2.6 Grupy parafian jako byty (AC-7.3–7.5, R2, R8, R9)
+### 2.6 Grupy parafian jako byty (AC-7.3–7.5, R2, R8, R9) — wykonane
 
 - Stan gry: `groups` – sześć grup, każda z `satisfaction`, `influence`, `size`.
   Migracja zapisu: `trad` → seniorzy, `young` → młode rodziny; reszta od 50.
@@ -233,6 +233,11 @@ i po dwie różne wersje następstw dla każdego. [Stan i dowody](kontrakty/kole
   kosztują czas w kalendarzu i pieniądze z `duszpasterstwo`, budują konkretne grupy.
 - Widok „Parafia” w telefonie: sześć grup z zadowoleniem, wpływem i ostatnią
   zmianą, żeby konflikt było widać, zanim wybuchnie.
+
+Doprecyzowanie realizacji: Caritas, świetlica i katecheza mają stałe finansowanie
+tygodniowe oraz spotkanie prowadzone przez gracza raz w tygodniu. Spotkanie zużywa
+czas i energię, zwiększa nastrój i liczebność konkretnych grup; opłata finansuje
+działalność także w tygodniu bez prowadzonego spotkania. Pełny planer pozostaje w2.8.
 
 ### 2.7 Parafianie z rutyną (AC-9.6)
 

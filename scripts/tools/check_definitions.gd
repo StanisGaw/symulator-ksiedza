@@ -8,7 +8,7 @@ class_name CheckDefinitions
 ## którego nie ma, awarię albo inwestycję o nieistniejącym identyfikatorze, losowy
 ## skutek bez wersji przeciwnej.
 
-const EFFECT_KEYS := ["money", "reputation", "condition", "trad", "young", "curia", "energy", "respect"]
+const EFFECT_KEYS := ["money", "reputation", "condition", "trad", "young", "curia", "energy", "respect", "groups"]
 const REQUIRE_KEYS := ["min_day", "max_day", "season", "part", "built", "not_built", "breakdown", "no_breakdown", "min", "max", "flags"]
 const SPECIALS := ["honest_report", "visitation_ready", "visitation_raw", "viral_quiet", "viral_answer"]
 const SEASONS := [Calendar.ADVENT, Calendar.CHRISTMAS, Calendar.LENT, Calendar.EASTER, Calendar.ORDINARY]
@@ -52,6 +52,8 @@ static func run() -> Array[String]:
 				_e(problems, where, "brak wagi")
 			if list_name == "CRISES" and not ev.get("crisis", false):
 				_e(problems, where, "kryzys bez znacznika crisis")
+			if not GroupEvents.has_complete_mapping(ev):
+				_e(problems, where, "brak jawnej reakcji grup dla każdej opcji")
 			for key in ev.get("require", {}):
 				if not REQUIRE_KEYS.has(key):
 					_e(problems, where, "nieznany warunek „%s”" % key)
@@ -78,6 +80,7 @@ static func run() -> Array[String]:
 				if str(opt.get("label", "")) == "":
 					_e(problems, ow, "brak etykiety")
 				_ce(problems, ow, opt.get("effects", {}))
+				_check_group_coverage(problems, ow, opt.get("effects", {}))
 				_check_progression_option(problems, ow, opt)
 				if opt.has("flags"):
 					_check_flags(problems, ow, opt["flags"])
@@ -126,7 +129,7 @@ static func run() -> Array[String]:
 
 	# posty w mediach chodzą tą samą drogą co wydarzenia, więc sprawdzamy je tak samo
 	var media_ids: Array[String] = []
-	for post in Phone.MEDIA:
+	for post in Phone.media_catalog():
 		var mid: String = str(post.get("id", ""))
 		var mwhere := "media/%s" % mid
 		if mid == "":
@@ -139,6 +142,8 @@ static func run() -> Array[String]:
 				_e(problems, mwhere, "brak pola „%s”" % key)
 		if (post.get("options", []) as Array).is_empty():
 			_e(problems, mwhere, "post bez opcji odpowiedzi")
+		if not GroupEvents.has_complete_mapping(post):
+			_e(problems, mwhere, "brak jawnej reakcji grup dla każdej odpowiedzi")
 		for key in post.get("require", {}):
 			if not ["min", "max"].has(key):
 				_e(problems, mwhere, "nieznany warunek „%s”" % key)
@@ -148,6 +153,7 @@ static func run() -> Array[String]:
 					_e(problems, mwhere, "warunek na nieistniejącym polu „%s”" % key)
 		for opt in post.get("options", []):
 			_ce(problems, mwhere + "/" + str(opt.get("label", "?")), opt.get("effects", {}))
+			_check_group_coverage(problems, mwhere + "/" + str(opt.get("label", "?")), opt.get("effects", {}))
 			_check_progression_option(problems, mwhere + "/" + str(opt.get("label", "?")), opt)
 		if post.has("expire"):
 			if not post.has("deadline"):
@@ -155,8 +161,9 @@ static func run() -> Array[String]:
 			_ce(problems, mwhere + " (po terminie)", post["expire"].get("effects", {}))
 		elif post.has("deadline"):
 			_e(problems, mwhere, "termin bez skutku po jego minięciu")
-	for opt in Phone.excuses():
+	for opt in GroupEvents.decorate_options("phone_curia", Phone.excuses()):
 		_ce(problems, "kuria/wyjaśnienie/" + str(opt.get("label", "?")), opt.get("effects", {}))
+		_check_group_coverage(problems, "kuria/wyjaśnienie/" + str(opt.get("label", "?")), opt.get("effects", {}))
 		_check_progression_option(problems, "kuria/wyjaśnienie/" + str(opt.get("label", "?")), opt)
 	var curia_context := str(Phone.curia_mail("kontrola", Phone.excuses()).get("context", ""))
 	if not Phone.CONTEXTS.has(curia_context):
@@ -233,6 +240,7 @@ static func report() -> bool:
 		Events.SCRIPTED.size(), Events.POOL.size(), ChainEvents.POOL.size() + ChainEvents.FOLLOWUPS.size(),
 		Events.CRISES.size(), Breakdowns.ALL.size(), Phone.MEDIA.size()])
 	print("Opcje cech: wymagania %d, skalowanie %d." % [caps.x, caps.y])
+	print("Opcje z reakcjami grup: %d." % _group_option_count())
 	for p in problems:
 		printerr("BŁĄD  " + p)
 	if problems.is_empty():
@@ -254,10 +262,12 @@ static func _check_save(problems: Array[String]) -> void:
 	Game.event_cooldowns = {"organ_silent": 41}
 	Game.flags = {"dean_plan": "together", "mass_hours_changed": true}
 	Game.pending_events = ["dean_indulgence_together_success"]
-	Game.scheduled = [{"day": 9, "text": "próba", "effects": {"money": -100},
+	Game.scheduled = [{"day": 9, "text": "próba", "effects": {"money": -100,
+		"groups": {"pracujacy": 3, "przedsiebiorcy": 2}},
 		"chance": 0.5, "event": "dean_indulgence_together_success",
 		"flags": {"dean_indulgence_result": "success"}, "else_text": "druga wersja",
-		"else_effects": {"reputation": -2}, "else_event": "dean_indulgence_together_failure",
+		"else_effects": {"reputation": -2, "groups": {"pracujacy": -3, "przedsiebiorcy": -2}},
+		"else_event": "dean_indulgence_together_failure",
 		"else_flags": {"dean_indulgence_result": "failure"}}]
 	Game.phone_inbox = [{"app": "poczta", "from": "Kuria", "title": "próba", "text": "próba",
 		"day": 3, "due": 6, "read": false, "answered": -1, "deadline": 3,
@@ -283,6 +293,11 @@ static func _check_save(problems: Array[String]) -> void:
 			_e(problems, "zapis", "skutek odroczony wraca jako zmiennoprzecinkowy")
 		if typeof((item["else_effects"] as Dictionary)["reputation"]) != TYPE_INT:
 			_e(problems, "zapis", "przeciwna wersja skutku wraca jako zmiennoprzecinkowa")
+		for branch in ["effects", "else_effects"]:
+			var saved_groups: Dictionary = (item.get(branch, {}) as Dictionary).get("groups", {})
+			if typeof(saved_groups.get("pracujacy")) != TYPE_INT \
+					or typeof(saved_groups.get("przedsiebiorcy")) != TYPE_INT:
+				_e(problems, "zapis", "zagnieżdżone grupy gałęzi %s nie wracają jako liczby całkowite" % branch)
 		if not Game.breakdowns.has("car"):
 			_e(problems, "zapis", "trwająca awaria nie przeżyła zapisu")
 		if str(Game.flags.get("dean_plan", "")) != "together" or not bool(Game.flags.get("mass_hours_changed", false)):
@@ -319,8 +334,34 @@ static func _ce(problems: Array[String], where: String, effects: Dictionary) -> 
 	for key in effects:
 		if not EFFECT_KEYS.has(key):
 			_e(problems, where, "nieznany skutek „%s”" % key)
+		elif key == "groups":
+			_check_groups(problems, where, effects[key])
 		elif typeof(effects[key]) != TYPE_INT:
 			_e(problems, where, "skutek „%s” nie jest liczbą całkowitą" % key)
+
+
+static func _check_groups(problems: Array[String], where: String, value: Variant) -> void:
+	if typeof(value) != TYPE_DICTIONARY:
+		_e(problems, where, "groups nie jest słownikiem")
+		return
+	for id in value:
+		if not GroupEvents.IDS.has(str(id)):
+			_e(problems, where, "nieznana grupa „%s”" % id)
+		elif typeof(value[id]) != TYPE_INT:
+			_e(problems, where, "zmiana grupy „%s” nie jest liczbą całkowitą" % id)
+
+
+static func _check_group_coverage(problems: Array[String], where: String, effects: Dictionary) -> void:
+	var deltas: Dictionary = effects.get("groups", {})
+	if deltas.size() < 2:
+		_e(problems, where, "decyzja musi zmieniać przynajmniej dwie grupy")
+		return
+	var values: Array = []
+	for value in deltas.values():
+		if int(value) != 0 and not values.has(int(value)):
+			values.append(int(value))
+	if values.size() < 2:
+		_e(problems, where, "reakcje grup muszą mieć różne, niezerowe wartości")
 
 
 static func _check_flags(problems: Array[String], where: String, value: Variant) -> void:
@@ -371,3 +412,14 @@ static func _progression_option_counts() -> Vector2i:
 			counts.x += 1 if option.has("needs") else 0
 			counts.y += 1 if option.has("scale") else 0
 	return counts
+
+
+static func _group_option_count() -> int:
+	var count := 0
+	for entry in Events.catalogs():
+		for event in entry[1]:
+			count += (event.get("options", []) as Array).size()
+	for post in Phone.media_catalog():
+		count += (post.get("options", []) as Array).size()
+	count += Phone.excuses().size()
+	return count

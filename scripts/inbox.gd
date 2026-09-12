@@ -21,7 +21,7 @@ const WELCOME_MAIL := {
 
 ## Nowa wiadomość w telefonie. Wiadomości z terminem dostają dzień, do którego czekają.
 static func send(msg: Dictionary) -> void:
-	var item: Dictionary = msg.duplicate(true)
+	var item: Dictionary = GroupEvents.decorate_message(msg)
 	item["context"] = str(item.get("context", "media" if item.get("app", "") == "media" else "event"))
 	item["day"] = Game.day
 	item["read"] = false

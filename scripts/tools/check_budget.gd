@@ -235,6 +235,11 @@ static func _reset_state() -> void:
 	Game.condition = 50
 	Game.trad = 50
 	Game.young = 50
+	# Te scenariusze izolują budżet od osobno testowanych działań wpływowych grup.
+	Groups.reset(Game, 50, 50)
+	for group_id in Game.groups:
+		Game.groups[group_id]["size"] = 100
+	Groups.refresh()
 	Game.curia = 50
 	Game.week_income = 0
 	Game.week_expenses = 0

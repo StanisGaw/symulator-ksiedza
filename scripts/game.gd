@@ -126,6 +126,9 @@ var log_lines: Array = []
 var phone_inbox: Array = []
 var bank_log: Array = []
 var media_recent: Dictionary = {}
+var groups: Dictionary = {}
+var community: Dictionary = {}
+var group_state: Dictionary = {}
 var _last_curia_mail := -99
 var _last_bank_alert := -99
 var modal_open := false
@@ -157,6 +160,7 @@ func _ready() -> void:
 		start_unix = Calendar.today_start_unix()
 	Progression.reset(self)
 	Career.reset(self)
+	Groups.reset(self, trad, young)
 	# pierwszy list czeka już na starcie, także wtedy, gdy gra rusza bez menu nowej gry
 	if phone_inbox.is_empty():
 		Inbox.send(Inbox.WELCOME_MAIL)
@@ -191,9 +195,16 @@ func _ready() -> void:
 			reputation = clampi(int(arg.trim_prefix("--rep=")), 0, 100)
 			trad = reputation
 			young = reputation
+			Groups.reset(self, trad, young)
 		elif arg == "--check":
 			# kontrola definicji wydarzeń i awarii, bez uruchamiania gry
 			call_deferred("_run_check")
+		elif arg == "--check-groups":
+			call_deferred("_run_behavior_check", "res://scripts/tools/check_groups.gd")
+		elif arg == "--check-group-events":
+			call_deferred("_run_behavior_check", "res://scripts/tools/check_group_events.gd")
+		elif arg == "--check-groups-ui":
+			call_deferred("_run_groups_ui_check")
 		elif arg == "--check-progression":
 			call_deferred("_run_behavior_check", "res://scripts/tools/check_progression.gd")
 		elif arg == "--check-progression-events":
@@ -238,6 +249,13 @@ func _process(delta: float) -> void:
 
 
 # ---------- clock ----------
+
+## Natychmiastowe czynności bez scenki; wywołujący sprawdza dostępny czas dnia.
+func advance_time(span: float) -> void:
+	minutes = minf(minutes + maxf(0.0, span), 24.0 * 60.0 - 1.0)
+	_check_missed_masses()
+	state_changed.emit()
+
 
 func time_of_day() -> float:
 	return minutes / (24.0 * 60.0)
@@ -568,7 +586,7 @@ func _finish_activity(def: Dictionary) -> void:
 
 
 func _attendance(start_minutes: float) -> int:
-	var attendance := int(clampf(40.0 + reputation * 1.2 + (trad + young) * 0.5 + (condition - 50) * 0.4, 15.0, 300.0))
+	var attendance := int(clampf(40.0 + reputation * 1.2 + Groups.support() + (condition - 50) * 0.4, 15.0, 300.0))
 	if is_sunday():
 		attendance = int(attendance * 2.2)
 	attendance = int(attendance * hour_attendance(_mass_started_hour))
@@ -768,6 +786,8 @@ func _start_new_day(new_energy: float, extra_lines: Array[String], wake_minutes:
 		if item.has("invest"):
 			if item["invest"] == "festyn":
 				Progression.record("festyn")
+				Groups.grow({"mlodziez": 3, "rodziny": 3}, "Festyn parafialny")
+				Career.record("groups", 2)
 			pending_investments.erase(item["invest"])
 			if not built.has(item["invest"]):
 				built.append(item["invest"])
@@ -815,6 +835,7 @@ func _start_new_day(new_energy: float, extra_lines: Array[String], wake_minutes:
 ## nie jest już nimi zajęty, i tylko z pewną szansą, która rośnie po cichych dniach.
 func _morning_events() -> void:
 	var has_pending := _queue_pending_events()
+	Groups.refresh()
 	var forced: Array = Events.due_events(self)
 	for ev in forced:
 		request_modal("event", {"event": ev})
@@ -925,6 +946,7 @@ func start_new_game() -> void:
 	condition = 55
 	trad = 55
 	young = 50
+	Groups.reset(self, trad, young)
 	curia = 50
 	week_income = 0
 	week_expenses = 0
@@ -1024,5 +1046,11 @@ func activity_minutes(id: String) -> int:
 
 func _run_progression_ui_check() -> void:
 	var checks: Script = load("res://scripts/tools/check_progression_ui.gd")
+	var passed: bool = await checks.run()
+	get_tree().quit(0 if passed else 1)
+
+
+func _run_groups_ui_check() -> void:
+	var checks: Script = load("res://scripts/tools/check_groups_ui.gd")
 	var passed: bool = await checks.run()
 	get_tree().quit(0 if passed else 1)

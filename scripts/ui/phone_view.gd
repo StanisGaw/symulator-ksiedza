@@ -16,6 +16,8 @@ static func _show_phone(ui: Ui, app: String) -> void:
 	_phone_app_tabs(ui, box, app)
 	if app == "bank":
 		_phone_bank(ui, box, "historia")
+	elif app == "parafia":
+		GroupView.show_groups(ui, box)
 	else:
 		_phone_inbox(ui, box, app)
 	ui._button(box, "Zamknij", ui._close_modal)
@@ -47,6 +49,11 @@ static func _phone_app_tabs(ui: Ui, box: VBoxContainer, app: String) -> void:
 		ui._close_modal()
 		ui._enqueue("progression", {}))
 	progression_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var parish_button := ui._button(tabs, "Parafia", func() -> void:
+		ui._close_modal()
+		ui._enqueue("phone", {"app": "parafia"}))
+	parish_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	parish_button.disabled = app == "parafia"
 
 
 static func _phone_bank(ui: Ui, box: VBoxContainer, tab: String, draft: Dictionary = {}) -> void:
@@ -74,6 +81,9 @@ static func _phone_bank(ui: Ui, box: VBoxContainer, tab: String, draft: Dictiona
 	_bank_forecast(ui, list)
 	ui._text(list, "W tym tygodniu: wpływy %s zł, wydatki %s zł. Rachunki i pensje: %s zł w najbliższy poniedziałek." % [
 		ui._money(Game.week_income), ui._money(Game.week_expenses), ui._money(Finance.weekly_expenses())], 17)
+	var community_cost := Groups.weekly_cost()
+	if community_cost > 0:
+		ui._text(list, "Aktywne wspólnoty: dodatkowo %s zł tygodniowo w duszpasterstwie." % ui._money(community_cost), 17)
 	var yield_total: int = Finance.weekly_yield()
 	if yield_total > 0:
 		ui._text(list, "Dochód z inwestycji: %s zł tygodniowo." % ui._money(yield_total), 17)

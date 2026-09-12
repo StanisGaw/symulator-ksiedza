@@ -406,6 +406,17 @@ const POOL := [
 
 const CRISES := [
 	{
+		"id": "group_faction", "crisis": true, "cooldown": 21,
+		"require": {"min_day": 10, "flags": {"group_fracture": true}},
+		"title": "KRYZYS: skargi grup do rady parafialnej",
+		"text": "Wpływowe, niezadowolone grupy przyszły do rady parafialnej. Każda ma inną skargę i oczekuje konkretnej odpowiedzi.",
+		"options": [
+			{"label": "Przyjmij sześciopunktowy plan pomocy — 9 000 zł", "effects": {"money": -9000, "energy": -20}},
+			{"label": "Zwołaj otwarte posiedzenie rady i mediuj", "effects": {"energy": -30, "reputation": 3}},
+			{"label": "Oprzyj się na najgłośniejszych delegatach", "effects": {"reputation": -3, "curia": -2}},
+		]
+	},
+	{
 		"id": "revolt", "crisis": true, "cooldown": 14,
 		"require": {"min_day": 10, "max": {"reputation": 22}},
 		"title": "KRYZYS: rada parafialna zwołała zebranie bez ciebie",
@@ -476,10 +487,13 @@ static func due_events(game: Node) -> Array:
 		if game.fired_events.has(ev["id"]):
 			continue
 		if int(ev.get("day", 0)) == game.day:
-			out.append(ev)
+			out.append(GroupEvents.runtime_event(ev, game))
 	for ev in CRISES:
+		# Kryzys rzeczywistych frakcji ma pierwszeństwo przed ogólnym buntem reputacji.
+		if str(ev.get("id", "")) == "revolt" and bool(game.flags.get("group_fracture", false)):
+			continue
 		if _eligible(game, ev):
-			out.append(ev)
+			out.append(GroupEvents.runtime_event(ev, game))
 	return out
 
 
@@ -500,8 +514,8 @@ static func draw(game: Node) -> Dictionary:
 	for ev in eligible:
 		roll -= float(ev.get("weight", 10))
 		if roll <= 0.0:
-			return ev
-	return eligible.back()
+			return GroupEvents.runtime_event(ev, game)
+	return GroupEvents.runtime_event(eligible.back(), game)
 
 
 ## Szansa, że dziś w ogóle coś się wydarzy. Po cichych dniach rośnie, żeby gra
@@ -550,10 +564,16 @@ static func by_id(id: String) -> Dictionary:
 	for list in [SCRIPTED, POOL, CRISES, ChainEvents.POOL, ChainEvents.FOLLOWUPS]:
 		for ev in list:
 			if ev["id"] == id:
-				return ev
+				return GroupEvents.runtime_event(ev, Game)
 	return {}
 
 
 ## Wszystkie katalogi w formacie używanym przez walidatory i narzędzia.
 static func catalogs() -> Array:
-	return [["SCRIPTED", SCRIPTED], ["POOL", POOL], ["CRISES", CRISES]] + ChainEvents.catalogs()
+	var out: Array = []
+	for entry in [["SCRIPTED", SCRIPTED], ["POOL", POOL], ["CRISES", CRISES]] + ChainEvents.catalogs():
+		var decorated: Array = []
+		for event in entry[1]:
+			decorated.append(GroupEvents.decorate_event(event))
+		out.append([entry[0], decorated])
+	return out

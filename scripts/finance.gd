@@ -89,9 +89,9 @@ const INVESTMENTS := {
 		"weekly": 150, "expected_weekly": 1700,
 		"yield_note": "150 zł opłat tygodniowo plus około 1 000 zł za pogrzeb, średnio półtora pogrzebu w tygodniu"},
 	"festyn": {"label": "Festyn parafialny", "cost": 2500, "days": 4,
-		"effects": {"young": 8, "reputation": 4, "trad": -3}, "category": "duszpasterstwo", "repeatable": true,
+		"effects": {"groups": {"rodziny": 8, "mlodziez": 6, "seniorzy": -3}}, "category": "duszpasterstwo", "repeatable": true,
 		"builds": "Na razie nic trwałego. Namioty, grill i tłum na placu dojdą razem z rozbudową terenu.",
-		"unlocks": "Młode rodziny +8, reputacja +4, tradycjonaliści -3.", "weekly": 0},
+		"unlocks": "Młode rodziny +8, młodzież +6, seniorzy -3. Po przygotowaniach do obu pierwszych grup dołączą po 3 osoby.", "weekly": 0},
 	"curia_gift": {"label": "Przelew do kurii", "cost": 1500, "days": 0,
 		"effects": {"curia": 6}, "category": "inne", "repeatable": true,
 		"builds": "Nic. Pieniądze idą do diecezji.",
@@ -137,7 +137,7 @@ static func weekly_expenses(plan: Dictionary = {}) -> int:
 	var total := 0
 	for id in BUDGET_CATEGORIES:
 		total += category_cost(id, int(selected[id]))
-	return total
+	return total + Groups.weekly_cost()
 
 
 static func _days_to_monday() -> int:
@@ -324,6 +324,8 @@ static func weekly_settlement() -> Array[String]:
 	if Game.condition < 30:
 		Parish.apply_effects({"reputation": -2})
 		lines.append("Budynki niszczeją, parafianie to komentują. Reputacja -2.")
+	budget_total += Groups.weekly_cost()
+	lines.append_array(Groups.weekly())
 	var interest := 0
 	if Game.money < 0:
 		interest = int(ceil(absf(float(Game.money)) * INTEREST_RATE))

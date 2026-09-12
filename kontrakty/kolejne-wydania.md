@@ -171,4 +171,127 @@ oraz120dni, eksport i Pages muszą zostać zielone przed rozpoczęciem2.6.
 Integracja: definicje, rozwój, wydarzenia, budżet i UI oraz symulacja 120 dni przechodzą.
 Poprawiono wysokość okna statusu wykrytą przez regresję kariery. Zrzuty natywne
 1280×720 sprawdzone: Rozwój i blokada opcji cechy. Dowody w `artifacts/release-2.5/`.
-Eksport i publikacja: w toku.
+Eksport Web poprawny. Publikacja213989a: workflow34718971887 success, wszystkie testy
+i wdrożenie Pages zielone (12.09.2026,21:07UTC).
+
+## Plan 2.6 — kontrakt rewizja 1.1
+
+Źródło: ROADMAP2.6, AC7.3–7.5/R2/R8/R9. Kontynuacja zatwierdzonej serii.
+Start po zielonej publikacji2.5. Pełny planer godzin pozostaje2.8: tutaj wspólnota
+ma stałe tygodniowe finansowanie, a spotkanie wykonywane przez gracza raz w tygodniu
+zużywa faktyczny czas i energię. UI jawnie oddziela finansowanie od spotkania.
+
+| ID | Właściciel / żądany model | Pliki | Zależności | Stan |
+|---|---|---|---|---|
+| G26 | career / gpt-5.6-sol high | groups.gd, tools/check_groups.gd + uid | Pages2.5, kontrakt | verified (kod) |
+| E26 | events24 / gpt-5.6-sol high | group_events.gd, events.gd, event_flow.gd, phone.gd, inbox.gd, tools/check_definitions.gd, tools/check_group_events.gd + uid | jak G26 | verified (kod) |
+| U26 | career_ui / gpt-5.6-terra medium | ui.gd, ui/group_view.gd, ui/phone_view.gd, ui/status_view.gd, tools/check_groups_ui.gd + uid | jak G26 | verified (kod) |
+| K26/I26 | rodzic / bieżąca sesja | game.gd, save_game.gd, parish.gd, finance.gd, docs/CI/release | kontrakt; integracja po G/E/U | verified (kod) |
+
+DAG: kontrakt -> G26 || E26 || U26 || K26 -> wspólne testy I26 -> eksport -> Pages.
+Jeden autor pliku, testy w odizolowanych kopiach runnera. Git i publikacja rodzica.
+
+Pola Game: groups Dictionary, community Dictionary (id->bool), group_state Dictionary.
+Grupy: mlodziez80, rodziny120, pracujacy160, seniorzy150, przedsiebiorcy80,
+potrzebujacy110 (liczebność początkowa, normalizacja1–500).
+Każdy wiersz: satisfaction0–100, influence0–100, size, last_change{day,text,delta}.
+Nowa gra seniorzy55/rodziny50/pozostali50; stary zapis trad->seniorzy,young->rodziny.
+Wpływ=clamp(round(size*0.4+satisfaction*0.25),0,100); możliwa silna niezadowolona grupa.
+Alias Game.trad/young pozostaje zgodny z wartościami nowych grup.
+
+Groups API:
+- LABELS Dictionary id->polska etykieta, INITIATIVES Dictionary id->def.
+- reset(game, legacy_trad:int=55, legacy_young:int=50), normalize(game).
+- refresh(): synchronizuje aliasy i wpływ, flagę group_fracture.
+- apply_effects(deltas:Dictionary,label:String=""): agregowane delty grup, last_change,
+  odświeżenie wpływu, state_changed. Rodzic Parish zbiera trad/young + groups i wywołuje raz.
+  Parish przed zmianą legacy klucza ustawia bazę seniorów/rodzin z Game.trad/young,
+  bo stare scenariusze i testy zapisują alias bezpośrednio. Nie dodawać skutku dwa razy.
+- support()->float: średnie zadowolenie ważone liczebnością, do frekwencji.
+- fracture_members()->Array[String]: satisfaction<30 i influence>60; >=2 ustawia flagę.
+- weekly()->Array[String]: raz na kalendarzowy tydzień; grupy influence>70:
+  sat>=60 zbiórka2*size zł (taca), sat30–59 wydarzenie wolontariuszy reputacja+1,
+  sat<30 skarga kuria-2. Raport wymienia strony. Bez sztucznego wzrostu wiary od pieniędzy.
+- week_id()->int: tydzień kalendarzowy poniedziałek–niedziela, stabilny przez zapis.
+- weekly_cost()->int: suma tygodniowych opłat aktywnych wspólnot.
+- activation_cost(id)->int: bieżąca opłata,0 jeśli już opłacone w tym tygodniu.
+- activation_forecast(id)->Dictionary: Finance.forecast({}, bieżąca opłata + dodatkowa
+  opłata nowej wspólnoty w przyszły poniedziałek); aktywna -> zwykła prognoza.
+- set_initiative(id,enabled,confirmed=false)->bool: wymagane potwierdzenie gdy saldo
+  prognozowane<0; pierwsza aktywacja opłaca bieżący tydzień od razu. Wyłączenie nie zwraca
+  opłaty; ponowne włączenie w tym tygodniu jej nie powiela. weekly pobiera następne opłaty
+  raz w tygodniu, category=duszpasterstwo; przechowuje paid_week per inicjatywa.
+- run_reason(id)->String, run_initiative(id)->bool: aktywna, raz w tygodniu, na plebanii,
+  Game.modal_open/cutscene nieaktywne, czas końca<=23:00 i energia>=koszt.
+  Zużywa czas przez Game.advance_time, energię przez Parish, zmienia grupy,
+  Career.record("groups",2), kronika i log; done_week zapisywany PRZED advance_time.
+  Bez nowej scenki. UI zamyka modal i wykonuje odroczonym callable.
+INITIATIVES: caritas{label:Caritas,cost:300,minutes:60,energy:10,groups:{potrzebujacy:6,seniorzy:2}},
+swietlica{label:Świetlica,cost:450,minutes:90,energy:15,groups:{mlodziez:6,rodziny:3}},
+katecheza{label:Katecheza,cost:150,minutes:45,energy:8,groups:{rodziny:4,mlodziez:2}}.
+Wszystkie startują wyłączone. group_state: last_week, paid_week:{}, done_week:{}.
+G26 może dodać wewnętrzne pola, zachowując publiczne API. Normalize nie zmienia day/finansów.
+
+E26: GroupEvents z jawną, sensowną treściowo mapą skutków dla każdej opcji znanych
+wydarzeń. Normalizuje legacy trad/young do nested effects.groups i uzupełnia brakujące
+reakcje tak, by KAŻDA decyzja dotykała>=2grup, z różnymi deltami. Bez przypadkowego
+fallbacku przypisującego wszystkim te same +1/-1. Kopie, idempotencja, definicje nie mutowane.
+Events.by_id/draw/due/catalogs zwracają wzbogacone definicje. Wymyślone zdarzenia testów
+pozostają nienaruszone. Stare skutki nadal działają przez Parish. --check waliduje grupy,
+liczby i pokrycie wszystkich opcji katalogów. Kryzys group_faction: require flag
+ group_fracture=true, cooldown21, sensowne 3odpowiedzi; przynajmniej jedna poprawia
+wszystkie sześć grup o różne dodatnie wartości kosztem pieniędzy, by pomagała realnym
+stronom. Opisy odnoszą się do skarg i rady; nazwy aktualnych stron w tytule/tekście
+runtime. Ogólny bunt reputacji nie powinien zastępować kryzysu frakcji gdy ten trwa.
+EventFlow._crisis_threshold_cleared obsługuje flagi po ponownym przeliczeniu wpływu.
+Delayed nested groups i zamrożone akceptacje nie gubią pól przy JSON (rodzic SaveGame).
+
+U26: Parafia w telefonie, sześć kart z liczebnością/zadowoleniem/wpływem/last_change,
+progi70 i30/60 jawne, lista potencjalnych stron kryzysu. Sekcja wspólnot: koszt/tydzień,
+czas/energia, grupy, Włącz/Wyłącz i Przeprowadź spotkanie, aktualny stan opłaty i wykonania.
+Potwierdzenie deficytu pokazuje bieżącą opłatę, stały koszt i prognozę; Anuluj bez mutacji.
+Telefon zachowuje czytelność6zakładek1280×720, scroll poziomo wyłączony. HUD i status
+nie pokazują dwóch starych grup jako całości parafii; krótki skrót nastrojów z odsyłaczem.
+W banku wyszczególniona dodatkowa kwota wspólnot; Finance.weekly_expenses obejmuje ją.
+
+Rodzic: zapis nowych pól, migracja przed normalize, nested delayed effects po JSON,
+Groups.reset przy nowej grze/ready po ustawieniu aliasów, Groups.refresh przed kryzysami,
+frekwencja oparta na Groups.support (zamiast trad+young), Finance prognoza z weekly_cost,
+Finance.weekly_settlement wywołuje Groups.weekly przed odsetkami i dodaje raport.
+G26 pobiera opłaty wspólnot w weekly; Finance NIE pobiera ich drugi raz.
+
+Weryfikacja: --check-groups migracja/aliasy/granice/weekly idempotence/frakcja/finansowanie/
+czas i raz w tygodniu; --check-group-events kompletność, obie gałęzie delayed po zapisie,
+realny kryzys i jego rozwiązanie; --check-groups-ui rzeczywiste kliknięcia, anulowanie,
+spotkanie, koszty i zapis. Regresje wszystkich wcześniejszych checków,120dni,natywny
+podgląd1280×720, eksport Web i zielone Pages. Release notes od2.3 zachowują historię.
+
+Doprecyzowanie1.1 z AC7.5: INITIATIVES mają size_groups: Caritas potrzebujacy+3/seniorzy+1,
+świetlica mlodziez+3/rodziny+2,katecheza rodziny+2/mlodziez+1. Groups.grow(deltas,label)
+zwiększa size do500 i opisuje ostatnią zmianę. Spotkanie poprawia nastrój i rozmiar.
+Istniejący festyn (4dni przygotowań, koszt duszpasterstwo) zmienia grupy: rodziny+8,
+mlodziez+6,seniorzy-3, bez ogólnej reputacji; zakończenie zwiększa młodzież i rodziny o3.
+
+### Weryfikacja 2.6
+
+- G26: migracja starych zapisów, aliasy, wpływ, trzy rodzaje działań tygodniowych,
+  frakcja, finansowanie bez podwójnej opłaty, koszt czasu/energii, wzrost grup,
+  JSON z opłaconym i wykonanym tygodniem — PASS (`groups-final.log`).
+- E26: kompletność135wyborów, różne reakcje, realna decyzja, zamrożone uzgodnienie,
+  obie gałęzie odroczone po JSON, nazwane strony frakcji i rozwiązanie kryzysu — PASS.
+  Review wykrył podwójne reakcje standardowej poczty kurii; poprawione i testowane
+  przez Phone.curia_mail -> Inbox -> JSON -> odpowiedź (`/tmp/e26-group-events4.log`).
+- U26: sześć grup, wejście przez rzeczywistą zakładkę Parafia, anulowanie i opłata,
+  blokady czasu/energii, spotkanie z przyrostem liczebności, zapis i blokada powtórki,
+  strony frakcji i informacja banku — PASS (`groups-ui-navigation.log`).
+  Natywne zrzuty1280×720 sprawdzone. Wykryty brak przycisku Parafia poprawiony
+  i objęty testem nawigacji. Dowody: `artifacts/release-2.6/screenshots/`.
+- Regresje definicji, budżetu, kariery, łańcuchów, rozwoju i ich UI — PASS.
+  Symulacja120dni seed7:75dni z wydarzeniem,33typy, maksymalna cisza3dni, bez błędów.
+  Symulacja nie wykonuje codziennych czynności, więc nie stanowi testu balansu gracza.
+- Dowody integracyjne w `artifacts/release-2.6/`; katalog jest ignorowany przez Git.
+  Import bez błędów i eksport Web zakończone poprawnie. Publikacja Pages: w toku.
+
+Punkt wznowienia: ukończony zakres2.4–2.6 po zielonym Pages2.6. Następne pozycje
+roadmapy to2.7(parafianie z rutyną),2.8(kancelaria/planer),2.9(pracownicy).
+Nie zostały włączone do tej serii.
